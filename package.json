@@ -35,6 +35,13 @@
       "types": "./dist/git/index.d.ts",
       "default": "./dist/git/index.js"
     },
+    "./child-process": {
+      "__oneworks__": {
+        "default": "./src/child-process/index.ts"
+      },
+      "types": "./dist/child-process/index.d.ts",
+      "default": "./dist/child-process/index.js"
+    },
     "./http-server": {
       "__oneworks__": {
         "default": "./src/http-server/index.ts"

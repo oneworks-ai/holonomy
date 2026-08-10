@@ -7,6 +7,7 @@
 - `src/event-loop/runtime-event-loop.ts`: task, next-tick, timer, native completion, liveness and shutdown state machine.
 - `src/event-loop/types.ts`: minimal host port and public event-loop contracts.
 - `src/git/`: authorized `host.git` v1 provider contract, opaque-repository JS facade and machine-readable support matrix.
+- `src/child-process/`: restricted callback-only `node:child_process` facade that maps two literal `git` argv forms to `GitFacade`; it owns the first cancellation/timeout terminal and late repository close, accepts only genuine captured platform AbortSignals, and swallows callback throws to prevent internal unhandled rejections. It never spawns processes or interprets a shell.
 - `src/http-server/`: bounded inbound `node:http` / `ws` server facade, NativePort contract and virtual-host provider.
 - `src/event-loop/errors.ts`: stable runtime error codes.
 - `src/crypto/`: bounded synchronous engine-internal crypto intrinsic port, guarded provider installation, `node:crypto` synthetic module, Web crypto installer and precise capability matrix.

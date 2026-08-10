@@ -1,3 +1,4 @@
+export * from './child-process/index.js'
 export * from './crypto/index.js'
 export * from './event-loop/index.js'
 export * from './git/index.js'
