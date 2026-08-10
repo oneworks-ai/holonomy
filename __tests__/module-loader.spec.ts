@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
-import { MobileModuleLoader, MobileModuleLoaderError, selectPluginActivate } from '../src/index.js'
-import type { HostModuleLoaderPort, HostModuleSource, MobileModuleLoaderErrorCode, ModulePlan } from '../src/index.js'
+import { HolonomyModuleLoader, HolonomyModuleLoaderError, selectPluginActivate } from '../src/index.js'
+import type { HolonomyModuleLoaderErrorCode, HostModuleLoaderPort, HostModuleSource, ModulePlan } from '../src/index.js'
 
 const APP_ROOT = 'app:///bundle/'
 const FIXTURE_ROOT = resolve(
@@ -65,19 +65,19 @@ const createFixtureHost = (options: FixtureHostOptions = {}) => {
 }
 
 const createLoader = (
-  options: Omit<ConstructorParameters<typeof MobileModuleLoader>[1], 'rootUrl'> = {},
+  options: Omit<ConstructorParameters<typeof HolonomyModuleLoader>[1], 'rootUrl'> = {},
   hostOptions: FixtureHostOptions = {}
 ) => {
   const host = createFixtureHost(hostOptions)
   return {
     ...host,
-    loader: new MobileModuleLoader(host.port, { rootUrl: APP_ROOT, ...options })
+    loader: new HolonomyModuleLoader(host.port, { rootUrl: APP_ROOT, ...options })
   }
 }
 
 const expectLoaderError = async (
   operation: () => unknown | Promise<unknown>,
-  code: MobileModuleLoaderErrorCode
+  code: HolonomyModuleLoaderErrorCode
 ) => {
   let thrown: unknown
   try {
@@ -85,9 +85,9 @@ const expectLoaderError = async (
   } catch (error) {
     thrown = error
   }
-  expect(thrown).toBeInstanceOf(MobileModuleLoaderError)
+  expect(thrown).toBeInstanceOf(HolonomyModuleLoaderError)
   expect(thrown).toMatchObject({ code })
-  return thrown as MobileModuleLoaderError
+  return thrown as HolonomyModuleLoaderError
 }
 
 const moduleBySuffix = (plan: ModulePlan, suffix: string) => {
@@ -263,19 +263,19 @@ describe('mobileModuleLoader security and entry boundaries', () => {
     const { loader } = createLoader()
     await expectLoaderError(
       () => loader.resolve('../../outside.mjs', 'app:///bundle/nested/entry.mjs'),
-      'ERR_MOBILE_MODULE_PATH_ESCAPE'
+      'ERR_HOLONOMY_MODULE_PATH_ESCAPE'
     )
     await expectLoaderError(
       () => loader.resolve('https://example.com/module.mjs'),
-      'ERR_MOBILE_MODULE_UNSUPPORTED_SCHEME'
+      'ERR_HOLONOMY_MODULE_UNSUPPORTED_SCHEME'
     )
     await expectLoaderError(
       () => loader.resolve('./entry.mjs#fragment'),
-      'ERR_MOBILE_MODULE_INVALID_URL'
+      'ERR_HOLONOMY_MODULE_INVALID_URL'
     )
     await expectLoaderError(
       () => loader.resolve('node:fs'),
-      'ERR_MOBILE_MODULE_SYNTHETIC_NOT_FOUND'
+      'ERR_HOLONOMY_MODULE_SYNTHETIC_NOT_FOUND'
     )
     await expectLoaderError(
       () => loader.resolve('@fixture/f1-runtime/private'),
@@ -290,7 +290,7 @@ describe('mobileModuleLoader security and entry boundaries', () => {
     }).loader
     await expectLoaderError(
       () => hostMismatch.createPlan('./entry.mjs'),
-      'ERR_MOBILE_MODULE_INTEGRITY'
+      'ERR_HOLONOMY_MODULE_INTEGRITY'
     )
 
     const entryBytes = readFileSync(join(FIXTURE_ROOT, 'entry.mjs'))
@@ -299,7 +299,7 @@ describe('mobileModuleLoader security and entry boundaries', () => {
     }).loader
     await expectLoaderError(
       () => digestAlias.createPlan('./entry.mjs'),
-      'ERR_MOBILE_MODULE_INTEGRITY'
+      'ERR_HOLONOMY_MODULE_INTEGRITY'
     )
 
     const manifestMismatch = createLoader({
@@ -307,7 +307,7 @@ describe('mobileModuleLoader security and entry boundaries', () => {
     }).loader
     await expectLoaderError(
       () => manifestMismatch.createPlan('./entry.mjs'),
-      'ERR_MOBILE_MODULE_INTEGRITY'
+      'ERR_HOLONOMY_MODULE_INTEGRITY'
     )
   })
 
@@ -319,7 +319,7 @@ describe('mobileModuleLoader security and entry boundaries', () => {
     }).loader
     await expectLoaderError(
       () => invalidBytesLoader.createPlan('./entry.mjs'),
-      'ERR_MOBILE_MODULE_SOURCE_INVALID'
+      'ERR_HOLONOMY_MODULE_SOURCE_INVALID'
     )
 
     const stringRecordLoader = createLoader({}, {
@@ -329,7 +329,7 @@ describe('mobileModuleLoader security and entry boundaries', () => {
     }).loader
     await expectLoaderError(
       () => stringRecordLoader.createPlan('./entry.mjs'),
-      'ERR_MOBILE_MODULE_SOURCE_INVALID'
+      'ERR_HOLONOMY_MODULE_SOURCE_INVALID'
     )
   })
 
@@ -341,7 +341,7 @@ describe('mobileModuleLoader security and entry boundaries', () => {
       }).loader
       const error = await expectLoaderError(
         () => loader.createPlan('./entry.mjs'),
-        'ERR_MOBILE_MODULE_HOST_READ_FAILED'
+        'ERR_HOLONOMY_MODULE_HOST_READ_FAILED'
       )
       expect(error).toMatchObject({ diagnosticCode: 'HOST_READ_FAILED' })
       expect(error.message).not.toContain('ENOENT')
@@ -362,12 +362,12 @@ describe('mobileModuleLoader security and entry boundaries', () => {
     ) {
       await expectLoaderError(
         () => loader.createPlan(specifier),
-        'ERR_MOBILE_MODULE_FORMAT_UNSUPPORTED'
+        'ERR_HOLONOMY_MODULE_FORMAT_UNSUPPORTED'
       )
     }
     await expectLoaderError(
       () => loader.createPlan('./fixture.json'),
-      'ERR_MOBILE_MODULE_JSON_UNSUPPORTED'
+      'ERR_HOLONOMY_MODULE_JSON_UNSUPPORTED'
     )
   })
 
@@ -375,15 +375,15 @@ describe('mobileModuleLoader security and entry boundaries', () => {
     const { loader } = createLoader()
     await expectLoaderError(
       () => loader.createPlan('./native.cjs', { mode: 'require' }),
-      'ERR_MOBILE_MODULE_NATIVE_ADDON_UNSUPPORTED'
+      'ERR_HOLONOMY_MODULE_NATIVE_ADDON_UNSUPPORTED'
     )
     await expectLoaderError(
       () => loader.createPlan('./dlopen.cjs', { mode: 'require' }),
-      'ERR_MOBILE_MODULE_NATIVE_ADDON_UNSUPPORTED'
+      'ERR_HOLONOMY_MODULE_NATIVE_ADDON_UNSUPPORTED'
     )
     await expectLoaderError(
       () => loader.createPlan('./dynamic-require.cjs', { mode: 'require' }),
-      'ERR_MOBILE_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
+      'ERR_HOLONOMY_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
     )
   })
 
@@ -395,7 +395,7 @@ describe('mobileModuleLoader security and entry boundaries', () => {
     expect(selectPluginActivate({ default: { activatePlugin: nested } })).toBe(nested)
     await expectLoaderError(
       () => selectPluginActivate({ default: () => undefined }),
-      'ERR_MOBILE_MODULE_PLUGIN_ENTRY_INVALID'
+      'ERR_HOLONOMY_MODULE_PLUGIN_ENTRY_INVALID'
     )
   })
 })

@@ -1,4 +1,4 @@
-package ai.oneworks.mobile.runtime.v8
+package ai.oneworks.holonomy.v8
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows

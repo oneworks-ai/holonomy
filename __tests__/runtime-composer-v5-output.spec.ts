@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { RuntimeEventLoop, createMobileRuntime } from '../src/index.js'
-import type { HostEventLoopPort, MobileRuntime, MobileRuntimeOptions, NativePort } from '../src/index.js'
+import { RuntimeEventLoop, createHolonomyRuntime } from '../src/index.js'
+import type { HolonomyRuntime, HolonomyRuntimeOptions, HostEventLoopPort, NativePort } from '../src/index.js'
 import { snapshotGitAuthorityInput } from '../src/runtime/authority-snapshot.js'
 import { gitAuthorityInput } from './git-fixture.js'
 
@@ -34,7 +34,7 @@ const nodeCore = () => ({
   stdio: { write: () => true },
   virtualRoot: '/app'
 })
-const base = (): MobileRuntimeOptions => ({
+const base = (): HolonomyRuntimeOptions => ({
   authority: { capabilities: [], principal: 'principal' },
   eventLoop: new RuntimeEventLoop(host()),
   nativePort: port(),
@@ -62,9 +62,9 @@ describe('runtime composer V5 output construction', () => {
           }
         })
       }
-      const input = base() as MobileRuntimeOptions & { moduleLoader: unknown }
+      const input = base() as HolonomyRuntimeOptions & { moduleLoader: unknown }
       input.moduleLoader = { readModule: () => null, rootUrl: 'app:///bundle/' }
-      result = createMobileRuntime(input)
+      result = createHolonomyRuntime(input)
     } finally {
       for (let index = 0; index < descriptors.length; index += 1) {
         const [key, descriptor] = descriptors[index]!
@@ -72,7 +72,7 @@ describe('runtime composer V5 output construction', () => {
         else Reflect.deleteProperty(Object.prototype, key)
       }
     }
-    const runtime = await result as MobileRuntime
+    const runtime = await result as HolonomyRuntime
     expect(calls).toEqual([])
     expect(runtime.syntheticModules['node:buffer']?.namespace).toBeDefined()
     expect(runtime.syntheticModules['node:buffer']?.descriptor.exportNames.length).toBeGreaterThan(0)
@@ -120,12 +120,12 @@ describe('runtime composer V5 output construction', () => {
         ...base(),
         authority: { capabilities: ['host.network.http'], principal: 'principal' },
         network: { authority: { allowedOrigins: ['https://example.test'] }, principal: 'principal' }
-      } as MobileRuntimeOptions
-      result = createMobileRuntime(input)
+      } as HolonomyRuntimeOptions
+      result = createHolonomyRuntime(input)
     } finally {
       Object.create = original
     }
-    const runtime = await result as MobileRuntime
+    const runtime = await result as HolonomyRuntime
     expect(calls).toBe(0)
     expect(runtime.network).toBeDefined()
     await runtime.dispose()

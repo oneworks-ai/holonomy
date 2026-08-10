@@ -41,7 +41,7 @@ if (
   byteOffsetGetter === undefined ||
   typedArrayTagGetter === undefined
 ) {
-  throw new Error('Required mobile runtime binary intrinsics are unavailable')
+  throw new Error('Required Holonomy Runtime binary intrinsics are unavailable')
 }
 
 export interface TypedArraySnapshot {

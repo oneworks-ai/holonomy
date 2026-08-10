@@ -226,7 +226,7 @@ export class MemoryHttpServerProvider implements NativePort, MemoryHttpServerPro
 
   async request(address: HttpServerAddress, request: VirtualHttpRequest): Promise<VirtualHttpResponse> {
     const server = this.servers.get(this.addressKey(address))
-    if (server == null || server.closed) throw createHttpServerError('ERR_MOBILE_HTTP_ABORTED')
+    if (server == null || server.closed) throw createHttpServerError('ERR_HOLONOMY_HTTP_ABORTED')
     const exchange = this.createExchange(server, request, false)
     server.pending.push(exchange)
     server.accept?.flush()
@@ -241,7 +241,7 @@ export class MemoryHttpServerProvider implements NativePort, MemoryHttpServerPro
     request: VirtualWebSocketRequest = {}
   ): Promise<VirtualWebSocketPeer> {
     const server = this.servers.get(this.addressKey(address))
-    if (server == null || server.closed) throw createHttpServerError('ERR_MOBILE_HTTP_ABORTED')
+    if (server == null || server.closed) throw createHttpServerError('ERR_HOLONOMY_HTTP_ABORTED')
     let resolve!: (peer: VirtualWebSocketPeer) => void
     let reject!: (reason: unknown) => void
     const ready = new Promise<VirtualWebSocketPeer>((resolvePromise, rejectPromise) => {
@@ -305,9 +305,9 @@ export class MemoryHttpServerProvider implements NativePort, MemoryHttpServerPro
       this.endStream(resource.bodyRead)
       if (!resource.response.terminal) {
         resource.response.terminal = true
-        resource.response.reject(createHttpServerError('ERR_MOBILE_HTTP_ABORTED'))
+        resource.response.reject(createHttpServerError('ERR_HOLONOMY_HTTP_ABORTED'))
       }
-      resource.websocketReady?.reject(createHttpServerError('ERR_MOBILE_HTTP_ABORTED'))
+      resource.websocketReady?.reject(createHttpServerError('ERR_HOLONOMY_HTTP_ABORTED'))
     } else {
       this.endStream(resource.read)
       resource.inbound.splice(0)
@@ -324,12 +324,12 @@ export class MemoryHttpServerProvider implements NativePort, MemoryHttpServerPro
     websocketReady?: ExchangeResource['websocketReady']
   ): ExchangeResource {
     if (server.connections.size >= this.limits.maxConnections) {
-      throw createHttpServerError('ERR_MOBILE_HTTP_LIMIT_EXCEEDED')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED')
     }
     const method = request.method ?? 'GET'
     const url = request.url ?? '/'
     if (method === '' || method.length > 32 || url === '' || url.length > 8_192) {
-      throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_ARGUMENT')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_ARGUMENT')
     }
     const headers = Object.entries(request.headers ?? {}).flatMap(([name, value]) =>
       (typeof value === 'string' ? [value] : value).map(item => [name, item] as const)
@@ -342,14 +342,14 @@ export class MemoryHttpServerProvider implements NativePort, MemoryHttpServerPro
       ? new Uint8Array(Buffer.from(requestBody))
       : new Uint8Array(requestBody)
     if (body.byteLength > this.limits.maxRequestBodyBytes) {
-      throw createHttpServerError('ERR_MOBILE_HTTP_LIMIT_EXCEEDED')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED')
     }
     const headInput = isUpgrade ? (request as VirtualWebSocketRequest).head : undefined
     if (headInput != null && !(headInput instanceof Uint8Array)) {
-      throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_ARGUMENT')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_ARGUMENT')
     }
     const head = headInput == null ? new Uint8Array() : new Uint8Array(headInput)
-    if (head.byteLength > this.limits.maxChunkBytes) throw createHttpServerError('ERR_MOBILE_HTTP_LIMIT_EXCEEDED')
+    if (head.byteLength > this.limits.maxChunkBytes) throw createHttpServerError('ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED')
     const exchange: ExchangeResource = {
       bodyOffset: 0,
       closed: false,
@@ -680,7 +680,7 @@ export class MemoryHttpServerProvider implements NativePort, MemoryHttpServerPro
       close: (code = 1000, reason = '') => {
         if (resource.closed) return
         if (!Number.isSafeInteger(code) || code < 1000 || code > 4999 || Buffer.byteLength(reason) > 123) {
-          throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_ARGUMENT')
+          throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_ARGUMENT')
         }
         const call = resource.read
         if (call != null && !call.closed) {
@@ -695,7 +695,7 @@ export class MemoryHttpServerProvider implements NativePort, MemoryHttpServerPro
         return result
       },
       send: (data: string | Uint8Array, isBinary = typeof data !== 'string') => {
-        if (resource.closed) throw createHttpServerError('ERR_MOBILE_HTTP_ABORTED')
+        if (resource.closed) throw createHttpServerError('ERR_HOLONOMY_HTTP_ABORTED')
         const bytes = typeof data === 'string'
           ? new Uint8Array(Buffer.from(data))
           : new Uint8Array(data)
@@ -703,7 +703,7 @@ export class MemoryHttpServerProvider implements NativePort, MemoryHttpServerPro
           bytes.byteLength > this.limits.maxWebSocketMessageBytes ||
           resource.inboundBytes + bytes.byteLength > this.limits.maxWebSocketBufferedBytes
         ) {
-          throw createHttpServerError('ERR_MOBILE_HTTP_LIMIT_EXCEEDED')
+          throw createHttpServerError('ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED')
         }
         resource.inboundBytes += bytes.byteLength
         resource.inbound.push({ data: bytes, isBinary })

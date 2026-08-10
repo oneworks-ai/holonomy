@@ -50,12 +50,12 @@ export class ServerResponse extends Writable {
   }
 
   removeHeader(name: string) {
-    if (this.headersSent) throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_STATE')
+    if (this.headersSent) throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_STATE')
     this.headers.delete(this.normalizeHeaderName(name))
   }
 
   setHeader(name: string, value: number | string | readonly string[]) {
-    if (this.headersSent) throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_STATE')
+    if (this.headersSent) throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_STATE')
     const headers = new Map(this.headers)
     this.stageHeader(headers, name, value)
     normalizeOutgoingHeaders(headers, this.limits)
@@ -68,9 +68,9 @@ export class ServerResponse extends Writable {
     statusMessageOrHeaders?: string | Readonly<Record<string, number | string | readonly string[]>>,
     maybeHeaders?: Readonly<Record<string, number | string | readonly string[]>>
   ) {
-    if (this.headersSent) throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_STATE')
+    if (this.headersSent) throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_STATE')
     if (!Number.isSafeInteger(statusCode) || statusCode < 100 || statusCode > 999) {
-      throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_ARGUMENT')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_ARGUMENT')
     }
     const headers = typeof statusMessageOrHeaders === 'string' ? maybeHeaders : statusMessageOrHeaders
     if (
@@ -78,7 +78,7 @@ export class ServerResponse extends Writable {
       (statusMessageOrHeaders.includes('\0') || /[\r\n]/u.test(statusMessageOrHeaders) ||
         Buffer.byteLength(statusMessageOrHeaders) > 1_024)
     ) {
-      throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_ARGUMENT')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_ARGUMENT')
     }
     const stagedHeaders = new Map(this.headers)
     for (const [name, value] of Object.entries(headers ?? {})) this.stageHeader(stagedHeaders, name, value)
@@ -112,11 +112,11 @@ export class ServerResponse extends Writable {
   private async writeChunk(chunk: RuntimeBuffer, callback: RuntimeStreamCallback) {
     try {
       if (chunk.byteLength > this.limits.maxChunkBytes) {
-        throw createHttpServerError('ERR_MOBILE_HTTP_LIMIT_EXCEEDED')
+        throw createHttpServerError('ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED')
       }
       this.responseBytes += chunk.byteLength
       if (this.responseBytes > this.limits.maxResponseBodyBytes) {
-        throw createHttpServerError('ERR_MOBILE_HTTP_LIMIT_EXCEEDED')
+        throw createHttpServerError('ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED')
       }
       await this.ensureStarted()
       await this.client.request(
@@ -126,7 +126,7 @@ export class ServerResponse extends Writable {
       )
       callback()
     } catch (error) {
-      callback(error instanceof Error ? error : createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL'))
+      callback(error instanceof Error ? error : createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL'))
     }
   }
 
@@ -138,13 +138,13 @@ export class ServerResponse extends Writable {
       this.finishExchange()
       callback()
     } catch (error) {
-      callback(error instanceof Error ? error : createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL'))
+      callback(error instanceof Error ? error : createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL'))
     }
   }
 
   private normalizeHeaderName(name: string) {
     const normalized = String(name).trim().toLowerCase()
-    if (normalized === '') throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_ARGUMENT')
+    if (normalized === '') throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_ARGUMENT')
     return normalized
   }
 

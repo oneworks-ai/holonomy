@@ -1,5 +1,5 @@
 import { FS_REQUIRED_CAPABILITY, FS_ROOT_AUTHORITIES } from './constants.js'
-import { createFsError, isMobileFsError } from './errors.js'
+import { createFsError, isHolonomyFsError } from './errors.js'
 
 import type { NativeAuthority, NativeDispatchContext } from '../native-port/types.js'
 import type {
@@ -35,7 +35,7 @@ const snapshotPlainObject = (value: unknown): Record<string, unknown> => {
     }
     return Object.freeze(snapshot)
   } catch (error) {
-    if (isMobileFsError(error)) throw error
+    if (isHolonomyFsError(error)) throw error
     throw createFsError('EINVAL')
   }
 }
@@ -58,7 +58,7 @@ const snapshotArray = (value: unknown): readonly unknown[] => {
     }
     return Object.freeze(snapshot)
   } catch (error) {
-    if (isMobileFsError(error)) throw error
+    if (isHolonomyFsError(error)) throw error
     throw createFsError('EINVAL')
   }
 }

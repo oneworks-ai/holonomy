@@ -4,12 +4,12 @@ import { mapNativeBridgeError } from './errors.js'
 import type { NativeStream } from '../native-port/types.js'
 import type { FsReadStream } from './types.js'
 
-export class MobileFsReadStream implements FsReadStream {
+export class HolonomyFsReadStream implements FsReadStream {
   #closed = false
 
   constructor(
     private readonly stream: NativeStream,
-    private readonly onClose: (stream: MobileFsReadStream) => void
+    private readonly onClose: (stream: HolonomyFsReadStream) => void
   ) {}
 
   get isClosed() {

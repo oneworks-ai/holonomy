@@ -41,14 +41,14 @@ describe('restricted child_process v1', () => {
     const child = ChildProcessPublic.createChildProcessSyntheticModule({ git: git.facade })
     const result = await invoke(child.execFile, 'git', [
       '-C',
-      'mobile-fs://workspace/app',
+      'holonomy-fs://workspace/app',
       'config',
       '--get-regexp',
       '^remote\\..*\\.url$'
     ], { encoding: 'utf8', maxBuffer: 256 * 1024 })
 
     expect(result).toEqual({ error: null, stderr: '', stdout: 'remote.origin.url https://git.example/team/app.git\n' })
-    expect(git.facade.open).toHaveBeenCalledWith('mobile-fs://workspace/app', {})
+    expect(git.facade.open).toHaveBeenCalledWith('holonomy-fs://workspace/app', {})
     expect(git.repository.listRemotes).toHaveBeenCalledWith({})
     expect(git.close).toHaveBeenCalledTimes(1)
   })
@@ -63,14 +63,14 @@ describe('restricted child_process v1', () => {
       '--branch',
       'main',
       'https://git.example/team/app.git',
-      'mobile-fs://workspace/app'
+      'holonomy-fs://workspace/app'
     ], {})
 
     expect(result).toEqual({ error: null, stderr: '', stdout: '' })
     expect(git.facade.clone).toHaveBeenCalledWith({
       branch: 'main',
       depth: 1,
-      destination: 'mobile-fs://workspace/app',
+      destination: 'holonomy-fs://workspace/app',
       url: 'https://git.example/team/app.git'
     }, {})
     expect(git.close).toHaveBeenCalledTimes(1)
@@ -92,7 +92,7 @@ describe('restricted child_process v1', () => {
     const callback = vi.fn()
     child.execFile(
       'git',
-      ['-C', 'mobile-fs://workspace/app', 'config', '--get-regexp', '^remote\\..*\\.url$'],
+      ['-C', 'holonomy-fs://workspace/app', 'config', '--get-regexp', '^remote\\..*\\.url$'],
       {},
       callback
     )
@@ -112,9 +112,9 @@ describe('restricted child_process v1', () => {
       const [file, args] of [
         ['git; id', []],
         ['/usr/bin/git', []],
-        ['git', ['clone', '--depth', '2', 'https://git.example/a', 'mobile-fs://workspace/a']],
+        ['git', ['clone', '--depth', '2', 'https://git.example/a', 'holonomy-fs://workspace/a']],
         ['git', ['checkout', 'main']],
-        ['git', ['-C', 'mobile-fs://workspace/a', 'config', '--get-regexp', '^remote\\..*\\.url$', '--global']]
+        ['git', ['-C', 'holonomy-fs://workspace/a', 'config', '--get-regexp', '^remote\\..*\\.url$', '--global']]
       ]
     ) {
       const result = await invoke(child.execFile, file, args, {})
@@ -156,7 +156,7 @@ describe('restricted child_process v1', () => {
         '--depth',
         '1',
         'https://git.example/a',
-        'mobile-fs://workspace/a'
+        'holonomy-fs://workspace/a'
       ], {})).error
     ).toMatchObject({ code: 'child_process.limit_exceeded' })
     const bounded = ChildProcessPublic.createChildProcessSyntheticModule({
@@ -166,7 +166,7 @@ describe('restricted child_process v1', () => {
     expect(
       (await invoke(bounded.execFile, 'git', [
         '-C',
-        'mobile-fs://workspace/app',
+        'holonomy-fs://workspace/app',
         'config',
         '--get-regexp',
         '^remote\\..*\\.url$'
@@ -179,7 +179,7 @@ describe('restricted child_process v1', () => {
       '--depth',
       '1',
       'https://git.example/a',
-      'mobile-fs://workspace/a'
+      'holonomy-fs://workspace/a'
     ], { signal, timeout: 123 })
     expect(git.facade.clone).toHaveBeenLastCalledWith(expect.any(Object), { signal, timeoutMs: 123 })
   })
@@ -199,7 +199,7 @@ describe('restricted child_process v1', () => {
     const child = ChildProcessPublic.createChildProcessSyntheticModule({ git: git.facade })
     const remote = await invoke(child.execFile, 'git', [
       '-C',
-      'mobile-fs://workspace/a',
+      'holonomy-fs://workspace/a',
       'config',
       '--get-regexp',
       '^remote\\..*\\.url$'
@@ -220,7 +220,7 @@ describe('restricted child_process v1', () => {
     const result = await invoke(
       ChildProcessPublic.createChildProcessSyntheticModule({ git: failing }).execFile,
       'git',
-      ['-C', 'mobile-fs://workspace/a', 'config', '--get-regexp', '^remote\\..*\\.url$'],
+      ['-C', 'holonomy-fs://workspace/a', 'config', '--get-regexp', '^remote\\..*\\.url$'],
       {}
     )
     expect(result.error).toMatchObject({ code: 'child_process.internal' })
@@ -242,7 +242,7 @@ describe('restricted child_process v1', () => {
     const signal = controller.signal
     const child = ChildProcessPublic.createChildProcessSyntheticModule({ git: facade })
     const callback = vi.fn()
-    child.execFile('git', ['-C', 'mobile-fs://workspace/a', 'config', '--get-regexp', '^remote\\..*\\.url$'], {
+    child.execFile('git', ['-C', 'holonomy-fs://workspace/a', 'config', '--get-regexp', '^remote\\..*\\.url$'], {
       signal
     }, callback)
     controller.abort()
@@ -263,7 +263,7 @@ describe('restricted child_process v1', () => {
       '--depth',
       '1',
       'https://git.example/a',
-      'mobile-fs://workspace/a'
+      'holonomy-fs://workspace/a'
     ], { signal: controller.signal })
     expect(aborted.error).toMatchObject({ code: 'child_process.cancelled' })
     expect(git.facade.clone).not.toHaveBeenCalled()
@@ -272,7 +272,7 @@ describe('restricted child_process v1', () => {
       '--depth',
       '1',
       'https://git.example/a',
-      'mobile-fs://workspace/a'
+      'holonomy-fs://workspace/a'
     ], { signal: {} as AbortSignal })
     expect(forged.error).toMatchObject({ code: 'child_process.internal' })
   })
@@ -291,7 +291,7 @@ describe('restricted child_process v1', () => {
     const child = ChildProcessPublic.createChildProcessSyntheticModule({ git: facade })
     const result = invoke(child.execFile, 'git', [
       '-C',
-      'mobile-fs://workspace/project',
+      'holonomy-fs://workspace/project',
       'config',
       '--get-regexp',
       '^remote\\..*\\.url$'
@@ -416,7 +416,7 @@ describe('restricted child_process v1', () => {
       expect(
         (await invoke(child.execFile, 'git', [
           '-C',
-          'mobile-fs://workspace/a',
+          'holonomy-fs://workspace/a',
           'config',
           '--get-regexp',
           '^remote\\..*\\.url$'

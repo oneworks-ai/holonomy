@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { RuntimeEventLoop, createMobileRuntime } from '../src/index.js'
+import { RuntimeEventLoop, createHolonomyRuntime } from '../src/index.js'
 import type { HostEventLoopPort, NativePort } from '../src/index.js'
 
 const host = (): HostEventLoopPort => ({
@@ -47,7 +47,7 @@ const nodeCore = () => ({
 describe('runtime composer', () => {
   it('always installs frozen Node Core, Streams and explicit globals', async () => {
     const loop = new RuntimeEventLoop(host())
-    const runtime = await createMobileRuntime({
+    const runtime = await createHolonomyRuntime({
       authority: { capabilities: [], principal: 'principal' },
       eventLoop: loop,
       nativePort: port(),
@@ -65,7 +65,7 @@ describe('runtime composer', () => {
 
   it('fails closed for an absent opt-in capability', async () => {
     await expect(
-      createMobileRuntime({
+      createHolonomyRuntime({
         authority: { capabilities: [], principal: 'principal' },
         eventLoop: new RuntimeEventLoop(host()),
         nativePort: port(),

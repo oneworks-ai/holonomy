@@ -65,16 +65,16 @@ export class Server extends EventEmitter {
       },
       error => {
         resource.close('server_close_failed')
-        callback?.(error instanceof Error ? error : createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL'))
+        callback?.(error instanceof Error ? error : createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL'))
       }
     )
     return this
   }
 
   listen(port = 0, host = '127.0.0.1', callback?: () => void) {
-    if (this.listening || this.closing) throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_STATE')
+    if (this.listening || this.closing) throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_STATE')
     if (!Number.isSafeInteger(port) || port < 0 || port > 65_535 || host !== '127.0.0.1') {
-      throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_ARGUMENT')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_ARGUMENT')
     }
     this.listening = true
     void this.client.request(HTTP_SERVER_OPERATIONS.server.open, { host, port }).then(
@@ -85,7 +85,7 @@ export class Server extends EventEmitter {
         }
         try {
           if (result.resources?.length !== 1 || result.resources[0]?.type !== HTTP_SERVER_RESOURCE_TYPES.server) {
-            throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+            throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
           }
           const address = decodeAddress(result.value)
           const resource = result.resources[0]
@@ -98,7 +98,7 @@ export class Server extends EventEmitter {
         } catch (error) {
           for (const resource of result.resources ?? []) resource.close('unexpected_server_resource')
           this.listening = false
-          this.emit('error', error instanceof Error ? error : createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL'))
+          this.emit('error', error instanceof Error ? error : createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL'))
           return
         }
         callback?.()
@@ -157,7 +157,7 @@ export class Server extends EventEmitter {
         }
         if (event.resources?.length !== 1 || event.resources[0]?.type !== HTTP_SERVER_RESOURCE_TYPES.exchange) {
           for (const resource of event.resources ?? []) resource.close('unexpected_exchange_resource')
-          throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+          throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
         }
         if (this.activeConnections >= this.limits.maxConnections) {
           this.abortExchange(event.resources[0], 'connection_limit')
@@ -176,7 +176,7 @@ export class Server extends EventEmitter {
             (requestData.kind === 'request' && binary.length !== 0) ||
             (requestData.kind === 'upgrade' && !validUpgradeHead)
           ) {
-            throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+            throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
           }
         } catch (error) {
           this.abortExchange(exchange, 'invalid_request_event')
@@ -216,6 +216,6 @@ export class Server extends EventEmitter {
 
   private reportHandlerError(error: unknown) {
     if (this.listenerCount('error') === 0) return
-    this.emit('error', error instanceof Error ? error : createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL'))
+    this.emit('error', error instanceof Error ? error : createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL'))
   }
 }

@@ -6,12 +6,12 @@ export const createNodeCoreOptions = (
   os: {
     arch: 'arm64',
     homedir: '/app/home/runtime',
-    hostname: 'mobile-runtime',
+    hostname: 'holonomy',
     identityPolicy: 'synthetic',
     platform: 'android',
     release: 'virtual-1',
     tmpdir: '/app/tmp',
-    type: 'MobileRuntime',
+    type: 'HolonomyRuntime',
     userInfo: {
       gid: 1000,
       homedir: '/app/home/runtime',

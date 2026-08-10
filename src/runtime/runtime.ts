@@ -1,5 +1,5 @@
 import { createGitAuthority, createGitFacade } from '../git/index.js'
-import { MobileModuleLoader } from '../module-loader/index.js'
+import { HolonomyModuleLoader } from '../module-loader/index.js'
 import { createStorageAuthority, createStorageFacade } from '../storage/index.js'
 import { snapshotGitAuthorityInput, snapshotStorageAuthorityInput } from './authority-snapshot.js'
 import { disposeQuietly } from './dispose.js'
@@ -17,7 +17,7 @@ import { createLoaderGate } from './loader-gate.js'
 import { HTTP_LIMITS, assertChildAuthority, snapshotNetworkAuthority, snapshotRuntimeAuthority } from './options.js'
 import { createRuntimeCapabilities, createRuntimeGlobals, createRuntimeRegistry } from './registry.js'
 
-import type { MobileRuntime, MobileRuntimeOptions } from './types.js'
+import type { HolonomyRuntime, HolonomyRuntimeOptions } from './types.js'
 
 const TOP = [
   'authority',
@@ -36,7 +36,7 @@ const TOP = [
 const FREEZE = Object.freeze
 const KEYS = Object.keys
 
-export const createMobileRuntime = async (input: MobileRuntimeOptions): Promise<MobileRuntime> => {
+export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Promise<HolonomyRuntime> => {
   const options = snapshotRecord(input, TOP, ['authority', 'eventLoop', 'nativePort', 'nodeCore'])
   const root = snapshotRuntimeAuthority(options.authority)
   const factories = getRuntimeComposerFactories()
@@ -48,12 +48,12 @@ export const createMobileRuntime = async (input: MobileRuntimeOptions): Promise<
   let network: ReturnType<(typeof factories)['createFetchRuntime']> | undefined
   try {
     bridge = factories.createNativeBridge(
-      options.nativePort as MobileRuntimeOptions['nativePort'],
+      options.nativePort as HolonomyRuntimeOptions['nativePort'],
       bridgeOptions?.limits === undefined
-        ? { authority: root, eventLoop: options.eventLoop as MobileRuntimeOptions['eventLoop'] }
+        ? { authority: root, eventLoop: options.eventLoop as HolonomyRuntimeOptions['eventLoop'] }
         : {
           authority: root,
-          eventLoop: options.eventLoop as MobileRuntimeOptions['eventLoop'],
+          eventLoop: options.eventLoop as HolonomyRuntimeOptions['eventLoop'],
           limits: bridgeOptions.limits as never
         }
     )
@@ -119,7 +119,7 @@ export const createMobileRuntime = async (input: MobileRuntimeOptions): Promise<
           Response: network.Response,
           fetch: network.fetch
         }
-    ) as unknown as MobileRuntime['globals']
+    ) as unknown as HolonomyRuntime['globals']
     let disposed = false
     let disposing: Promise<void> | undefined
     const rawLoader = options.moduleLoader === undefined ? undefined : (() => {
@@ -141,10 +141,10 @@ export const createMobileRuntime = async (input: MobileRuntimeOptions): Promise<
         readModule: item.readModule as never,
         syntheticNodeModules: freezeRuntimeValue(definitions)
       })
-      return new MobileModuleLoader(port, item as never)
+      return new HolonomyModuleLoader(port, item as never)
     })()
     const moduleLoader = rawLoader == null ? undefined : createLoaderGate(rawLoader, () => disposed)
-    const shell: MobileRuntime = {
+    const shell: HolonomyRuntime = {
       bridge,
       capabilities: createRuntimeCapabilities({
         crypto,
@@ -155,7 +155,7 @@ export const createMobileRuntime = async (input: MobileRuntimeOptions): Promise<
         storage: storage != null
       }),
       crypto,
-      eventLoop: options.eventLoop as MobileRuntimeOptions['eventLoop'],
+      eventLoop: options.eventLoop as HolonomyRuntimeOptions['eventLoop'],
       fs,
       git,
       globals,

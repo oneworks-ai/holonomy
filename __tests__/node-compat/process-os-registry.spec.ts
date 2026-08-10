@@ -103,7 +103,7 @@ describe('node:process, node:os and registry', () => {
           maxStdioChunkBytes
         })
       ).toThrowError(expect.objectContaining({
-        code: 'ERR_MOBILE_RUNTIME_INVALID_ARGUMENT'
+        code: 'ERR_HOLONOMY_INVALID_ARGUMENT'
       }))
     }
     const nullLimitOptions = {
@@ -111,7 +111,7 @@ describe('node:process, node:os and registry', () => {
       maxStdioChunkBytes: null
     } as unknown as NodeCoreCompatOptions
     expect(() => createNodeCoreSyntheticModules(nullLimitOptions)).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_INVALID_ARGUMENT' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_INVALID_ARGUMENT' })
     )
   })
 
@@ -134,10 +134,10 @@ describe('node:process, node:os and registry', () => {
         error => callbackErrors.push(error)
       )
     ).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     }))
     expect(() => runtimeProcess.stderr.write('你好')).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_RESOURCE_EXHAUSTED' })
     )
     expect(writes).toEqual([])
     expect(callbackErrors).toEqual([])
@@ -172,7 +172,7 @@ describe('node:process, node:os and registry', () => {
         error => callbackCalls.push(error)
       )
     ).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     }))
     expect(fakeByteLengthReads).toBe(0)
     expect(providerCalls).toEqual([])
@@ -209,7 +209,7 @@ describe('node:process, node:os and registry', () => {
     }
 
     expect(failure).toEqual(expect.objectContaining({
-      code: 'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     }))
     expect(overriddenCalls).toBe(0)
     expect(providerCalls).toEqual([])
@@ -234,7 +234,7 @@ describe('node:process, node:os and registry', () => {
     }
     expect(syncFailure).toEqual(expect.objectContaining({
       cause: { kind: 'host-provider-failure', operation: 'stdio.write' },
-      code: 'ERR_MOBILE_RUNTIME_STDIO_WRITE_FAILED'
+      code: 'ERR_HOLONOMY_STDIO_WRITE_FAILED'
     }))
     expect(String(syncFailure)).not.toContain('sync-secret')
     expect((syncFailure as Error & { cause: unknown }).cause).not.toBe(rawSyncError)
@@ -252,10 +252,10 @@ describe('node:process, node:os and registry', () => {
       }
     )
     await expect(result).rejects.toEqual(expect.objectContaining({
-      code: 'ERR_MOBILE_RUNTIME_STDIO_WRITE_FAILED'
+      code: 'ERR_HOLONOMY_STDIO_WRITE_FAILED'
     }))
     expect(callbackFailure).toEqual(expect.objectContaining({
-      code: 'ERR_MOBILE_RUNTIME_STDIO_WRITE_FAILED'
+      code: 'ERR_HOLONOMY_STDIO_WRITE_FAILED'
     }))
     expect(String(callbackFailure)).not.toContain('async-secret')
   })
@@ -290,7 +290,7 @@ describe('node:process, node:os and registry', () => {
     ]
     for (const operation of operations) {
       expect(operation).toThrowError(
-        expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_NOT_SUPPORTED' })
+        expect.objectContaining({ code: 'ERR_HOLONOMY_NOT_SUPPORTED' })
       )
     }
   })
@@ -300,7 +300,7 @@ describe('node:process, node:os and registry', () => {
     const os = createNodeCoreSyntheticModules(options)['node:os']
     expect(os.arch()).toBe('arm64')
     expect(os.platform()).toBe('android')
-    expect(os.hostname()).toBe('mobile-runtime')
+    expect(os.hostname()).toBe('holonomy')
     expect(os.homedir()).toBe('/app/home/runtime')
     expect(os.tmpdir()).toBe('/app/tmp')
     expect(os.userInfo()).toEqual(options.os.userInfo)
@@ -311,7 +311,7 @@ describe('node:process, node:os and registry', () => {
       homedir: '/data/user/0/real-app'
     }
     expect(() => createNodeCoreSyntheticModules({ ...options, os: unsafeOs })).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_OUT_OF_BOUNDS' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_OUT_OF_BOUNDS' })
     )
     expect(() =>
       createNodeCoreSyntheticModules({
@@ -319,7 +319,7 @@ describe('node:process, node:os and registry', () => {
         virtualRoot: '/data/user/0/real-app'
       })
     ).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_INVALID_ARGUMENT' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_INVALID_ARGUMENT' })
     )
   })
 })

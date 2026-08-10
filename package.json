@@ -1,11 +1,27 @@
 {
-  "name": "@oneworks/mobile-runtime",
+  "name": "@oneworks/holonomy",
   "type": "module",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "private": true,
-  "license": "MIT",
   "packageManager": "pnpm@11.7.0",
-  "description": "Platform-neutral mobile JavaScript runtime primitives for One Works",
+  "description": "A capability-secure, platform-neutral JavaScript runtime for native hosts",
+  "license": "MIT",
+  "homepage": "https://github.com/oneworks-ai/holonomy#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oneworks-ai/holonomy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/oneworks-ai/holonomy/issues"
+  },
+  "keywords": [
+    "android",
+    "embedded",
+    "javascript",
+    "native",
+    "node-compatibility",
+    "runtime"
+  ],
   "imports": {
     "#~/*.js": {
       "__oneworks__": {
@@ -78,7 +94,7 @@
     "package.json"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "node --input-type=module --eval \"import { rmSync } from 'node:fs'; rmSync('dist', { force: true, recursive: true })\" && tsc -p tsconfig.build.json",
     "format": "dprint fmt",
     "format:check": "dprint check",
     "lint": "eslint .",

@@ -70,7 +70,7 @@ const completeRepository = (
 }
 
 const openRepository = async (test: ReturnType<typeof setup>): Promise<GitRepository> => {
-  const pending = test.facade.open('mobile-fs://workspace/project')
+  const pending = test.facade.open('holonomy-fs://workspace/project')
   completeRepository(test.loop, latest(test.port), providerToken('repo-1'))
   return settle(test.loop, pending)
 }
@@ -124,7 +124,7 @@ describe('git v1 opaque repository facade', () => {
     const pending = test.facade.clone({
       credentialRef: 'credential-1',
       depth: 1,
-      destination: 'mobile-fs://workspace/cloned',
+      destination: 'holonomy-fs://workspace/cloned',
       url: 'https://git.example/team/app.git'
     }, { deadlineMs: 500, onProgress: item => progress.push(item) })
     const call = latest(test.port)
@@ -227,14 +227,14 @@ describe('git v1 opaque repository facade', () => {
   it('maps cancellation and provider failures to stable redacted errors', async () => {
     const test = setup()
     const controller = new AbortController()
-    const cancelled = test.facade.open('mobile-fs://workspace/cancelled', { signal: controller.signal })
+    const cancelled = test.facade.open('holonomy-fs://workspace/cancelled', { signal: controller.signal })
     controller.abort()
     await expect(settle(test.loop, cancelled)).rejects.toMatchObject({
       code: 'git.cancelled',
       message: 'Git operation was cancelled'
     })
 
-    const failed = test.facade.open('mobile-fs://workspace/private')
+    const failed = test.facade.open('holonomy-fs://workspace/private')
     const call = latest(test.port)
     call.sink({
       id: call.request.id,
@@ -273,12 +273,12 @@ describe('git v1 opaque repository facade', () => {
       }
     })
     hostileOptions.timeoutMs = 1
-    await expect(test.facade.open('mobile-fs://workspace/timeout', hostileOptions as never)).rejects.toMatchObject({
+    await expect(test.facade.open('holonomy-fs://workspace/timeout', hostileOptions as never)).rejects.toMatchObject({
       code: 'git.invalid_argument'
     })
     expect(deadlineGets).toBe(0)
 
-    const timeout = test.facade.open('mobile-fs://workspace/timeout', { deadlineMs: 500, timeoutMs: 1 })
+    const timeout = test.facade.open('holonomy-fs://workspace/timeout', { deadlineMs: 500, timeoutMs: 1 })
     expect(latest(test.port).request.deadlineMs).toBe(1)
     test.host.advanceTo(1)
     test.loop.runTurn()
@@ -401,7 +401,7 @@ describe('git v1 opaque repository facade', () => {
   it('rejects explicit optional wrong types before dispatch and normalizes malformed progress', async () => {
     const test = setup()
     await expect(
-      test.facade.clone({ destination: 'mobile-fs://workspace/x', url: 'https://git.example/x', branch: 1 as never })
+      test.facade.clone({ destination: 'holonomy-fs://workspace/x', url: 'https://git.example/x', branch: 1 as never })
     ).rejects.toMatchObject({ code: 'git.invalid_argument' })
     expect(test.port.calls).toHaveLength(0)
     const repository = await openRepository(test)
@@ -424,14 +424,14 @@ describe('git v1 opaque repository facade', () => {
 
   it('treats undefined optionals as omitted and cleans every malformed repository success', async () => {
     const test = setup()
-    const open = test.facade.open('mobile-fs://workspace/undefined', { deadlineMs: undefined })
+    const open = test.facade.open('holonomy-fs://workspace/undefined', { deadlineMs: undefined })
     const call = latest(test.port)
     expect(call.request.deadlineMs).toBeUndefined()
     call.sink({ id: call.request.id, type: 'result', value: gitSuccess({}) })
     test.loop.runTurn()
     await expect(settle(test.loop, open)).rejects.toMatchObject({ code: 'git.protocol_error' })
 
-    const multiple = test.facade.open('mobile-fs://workspace/multiple')
+    const multiple = test.facade.open('holonomy-fs://workspace/multiple')
     const multipleCall = latest(test.port)
     multipleCall.sink({
       id: multipleCall.request.id,

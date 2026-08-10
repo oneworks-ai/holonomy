@@ -46,10 +46,10 @@ describe('node:buffer compatibility', () => {
       }
     }
     expect(() => Buffer.from(new ArrayBuffer(2), 3)).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_OUT_OF_BOUNDS' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_OUT_OF_BOUNDS' })
     )
     expect(() => Buffer.from(new ArrayBuffer(2), 1, 2)).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_OUT_OF_BOUNDS' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_OUT_OF_BOUNDS' })
     )
   })
 
@@ -198,10 +198,10 @@ describe('node:buffer compatibility', () => {
 
   it('reports stable invalid sizes and encodings', () => {
     expect(() => Buffer.alloc(-1)).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_INVALID_ARGUMENT' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_INVALID_ARGUMENT' })
     )
     expect(() => Buffer.from('abc', 'latin1')).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_INVALID_ENCODING' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_INVALID_ENCODING' })
     )
     expect([...Buffer.from('a', 'base64')]).toEqual([])
   })

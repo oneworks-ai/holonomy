@@ -28,7 +28,7 @@ const readSafeNonNegative = (value: unknown) =>
     ? value as number
     : undefined
 
-export class MobileFsStats implements FsStats {
+export class HolonomyFsStats implements FsStats {
   readonly birthtimeMs: number
   readonly ctimeMs: number
   readonly mode: number
@@ -59,7 +59,7 @@ export class MobileFsStats implements FsStats {
   }
 }
 
-export class MobileFsDirent implements FsDirent {
+export class HolonomyFsDirent implements FsDirent {
   readonly name: string
   readonly #kind: 'directory' | 'file' | 'symlink'
 
@@ -116,7 +116,7 @@ export const parseStatRecord = (
   ) {
     throw createFsError('EIO', syscall)
   }
-  return new MobileFsStats({
+  return new HolonomyFsStats({
     birthtimeMs,
     ctimeMs,
     kind,
@@ -155,6 +155,6 @@ export const parseDirentRecords = (
     ) {
       throw createFsError('EIO', syscall)
     }
-    return new MobileFsDirent({ kind, name })
+    return new HolonomyFsDirent({ kind, name })
   })
 }

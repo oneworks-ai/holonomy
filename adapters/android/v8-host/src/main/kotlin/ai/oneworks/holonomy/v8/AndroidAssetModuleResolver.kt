@@ -1,9 +1,9 @@
-package ai.oneworks.mobile.runtime.v8
+package ai.oneworks.holonomy.v8
 
 import android.content.res.AssetManager
-import ai.oneworks.mobile.runtime.host.RuntimeEngineErrorCode
-import ai.oneworks.mobile.runtime.host.RuntimeEngineException
-import ai.oneworks.mobile.runtime.host.RuntimeModuleSource
+import ai.oneworks.holonomy.host.RuntimeEngineErrorCode
+import ai.oneworks.holonomy.host.RuntimeEngineException
+import ai.oneworks.holonomy.host.RuntimeModuleSource
 import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.nio.ByteBuffer

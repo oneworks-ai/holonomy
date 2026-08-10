@@ -2,7 +2,7 @@ import { NativeBridgeError } from '../native-port/errors.js'
 
 import type { FsErrorCode, FsOperationName } from './types.js'
 
-const MOBILE_FS_ERROR = Symbol('mobile-fs-error')
+const HOLONOMY_FS_ERROR = Symbol('holonomy-fs-error')
 
 const FS_ERROR_MESSAGES = Object.freeze(
   {
@@ -18,38 +18,38 @@ const FS_ERROR_MESSAGES = Object.freeze(
     ENOTDIR: 'Expected a directory but found a file',
     ENOTEMPTY: 'Directory is not empty',
     EPERM: 'File system operation is not permitted',
-    ERR_MOBILE_RUNTIME_NOT_SUPPORTED: 'File system API is not supported',
+    ERR_HOLONOMY_NOT_SUPPORTED: 'File system API is not supported',
     ETIMEDOUT: 'File system operation timed out',
     EXDEV: 'Cross-authority operation is not permitted'
   } as const satisfies Record<FsErrorCode, string>
 )
 
-export class MobileFsError extends Error {
-  readonly [MOBILE_FS_ERROR] = true
+export class HolonomyFsError extends Error {
+  readonly [HOLONOMY_FS_ERROR] = true
   readonly code: FsErrorCode
   readonly syscall?: FsOperationName
 
   constructor(code: FsErrorCode, syscall?: FsOperationName) {
     super(FS_ERROR_MESSAGES[code])
     this.code = code
-    this.name = 'MobileFsError'
+    this.name = 'HolonomyFsError'
     if (syscall != null) this.syscall = syscall
   }
 }
 
-export const isMobileFsError = (value: unknown): value is MobileFsError =>
-  value instanceof MobileFsError && value[MOBILE_FS_ERROR] === true
+export const isHolonomyFsError = (value: unknown): value is HolonomyFsError =>
+  value instanceof HolonomyFsError && value[HOLONOMY_FS_ERROR] === true
 
 export const createFsError = (
   code: FsErrorCode,
   syscall?: FsOperationName
-) => new MobileFsError(code, syscall)
+) => new HolonomyFsError(code, syscall)
 
 export const mapNativeBridgeError = (
   error: unknown,
   syscall?: FsOperationName
 ) => {
-  if (isMobileFsError(error)) return error
+  if (isHolonomyFsError(error)) return error
   if (!(error instanceof NativeBridgeError)) return createFsError('EIO', syscall)
   if (error.domain === 'fs') {
     switch (error.code) {
@@ -70,7 +70,7 @@ export const mapNativeBridgeError = (
       return createFsError('ENOSPC', syscall)
     case 'capability_unsupported':
     case 'operation_unsupported':
-      return createFsError('ERR_MOBILE_RUNTIME_NOT_SUPPORTED', syscall)
+      return createFsError('ERR_HOLONOMY_NOT_SUPPORTED', syscall)
     case 'disposed':
     case 'resource_invalid':
       return createFsError('EBADF', syscall)
@@ -86,5 +86,5 @@ export const mapNativeBridgeError = (
 }
 
 export const notSupported = (syscall?: FsOperationName): never => {
-  throw createFsError('ERR_MOBILE_RUNTIME_NOT_SUPPORTED', syscall)
+  throw createFsError('ERR_HOLONOMY_NOT_SUPPORTED', syscall)
 }

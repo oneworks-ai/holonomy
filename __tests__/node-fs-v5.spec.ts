@@ -11,7 +11,7 @@ import {
   nativeAuthorityForFs
 } from '../src/index.js'
 import { parseFsResourceResult, parseFsResultWithoutResources } from '../src/node-fs/contract.js'
-import { settle, setupMemoryFs } from '../tests/fixtures/mobile-fs.js'
+import { settle, setupMemoryFs } from '../tests/fixtures/holonomy-fs.js'
 
 import type {
   HostEventLoopPort,
@@ -100,7 +100,7 @@ describe('node-fs V5 opaque atomic write conformance', () => {
     const { fs, loop, port } = setupMemoryFs()
     await settle(
       loop,
-      fs.promises.writeFile('mobile-fs://workspace/.mobile-fs-tx-collision', 'sentinel')
+      fs.promises.writeFile('holonomy-fs://workspace/.holonomy-fs-tx-collision', 'sentinel')
     )
     const descriptor = Object.getOwnPropertyDescriptor(Math, 'random')!
     Object.defineProperty(Math, 'random', {
@@ -112,21 +112,21 @@ describe('node-fs V5 opaque atomic write conformance', () => {
     try {
       await settle(
         loop,
-        fs.promises.writeFile('mobile-fs://workspace/result.txt', 'written')
+        fs.promises.writeFile('holonomy-fs://workspace/result.txt', 'written')
       )
     } finally {
       Object.defineProperty(Math, 'random', descriptor)
     }
     await expect(settle(
       loop,
-      fs.promises.readFile('mobile-fs://workspace/.mobile-fs-tx-collision', { encoding: 'utf8' })
+      fs.promises.readFile('holonomy-fs://workspace/.holonomy-fs-tx-collision', { encoding: 'utf8' })
     )).resolves.toBe('sentinel')
     await expect(settle(
       loop,
-      fs.promises.readFile('mobile-fs://workspace/result.txt', { encoding: 'utf8' })
+      fs.promises.readFile('holonomy-fs://workspace/result.txt', { encoding: 'utf8' })
     )).resolves.toBe('written')
-    await expect(settle(loop, fs.promises.readdir('mobile-fs://workspace/'))).resolves
-      .toEqual(['.mobile-fs-tx-collision', 'result.txt'])
+    await expect(settle(loop, fs.promises.readdir('holonomy-fs://workspace/'))).resolves
+      .toEqual(['.holonomy-fs-tx-collision', 'result.txt'])
     expect(port.getSnapshot()).toMatchObject({
       openHandles: 0,
       pendingTransactions: 0,
@@ -139,7 +139,7 @@ describe('node-fs V5 opaque atomic write conformance', () => {
     const transaction = await beginTransaction(
       bridge,
       loop,
-      'mobile-fs://workspace/private-bytes.txt'
+      'holonomy-fs://workspace/private-bytes.txt'
     )
     await writeTransactionChunk(
       bridge,
@@ -152,11 +152,11 @@ describe('node-fs V5 opaque atomic write conformance', () => {
       pendingTransactions: 1,
       transactionBytes: 4
     })
-    await expect(settle(loop, fs.promises.readdir('mobile-fs://workspace/'))).resolves
+    await expect(settle(loop, fs.promises.readdir('holonomy-fs://workspace/'))).resolves
       .toEqual([])
     expect(transaction.close('abort')).toBe(true)
     expect(transaction.close('duplicate_abort')).toBe(false)
-    await expect(settle(loop, fs.promises.readdir('mobile-fs://workspace/'))).resolves
+    await expect(settle(loop, fs.promises.readdir('holonomy-fs://workspace/'))).resolves
       .toEqual([])
     expect(port.getSnapshot()).toMatchObject({
       openHandles: 0,
@@ -167,7 +167,7 @@ describe('node-fs V5 opaque atomic write conformance', () => {
     const disposed = await beginTransaction(
       bridge,
       loop,
-      'mobile-fs://workspace/disposed.txt'
+      'holonomy-fs://workspace/disposed.txt'
     )
     await writeTransactionChunk(
       bridge,
@@ -188,7 +188,7 @@ describe('node-fs V5 opaque atomic write conformance', () => {
     const { bridge, fs, loop, port } = setupMemoryFs()
     const preDelivery = new AbortController()
     const neverVisible = fs.promises.writeFile(
-      'mobile-fs://workspace/never-visible.txt',
+      'holonomy-fs://workspace/never-visible.txt',
       'value',
       { signal: preDelivery.signal }
     )
@@ -201,10 +201,10 @@ describe('node-fs V5 opaque atomic write conformance', () => {
       transactionBytes: 0
     })
 
-    await settle(loop, fs.promises.writeFile('mobile-fs://workspace/old.txt', 'old'))
+    await settle(loop, fs.promises.writeFile('holonomy-fs://workspace/old.txt', 'old'))
     const midWrite = new AbortController()
     const pending = fs.promises.writeFile(
-      'mobile-fs://workspace/old.txt',
+      'holonomy-fs://workspace/old.txt',
       'abcdefgh',
       { signal: midWrite.signal }
     )
@@ -220,9 +220,9 @@ describe('node-fs V5 opaque atomic write conformance', () => {
     await expect(settle(loop, pending)).rejects.toMatchObject({ code: 'ECANCELED' })
     await expect(settle(
       loop,
-      fs.promises.readFile('mobile-fs://workspace/old.txt', { encoding: 'utf8' })
+      fs.promises.readFile('holonomy-fs://workspace/old.txt', { encoding: 'utf8' })
     )).resolves.toBe('old')
-    await expect(settle(loop, fs.promises.readdir('mobile-fs://workspace/'))).resolves
+    await expect(settle(loop, fs.promises.readdir('holonomy-fs://workspace/'))).resolves
       .toEqual(['old.txt'])
     expect(port.getSnapshot()).toMatchObject({
       openHandles: 0,
@@ -233,9 +233,9 @@ describe('node-fs V5 opaque atomic write conformance', () => {
 
   it('shares one absolute deadline and releases retained transaction quota', async () => {
     const { fs, host, loop, port } = setupMemoryFs()
-    await settle(loop, fs.promises.writeFile('mobile-fs://workspace/deadline.txt', 'old'))
+    await settle(loop, fs.promises.writeFile('holonomy-fs://workspace/deadline.txt', 'old'))
     const pending = fs.promises.writeFile(
-      'mobile-fs://workspace/deadline.txt',
+      'holonomy-fs://workspace/deadline.txt',
       'abcdefgh',
       { timeoutMs: 1001 }
     )
@@ -247,7 +247,7 @@ describe('node-fs V5 opaque atomic write conformance', () => {
     await expect(settle(loop, pending)).rejects.toMatchObject({ code: 'ETIMEDOUT' })
     await expect(settle(
       loop,
-      fs.promises.readFile('mobile-fs://workspace/deadline.txt', { encoding: 'utf8' })
+      fs.promises.readFile('holonomy-fs://workspace/deadline.txt', { encoding: 'utf8' })
     )).resolves.toBe('old')
     expect(port.getSnapshot()).toMatchObject({
       openHandles: 0,
@@ -256,14 +256,14 @@ describe('node-fs V5 opaque atomic write conformance', () => {
     })
 
     const quota = setupMemoryFs({ limits: { maxTotalBytes: 6 } })
-    await settle(quota.loop, quota.fs.promises.writeFile('mobile-fs://workspace/quota.txt', 'old'))
+    await settle(quota.loop, quota.fs.promises.writeFile('holonomy-fs://workspace/quota.txt', 'old'))
     await expect(settle(
       quota.loop,
-      quota.fs.promises.writeFile('mobile-fs://workspace/quota.txt', 'more')
+      quota.fs.promises.writeFile('holonomy-fs://workspace/quota.txt', 'more')
     )).rejects.toMatchObject({ code: 'ENOSPC' })
     await expect(settle(
       quota.loop,
-      quota.fs.promises.readFile('mobile-fs://workspace/quota.txt', { encoding: 'utf8' })
+      quota.fs.promises.readFile('holonomy-fs://workspace/quota.txt', { encoding: 'utf8' })
     )).resolves.toBe('old')
     expect(quota.port.getSnapshot()).toMatchObject({
       pendingTransactions: 0,
@@ -274,10 +274,10 @@ describe('node-fs V5 opaque atomic write conformance', () => {
 
   it('makes commit-vs-cancel atomic and terminal operations idempotent', async () => {
     const { bridge, fs, loop, port } = setupMemoryFs()
-    await settle(loop, fs.promises.writeFile('mobile-fs://workspace/race.txt', 'old'))
+    await settle(loop, fs.promises.writeFile('holonomy-fs://workspace/race.txt', 'old'))
     const controller = new AbortController()
     const pending = fs.promises.writeFile(
-      'mobile-fs://workspace/race.txt',
+      'holonomy-fs://workspace/race.txt',
       'new!',
       { signal: controller.signal }
     )
@@ -293,14 +293,14 @@ describe('node-fs V5 opaque atomic write conformance', () => {
     await expect(settle(loop, pending)).rejects.toMatchObject({ code: 'ECANCELED' })
     await expect(settle(
       loop,
-      fs.promises.readFile('mobile-fs://workspace/race.txt', { encoding: 'utf8' })
+      fs.promises.readFile('holonomy-fs://workspace/race.txt', { encoding: 'utf8' })
     )).resolves.toBe('new!')
     expect(port.getSnapshot().openHandles).toBe(0)
 
     const transaction = await beginTransaction(
       bridge,
       loop,
-      'mobile-fs://workspace/direct.txt'
+      'holonomy-fs://workspace/direct.txt'
     )
     await writeTransactionChunk(bridge, loop, transaction, new Uint8Array([1]))
     await commitTransaction(bridge, loop, transaction)
@@ -349,7 +349,7 @@ describe('node-fs V5 opaque atomic write conformance', () => {
     const transaction = await beginTransaction(
       bridge,
       loop,
-      'mobile-fs://workspace/private.txt'
+      'holonomy-fs://workspace/private.txt'
     )
     expect(Reflect.ownKeys(transaction)).not.toContain('providerToken')
     expect(Reflect.ownKeys(transaction)).not.toContain('token')
@@ -424,7 +424,7 @@ describe('node-fs V5 opaque atomic write conformance', () => {
     })
     await expect(settle(
       loop,
-      fs.promises.writeFile('mobile-fs://workspace/throw.txt', 'value')
+      fs.promises.writeFile('holonomy-fs://workspace/throw.txt', 'value')
     )).rejects.toMatchObject({
       code: 'EIO',
       message: 'File system provider failed'

@@ -63,14 +63,14 @@ export const createPrimitivePortState = (
 export const assertCallable = (state: PrimitivePortState): void => {
   if (state.providerCallActive) {
     state.providerReentryDetected = true
-    throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+    throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
   }
-  if (state.disposed) throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED')
+  if (state.disposed) throw cryptoError('ERR_HOLONOMY_CRYPTO_DISPOSED')
 }
 
 export const assertAdmission = (state: PrimitivePortState, generation: number): void => {
   if (state.disposed || state.generation !== generation) {
-    throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED')
+    throw cryptoError('ERR_HOLONOMY_CRYPTO_DISPOSED')
   }
 }
 
@@ -126,7 +126,7 @@ export const providerOperation = <Result>(
   state: PrimitivePortState,
   record: ContextRecord,
   operation: () => Result,
-  failureCode: RuntimeCryptoErrorCode = 'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+  failureCode: RuntimeCryptoErrorCode = 'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
 ): Result => {
   const outcome = callProvider(state, record, operation)
   if (!outcome.ok) {
@@ -138,7 +138,7 @@ export const providerOperation = <Result>(
 
 export const reserveTransient = (state: PrimitivePortState, byteLength: number): void => {
   if (byteLength > state.limits.maxInFlightContextBytes - state.retainedBytes - state.transientBytes) {
-    throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+    throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
   }
   state.transientBytes += byteLength
 }
@@ -171,7 +171,7 @@ export const requireRecord = (
   if (record.state === 'finalized' && (record.kind === 'hash' || record.kind === 'hmac')) {
     throw cryptoError('ERR_CRYPTO_HASH_FINALIZED')
   }
-  if (record.state === 'released') throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED')
+  if (record.state === 'released') throw cryptoError('ERR_HOLONOMY_CRYPTO_DISPOSED')
   throw cryptoError('ERR_CRYPTO_INVALID_STATE')
 }
 

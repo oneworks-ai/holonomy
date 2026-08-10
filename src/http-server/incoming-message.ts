@@ -61,10 +61,10 @@ export class IncomingMessage extends Readable {
       const result = await this.bodyStream.next()
       const resources = result.value?.resources ?? []
       for (const resource of resources) resource.close('unexpected_request_body_resource')
-      if (resources.length !== 0) throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+      if (resources.length !== 0) throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
       if (result.done) {
         if ((result.value?.binary?.length ?? 0) !== 0 || result.value?.value !== undefined) {
-          throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+          throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
         }
         this.bodyDone = true
         this.push(null)
@@ -72,20 +72,20 @@ export class IncomingMessage extends Readable {
       }
       const binary = result.value.binary ?? []
       if (binary.length !== 1 || binary[0]?.handle !== 'body' || result.value.value !== undefined) {
-        throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+        throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
       }
       const chunk = binary[0].data
       if (chunk.byteLength > this.limits.maxChunkBytes) {
-        throw createHttpServerError('ERR_MOBILE_HTTP_LIMIT_EXCEEDED')
+        throw createHttpServerError('ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED')
       }
       this.bodyBytes += chunk.byteLength
       if (this.bodyBytes > this.limits.maxRequestBodyBytes) {
-        throw createHttpServerError('ERR_MOBILE_HTTP_LIMIT_EXCEEDED')
+        throw createHttpServerError('ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED')
       }
       this.push(chunk)
     } catch (error) {
       this.abort('request_body_failed')
-      this.destroy(error instanceof Error ? error : createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL'))
+      this.destroy(error instanceof Error ? error : createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL'))
     } finally {
       this.pulling = false
     }

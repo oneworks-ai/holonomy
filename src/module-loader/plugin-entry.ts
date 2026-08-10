@@ -1,4 +1,4 @@
-import { MobileModuleLoaderError } from './errors.js'
+import { HolonomyModuleLoaderError } from './errors.js'
 import type { PluginActivate } from './types.js'
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
@@ -14,8 +14,8 @@ export const selectPluginActivate = (moduleNamespace: unknown): PluginActivate =
   if (isRecord(defaultExport) && typeof defaultExport.activatePlugin === 'function') {
     return defaultExport.activatePlugin as PluginActivate
   }
-  throw new MobileModuleLoaderError(
-    'ERR_MOBILE_MODULE_PLUGIN_ENTRY_INVALID',
+  throw new HolonomyModuleLoaderError(
+    'ERR_HOLONOMY_MODULE_PLUGIN_ENTRY_INVALID',
     'Plugin entry must export activatePlugin or default.activatePlugin'
   )
 }

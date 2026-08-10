@@ -94,8 +94,8 @@ describe('node core capability matrix', () => {
   it('preserves the Node Core notSupported binding at the combined package root', () => {
     expect(() => rootNotSupported('root.binding')).toThrow(
       expect.objectContaining({
-        code: 'ERR_MOBILE_RUNTIME_NOT_SUPPORTED',
-        message: 'root.binding is not supported by the mobile runtime',
+        code: 'ERR_HOLONOMY_NOT_SUPPORTED',
+        message: 'root.binding is not supported by the Holonomy Runtime',
         name: 'NodeCompatError'
       })
     )

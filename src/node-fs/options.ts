@@ -1,4 +1,4 @@
-import { createFsError, isMobileFsError } from './errors.js'
+import { createFsError, isHolonomyFsError } from './errors.js'
 
 import type { FsOperationName } from './types.js'
 
@@ -28,7 +28,7 @@ export const assertSupportedOptions = (
     }
     return Object.freeze(snapshot)
   } catch (error) {
-    if (isMobileFsError(error)) throw error
+    if (isHolonomyFsError(error)) throw error
     throw createFsError('EINVAL', syscall)
   }
 }

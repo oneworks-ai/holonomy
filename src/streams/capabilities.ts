@@ -47,7 +47,7 @@ const NODE_CONSTRAINTS = [
   'Event ordering is compatible with the tested production subset, not every Node timing edge case.',
   'Byte highWaterMark backpressure is supported; objectMode and encoding transforms are not.',
   'Explicit destroy emits close once; normal auto-destroy timing is partial for duplex streams.',
-  'finished preserves an original destroy error by identity. Repeated no-error premature observations reuse one ERR_MOBILE_STREAM_PREMATURE_CLOSE object; Node uses ERR_STREAM_PREMATURE_CLOSE and does not promise that object identity.',
+  'finished preserves an original destroy error by identity. Repeated no-error premature observations reuse one ERR_HOLONOMY_STREAM_PREMATURE_CLOSE object; Node uses ERR_STREAM_PREMATURE_CLOSE and does not promise that object identity.',
   'Pipe cleanup runs before user error listeners for runtime Stream destinations. Foreign writable destinations use append-listener fallback, so a throwing pre-existing error listener can prevent pipe cleanup.'
 ] as const
 

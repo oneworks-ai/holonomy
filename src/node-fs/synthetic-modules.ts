@@ -7,7 +7,7 @@ export interface SyntheticModuleNamespace {
 
 /**
  * Host module loaders can install these namespaces for `node:fs` and
- * `node:fs/promises` without importing a Node shim into the mobile runtime.
+ * `node:fs/promises` without importing a Node shim into the Holonomy Runtime.
  */
 export const createFsSyntheticModules = (fs: NodeFsFacade) => {
   const promises = Object.freeze({ ...fs.promises })

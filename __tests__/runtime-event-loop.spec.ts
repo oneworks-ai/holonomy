@@ -158,7 +158,7 @@ describe('runtime event loop', () => {
     expect(lifecycle).toHaveLength(1)
     expect(host.terminations).toHaveLength(1)
     expect(host.terminations[0]).toMatchObject({
-      code: 'ERR_MOBILE_RUNTIME_WAKEUP_FAILED',
+      code: 'ERR_HOLONOMY_WAKEUP_FAILED',
       kind: 'error'
     })
   })
@@ -338,7 +338,7 @@ describe('runtime event loop', () => {
     loop.dispose()
 
     expect(host.terminations).toEqual([
-      { code: 'ERR_MOBILE_RUNTIME_SHUTDOWN', kind: 'shutdown' }
+      { code: 'ERR_HOLONOMY_SHUTDOWN', kind: 'shutdown' }
     ])
     expect(loop.runTurn()).toMatchObject({
       hasPendingWork: false,
@@ -393,7 +393,7 @@ describe('runtime event loop', () => {
     expect(() => loop.runTurn()).toThrowError(EventLoopReentrantTurnError)
     expect(host.terminations).toHaveLength(1)
     expect(host.terminations[0]).toMatchObject({
-      code: 'ERR_MOBILE_RUNTIME_TURN_REENTRANT',
+      code: 'ERR_HOLONOMY_TURN_REENTRANT',
       kind: 'error'
     })
     expect(loop.isDisposed).toBe(true)
@@ -410,7 +410,7 @@ describe('runtime event loop', () => {
     expect(() => loop.runTurn()).toThrowError(EventLoopBudgetExceededError)
     expect(host.terminations).toHaveLength(1)
     expect(host.terminations[0]).toMatchObject({
-      code: 'ERR_MOBILE_RUNTIME_TASK_BUDGET_EXCEEDED',
+      code: 'ERR_HOLONOMY_TASK_BUDGET_EXCEEDED',
       kind: 'error'
     })
     expect(loop.isDisposed).toBe(true)
@@ -426,7 +426,7 @@ describe('runtime event loop', () => {
 
     expect(() => loop.runTurn()).toThrowError(EventLoopClockError)
     expect(host.terminations[0]).toMatchObject({
-      code: 'ERR_MOBILE_RUNTIME_CLOCK_NOT_MONOTONIC',
+      code: 'ERR_HOLONOMY_CLOCK_NOT_MONOTONIC',
       kind: 'error'
     })
     expect(loop.isDisposed).toBe(true)
@@ -452,7 +452,7 @@ describe('runtime event loop', () => {
     expect(() => admit(loop)).toThrowError(EventLoopClockError)
     expect(host.terminations).toHaveLength(1)
     expect(host.terminations[0]).toMatchObject({
-      code: 'ERR_MOBILE_RUNTIME_CLOCK_NOT_MONOTONIC',
+      code: 'ERR_HOLONOMY_CLOCK_NOT_MONOTONIC',
       kind: 'error'
     })
     expect(loop.isDisposed).toBe(true)

@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto'
 
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULT_MOBILE_MODULE_LOADER_LIMITS, MobileModuleLoader } from '../src/index.js'
-import type { HostModuleLoaderPort, HostModuleSource, MobileModuleLoaderOptions } from '../src/index.js'
+import { DEFAULT_HOLONOMY_MODULE_LOADER_LIMITS, HolonomyModuleLoader } from '../src/index.js'
+import type { HolonomyModuleLoaderOptions, HostModuleLoaderPort, HostModuleSource } from '../src/index.js'
 import { setModuleSourceParserForTesting } from '../src/module-loader/source-analysis.js'
 
 const APP_ROOT = 'app:///bundle/'
@@ -26,7 +26,7 @@ const deferred = () => {
 
 const createMemoryLoader = (
   sources: Readonly<Record<string, string>>,
-  options: Omit<MobileModuleLoaderOptions, 'rootUrl'> = {}
+  options: Omit<HolonomyModuleLoaderOptions, 'rootUrl'> = {}
 ) => {
   const reads = new Map<string, number>()
   const port: HostModuleLoaderPort = {
@@ -38,7 +38,7 @@ const createMemoryLoader = (
     syntheticNodeModules: {}
   }
   return {
-    loader: new MobileModuleLoader(port, { rootUrl: APP_ROOT, ...options }),
+    loader: new HolonomyModuleLoader(port, { rootUrl: APP_ROOT, ...options }),
     reads
   }
 }
@@ -57,7 +57,7 @@ describe('mobileModuleLoader serialized cache transactions', () => {
       },
       syntheticNodeModules: {}
     }
-    const loader = new MobileModuleLoader(port, { rootUrl: APP_ROOT })
+    const loader = new HolonomyModuleLoader(port, { rootUrl: APP_ROOT })
 
     const planned = loader.createPlan('./entry.mjs')
     await Promise.resolve()
@@ -67,7 +67,7 @@ describe('mobileModuleLoader serialized cache transactions', () => {
     await Promise.resolve()
     expect(reads).toBe(1)
     expect(() => loader.getEvaluation(entryUrl)).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_TRANSACTION_ACTIVE'
+      code: 'ERR_HOLONOMY_MODULE_TRANSACTION_ACTIVE'
     }))
 
     gate.resolve()
@@ -99,7 +99,7 @@ describe('mobileModuleLoader serialized cache transactions', () => {
       },
       syntheticNodeModules: {}
     }
-    const loader = new MobileModuleLoader(port, { rootUrl: APP_ROOT })
+    const loader = new HolonomyModuleLoader(port, { rootUrl: APP_ROOT })
 
     const firstOutcome = loader.createPlan('./entry.mjs').then(
       value => ({ error: undefined, value }),
@@ -111,7 +111,7 @@ describe('mobileModuleLoader serialized cache transactions', () => {
 
     dependencyGate.resolve()
     const [first, secondPlan] = await Promise.all([firstOutcome, second])
-    expect(first.error).toMatchObject({ code: 'ERR_MOBILE_MODULE_NOT_FOUND' })
+    expect(first.error).toMatchObject({ code: 'ERR_HOLONOMY_MODULE_NOT_FOUND' })
     expect(first.value).toBeUndefined()
     expect(secondPlan.modules.map(module => module.url)).toEqual([dependencyUrl, entryUrl])
     expect(reads.get(entryUrl)).toBe(2)
@@ -129,7 +129,7 @@ describe('mobileModuleLoader serialized cache transactions', () => {
       },
       syntheticNodeModules: {}
     }
-    const loader = new MobileModuleLoader(port, { rootUrl: APP_ROOT })
+    const loader = new HolonomyModuleLoader(port, { rootUrl: APP_ROOT })
 
     const [first, second] = await Promise.all([
       loader.createPlan('./entry.mjs?revision=one'),
@@ -162,7 +162,7 @@ describe('mobileModuleLoader serialized cache transactions', () => {
       },
       syntheticNodeModules: {}
     }
-    const loader = new MobileModuleLoader(port, { rootUrl: APP_ROOT })
+    const loader = new HolonomyModuleLoader(port, { rootUrl: APP_ROOT })
 
     const first = loader.createPlan('./cycle-a.mjs')
     const second = loader.createPlan('./cycle-a.mjs')
@@ -183,7 +183,7 @@ describe('mobileModuleLoader resource limits', () => {
     const source = `export const value = root${'.member'.repeat(5_000)}`
     const { loader } = createMemoryLoader({ [`${APP_ROOT}deep.mjs`]: source })
 
-    expect(Object.isFrozen(DEFAULT_MOBILE_MODULE_LOADER_LIMITS)).toBe(true)
+    expect(Object.isFrozen(DEFAULT_HOLONOMY_MODULE_LOADER_LIMITS)).toBe(true)
     expect(Object.isFrozen(loader.limits)).toBe(true)
     await expect(loader.createPlan('./deep.mjs')).resolves.toMatchObject({
       entryUrl: `${APP_ROOT}deep.mjs`
@@ -197,7 +197,7 @@ describe('mobileModuleLoader resource limits', () => {
     )
 
     await expect(loader.createPlan('./large.mjs')).rejects.toMatchObject({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     })
   })
 
@@ -216,7 +216,7 @@ describe('mobileModuleLoader resource limits', () => {
     })
 
     await expect(loader.createPlan('./first.mjs')).rejects.toMatchObject({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     })
   })
 
@@ -230,7 +230,7 @@ describe('mobileModuleLoader resource limits', () => {
       limits: { maxModules: 2 }
     }).loader
     await expect(moduleLimited.createPlan('./first.mjs')).rejects.toMatchObject({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     })
 
     const dependencyLimited = createMemoryLoader({
@@ -240,7 +240,7 @@ describe('mobileModuleLoader resource limits', () => {
       limits: { maxDependenciesPerModule: 1 }
     }).loader
     await expect(dependencyLimited.createPlan('./first.mjs')).rejects.toMatchObject({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     })
   })
 
@@ -251,7 +251,7 @@ describe('mobileModuleLoader resource limits', () => {
       limits: { maxAstNodes: 20 }
     }).loader
     await expect(nodeLimited.createPlan('./nodes.mjs')).rejects.toMatchObject({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     })
 
     const depthLimited = createMemoryLoader({
@@ -260,7 +260,7 @@ describe('mobileModuleLoader resource limits', () => {
       limits: { maxAstDepth: 20 }
     }).loader
     await expect(depthLimited.createPlan('./depth.mjs')).rejects.toMatchObject({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     })
   })
 
@@ -280,7 +280,7 @@ describe('mobileModuleLoader resource limits', () => {
         (error: unknown) => error
       )
       expect(outcome).toMatchObject({
-        code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+        code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
       })
       expect(String(outcome)).not.toContain('native parser stack detail')
       expect(String(outcome)).not.toContain('stack space')
@@ -294,7 +294,7 @@ describe('mobileModuleLoader resource limits', () => {
 describe('mobileModuleLoader HostPort reentrancy', () => {
   it('immediately rejects a public loader call made by synchronous readModule', async () => {
     const entryUrl = `${APP_ROOT}entry.mjs`
-    let loader!: MobileModuleLoader
+    let loader!: HolonomyModuleLoader
     let reentrantOutcome: Promise<unknown> | undefined
     const port: HostModuleLoaderPort = {
       readModule(canonicalUrl) {
@@ -307,16 +307,16 @@ describe('mobileModuleLoader HostPort reentrancy', () => {
       },
       syntheticNodeModules: {}
     }
-    loader = new MobileModuleLoader(port, { rootUrl: APP_ROOT })
+    loader = new HolonomyModuleLoader(port, { rootUrl: APP_ROOT })
 
     await expect(loader.createPlan('./entry.mjs')).resolves.toBeDefined()
     await expect(reentrantOutcome).resolves.toMatchObject({
-      code: 'ERR_MOBILE_MODULE_REENTRANT_HOST_CALL'
+      code: 'ERR_HOLONOMY_MODULE_REENTRANT_HOST_CALL'
     })
   })
 
   it('preserves the stable reentrant error from an async readModule before its first await', async () => {
-    let loader!: MobileModuleLoader
+    let loader!: HolonomyModuleLoader
     const port: HostModuleLoaderPort = {
       async readModule() {
         await loader.resolve('./nested.mjs')
@@ -324,10 +324,10 @@ describe('mobileModuleLoader HostPort reentrancy', () => {
       },
       syntheticNodeModules: {}
     }
-    loader = new MobileModuleLoader(port, { rootUrl: APP_ROOT })
+    loader = new HolonomyModuleLoader(port, { rootUrl: APP_ROOT })
 
     await expect(loader.createPlan('./entry.mjs')).rejects.toMatchObject({
-      code: 'ERR_MOBILE_MODULE_REENTRANT_HOST_CALL'
+      code: 'ERR_HOLONOMY_MODULE_REENTRANT_HOST_CALL'
     })
   })
 
@@ -340,21 +340,21 @@ describe('mobileModuleLoader HostPort reentrancy', () => {
       },
       syntheticNodeModules: {}
     }
-    const loader = new MobileModuleLoader(port, { rootUrl: APP_ROOT })
+    const loader = new HolonomyModuleLoader(port, { rootUrl: APP_ROOT })
 
     await expect(loader.createPlan('./entry.mjs')).rejects.toMatchObject({
-      code: 'ERR_MOBILE_MODULE_REENTRANT_HOST_CALL'
+      code: 'ERR_HOLONOMY_MODULE_REENTRANT_HOST_CALL'
     })
   })
 })
 
 describe('mobileModuleLoader strict limit snapshots', () => {
-  const construct = (limits: Partial<MobileModuleLoaderOptions['limits']> | unknown) =>
-    new MobileModuleLoader({
+  const construct = (limits: Partial<HolonomyModuleLoaderOptions['limits']> | unknown) =>
+    new HolonomyModuleLoader({
       readModule: () => null,
       syntheticNodeModules: {}
     }, {
-      limits: limits as MobileModuleLoaderOptions['limits'],
+      limits: limits as HolonomyModuleLoaderOptions['limits'],
       rootUrl: APP_ROOT
     })
 
@@ -385,31 +385,31 @@ describe('mobileModuleLoader strict limit snapshots', () => {
     })
 
     expect(() => construct(limits)).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     }))
     expect(getterCalls).toBe(0)
   })
 
   it('rejects unknown, symbol and non-enumerable properties', () => {
     expect(() => construct({ unknownLimit: 1 })).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     }))
     expect(() => construct({ [Symbol('limit')]: 1 })).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     }))
     const nonEnumerable = {}
     Object.defineProperty(nonEnumerable, 'maxModules', { value: 1 })
     expect(() => construct(nonEnumerable)).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     }))
   })
 
   it('rejects custom/null prototypes and exceptional proxies with one stable code', () => {
     expect(() => construct(Object.create({ maxModules: 1 }))).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     }))
     expect(() => construct(Object.create(null))).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED'
     }))
 
     for (
@@ -432,7 +432,7 @@ describe('mobileModuleLoader strict limit snapshots', () => {
       } catch (error) {
         thrown = error
       }
-      expect(thrown).toMatchObject({ code: 'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED' })
+      expect(thrown).toMatchObject({ code: 'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED' })
       expect(String(thrown)).not.toContain('native proxy')
     }
   })

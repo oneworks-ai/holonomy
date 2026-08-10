@@ -45,7 +45,7 @@ export class WebSocket extends EventEmitter {
 
   constructor(accepted?: AcceptedWebSocket) {
     super()
-    if (accepted == null) throw createHttpServerError('ERR_MOBILE_HTTP_UNSUPPORTED')
+    if (accepted == null) throw createHttpServerError('ERR_HOLONOMY_HTTP_UNSUPPORTED')
     this.client = accepted.client
     this.limits = accepted.limits
     this.resource = accepted.resource
@@ -56,7 +56,7 @@ export class WebSocket extends EventEmitter {
   close(code = 1000, reason = '') {
     if (this.readyState === CLOSED || this.readyState === CLOSING) return
     if (!Number.isSafeInteger(code) || code < 1000 || code > 4999 || Buffer.byteLength(reason) > 123) {
-      throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_ARGUMENT')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_ARGUMENT')
     }
     this.readyState = CLOSING
     void this.sendTail.then(() =>
@@ -79,13 +79,13 @@ export class WebSocket extends EventEmitter {
     optionsOrCallback?: { readonly binary?: boolean } | ((error?: Error) => void),
     callback?: (error?: Error) => void
   ) {
-    if (this.readyState !== OPEN) throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_STATE')
+    if (this.readyState !== OPEN) throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_STATE')
     const bytes = typeof data === 'string' ? Buffer.from(data) : Buffer.from(data)
     if (
       bytes.byteLength > this.limits.maxWebSocketMessageBytes ||
       this.bufferedAmount + bytes.byteLength > this.limits.maxWebSocketBufferedBytes
     ) {
-      throw createHttpServerError('ERR_MOBILE_HTTP_LIMIT_EXCEEDED')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED')
     }
     const completion = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback
     const isBinary = typeof optionsOrCallback === 'object'
@@ -106,7 +106,7 @@ export class WebSocket extends EventEmitter {
       },
       error => {
         this.bufferedAmount -= bytes.byteLength
-        completion?.(error instanceof Error ? error : createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL'))
+        completion?.(error instanceof Error ? error : createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL'))
         this.emit('error', error)
         this.finishClose(1006, '')
       }
@@ -126,10 +126,10 @@ export class WebSocket extends EventEmitter {
         const result = await this.stream.next()
         const resources = result.value?.resources ?? []
         for (const resource of resources) resource.close('unexpected_websocket_resource')
-        if (resources.length !== 0) throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+        if (resources.length !== 0) throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
         if (result.done) {
           if ((result.value?.binary?.length ?? 0) !== 0 || result.value?.value !== undefined) {
-            throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+            throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
           }
           this.finishClose(1000, '')
           return
@@ -137,7 +137,7 @@ export class WebSocket extends EventEmitter {
         const event = result.value
         const value = event.value
         if (value == null || typeof value !== 'object' || Array.isArray(value)) {
-          throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+          throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
         }
         const record = value as Record<string, unknown>
         if (record.kind === 'close') {
@@ -147,20 +147,20 @@ export class WebSocket extends EventEmitter {
             !Number.isSafeInteger(code) || code < 1000 || code > 4999 ||
             Buffer.byteLength(reason) > 123 || (event.binary?.length ?? 0) !== 0
           ) {
-            throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+            throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
           }
           this.finishClose(code, reason)
           return
         }
         if (record.kind !== 'message' || typeof record.isBinary !== 'boolean') {
-          throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+          throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
         }
         const binary = event.binary ?? []
         if (
           binary.length !== 1 || binary[0]?.handle !== 'message' ||
           binary[0].data.byteLength > this.limits.maxWebSocketMessageBytes
         ) {
-          throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+          throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
         }
         this.emit('message', Buffer.from(binary[0].data), record.isBinary)
       }
@@ -196,7 +196,7 @@ export class UpgradeSocket extends EventEmitter {
   }
 
   async accept(maxPayload?: number) {
-    if (this.destroyed || this.consumed) throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_STATE')
+    if (this.destroyed || this.consumed) throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_STATE')
     this.consumed = true
     try {
       const result = await this.client.request(HTTP_SERVER_OPERATIONS.websocket.accept, {
@@ -205,7 +205,7 @@ export class UpgradeSocket extends EventEmitter {
       const resource = result.resources![0]!
       if (this.destroyed) {
         resource.close('late_websocket_accept')
-        throw createHttpServerError('ERR_MOBILE_HTTP_ABORTED')
+        throw createHttpServerError('ERR_HOLONOMY_HTTP_ABORTED')
       }
       this.exchange.close('websocket_accepted')
       return new WebSocket({
@@ -245,9 +245,9 @@ export class WebSocketServer extends EventEmitter {
 
   constructor(readonly options: WebSocketServerOptions = {}) {
     super()
-    if (options.noServer !== true) throw createHttpServerError('ERR_MOBILE_HTTP_UNSUPPORTED')
+    if (options.noServer !== true) throw createHttpServerError('ERR_HOLONOMY_HTTP_UNSUPPORTED')
     if (options.maxPayload != null && (!Number.isSafeInteger(options.maxPayload) || options.maxPayload <= 0)) {
-      throw createHttpServerError('ERR_MOBILE_HTTP_INVALID_ARGUMENT')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_INVALID_ARGUMENT')
     }
   }
 

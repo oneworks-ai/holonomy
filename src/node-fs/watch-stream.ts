@@ -5,12 +5,12 @@ import { readResultRecord, readResultString } from './result-validation.js'
 import type { NativeStream } from '../native-port/types.js'
 import type { FsWatchEvent, FsWatcher } from './types.js'
 
-export class MobileFsWatcher implements FsWatcher {
+export class HolonomyFsWatcher implements FsWatcher {
   #closed = false
 
   constructor(
     private readonly stream: NativeStream,
-    private readonly onClose: (watcher: MobileFsWatcher) => void
+    private readonly onClose: (watcher: HolonomyFsWatcher) => void
   ) {}
 
   get isClosed() {

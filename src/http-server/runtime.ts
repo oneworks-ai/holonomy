@@ -18,7 +18,7 @@ export class HttpServerRuntime {
   }
 
   createServer(requestListener?: RequestListener) {
-    if (this.disposed) throw createHttpServerError('ERR_MOBILE_HTTP_DISPOSED')
+    if (this.disposed) throw createHttpServerError('ERR_HOLONOMY_HTTP_DISPOSED')
     const server = new Server(this.client, this.limits, requestListener)
     this.servers.add(server)
     server.once('close', () => this.servers.delete(server))

@@ -36,12 +36,12 @@ export const installCryptoRuntime = (
     } catch {
       // The stable install failure below intentionally hides adapter/native details.
     }
-    throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+    throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
   }
   const capabilityDescriptors = createInstalledCryptoCapabilityDescriptors(port.limits)
   let disposed = false
   const assertInstalled = (): void => {
-    if (disposed) throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED')
+    if (disposed) throw cryptoError('ERR_HOLONOMY_CRYPTO_DISPOSED')
   }
   return freeze({
     capabilityDescriptors,

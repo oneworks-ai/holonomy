@@ -52,7 +52,7 @@ export const assertPathWithinVirtualRoot = (
     comparisonPath === normalizedRoot ||
     comparisonPath.startsWith(`${normalizedRoot}/`)
   if (!withinRoot) {
-    outOfBounds(`${name} escapes the mobile runtime virtual root`)
+    outOfBounds(`${name} escapes the Holonomy Runtime virtual root`)
   }
   return normalizedPath
 }

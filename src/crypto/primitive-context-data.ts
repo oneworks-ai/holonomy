@@ -20,17 +20,17 @@ export const updateContext = (
   const record = requireRecord(state, handle)
   const inputSnapshot = inspectBytes(value)
   if (inputSnapshot.byteLength > state.limits.maxUpdateBytesPerCall) {
-    throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+    throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
   }
   if (record.dataBytes + inputSnapshot.byteLength > state.limits.maxContextBytes) {
-    throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+    throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
   }
   reserveRecordBytes(state, record, inputSnapshot.byteLength)
   let input: Uint8Array | undefined
   try {
     input = copyInspectedBytes(inputSnapshot)
   } catch {
-    return terminalFailure(state, record, cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'))
+    return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
   }
   record.dataStarted = true
   record.dataBytes += input.byteLength
@@ -60,20 +60,20 @@ export const setContextAAD = (
   }
   const snapshot = inspectBytes(value)
   if (record.aadBytes + snapshot.byteLength > state.limits.maxAadBytes) {
-    throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+    throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
   }
   reserveRecordBytes(state, record, snapshot.byteLength)
   let aad: Uint8Array | undefined
   try {
     aad = copyInspectedBytes(snapshot)
   } catch {
-    return terminalFailure(state, record, cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'))
+    return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
   }
   record.aadBytes += aad.byteLength
   try {
     const output = providerOperation(state, record, () => state.provider.setAAD(record.providerContext, aad!))
     if (output !== undefined) {
-      return terminalFailure(state, record, cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'))
+      return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
     }
   } finally {
     zeroBytes(aad)
@@ -97,13 +97,13 @@ export const setContextAuthTag = (
   try {
     authTag = copyInspectedBytes(snapshot)
   } catch {
-    return terminalFailure(state, record, cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'))
+    return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
   }
   record.authTagSet = true
   try {
     const output = providerOperation(state, record, () => state.provider.setAuthTag(record.providerContext, authTag!))
     if (output !== undefined) {
-      return terminalFailure(state, record, cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'))
+      return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
     }
   } finally {
     zeroBytes(authTag)

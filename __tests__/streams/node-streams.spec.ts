@@ -686,7 +686,7 @@ describe('memory-only Node stream subset', () => {
       finished(premature, resolve)
     })
     await expect(finishedPromise(premature)).rejects.toBe(callbackPremature)
-    expect(callbackPremature).toMatchObject({ code: 'ERR_MOBILE_STREAM_PREMATURE_CLOSE' })
+    expect(callbackPremature).toMatchObject({ code: 'ERR_HOLONOMY_STREAM_PREMATURE_CLOSE' })
     expect(premature.listenerCount('end')).toBe(0)
     expect(premature.listenerCount('finish')).toBe(0)
     expect(premature.listenerCount('error')).toBe(0)
@@ -695,10 +695,10 @@ describe('memory-only Node stream subset', () => {
 
   it('rejects objectMode and unsupported writable byte admission options', () => {
     expect(() => new Readable({ objectMode: true })).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_STREAM_NOT_SUPPORTED' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_STREAM_NOT_SUPPORTED' })
     )
     expect(() => new Writable({ decodeStrings: false })).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_STREAM_NOT_SUPPORTED' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_STREAM_NOT_SUPPORTED' })
     )
   })
 })

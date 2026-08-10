@@ -76,7 +76,7 @@ describe('mobileModuleLoader Acorn dependency analysis', () => {
         'app:///bundle/nested.cjs'
       )
     ).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
+      code: 'ERR_HOLONOMY_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
     }))
   })
 
@@ -147,7 +147,7 @@ describe('mobileModuleLoader Acorn dependency analysis', () => {
         'app:///bundle/free-require.cjs'
       )
     ).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
+      code: 'ERR_HOLONOMY_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
     }))
   })
 
@@ -203,7 +203,7 @@ describe('mobileModuleLoader Acorn dependency analysis', () => {
         'app:///bundle/static-block-free-require.cjs'
       )
     ).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
+      code: 'ERR_HOLONOMY_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
     }))
   })
 
@@ -249,7 +249,7 @@ describe('mobileModuleLoader Acorn dependency analysis', () => {
         'app:///bundle/computed-runtime-require.cjs'
       )
     ).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
+      code: 'ERR_HOLONOMY_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
     }))
     expect(() =>
       analyzeModuleSource(
@@ -258,7 +258,7 @@ describe('mobileModuleLoader Acorn dependency analysis', () => {
         'app:///bundle/computed-runtime-process.cjs'
       )
     ).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_NATIVE_ADDON_UNSUPPORTED'
+      code: 'ERR_HOLONOMY_MODULE_NATIVE_ADDON_UNSUPPORTED'
     }))
 
     const local = analyzeModuleSource(
@@ -283,7 +283,7 @@ describe('mobileModuleLoader Acorn dependency analysis', () => {
         'app:///bundle/computed-dynamic-argument.cjs'
       )
     ).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
+      code: 'ERR_HOLONOMY_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED'
     }))
   })
 })

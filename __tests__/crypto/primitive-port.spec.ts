@@ -92,7 +92,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     )
     expectCode(
       () => invalid.timingSafeEqual(Uint8Array.of(1), Uint8Array.of(1)),
-      'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+      'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
     )
   })
 
@@ -109,7 +109,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     )
     expectCode(
       () => hashPort.update(hash, Uint8Array.of(1, 2, 3)),
-      'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     )
     hashPort.update(hash, Uint8Array.of(1, 2))
     expect(hashPort.digest(hash)).toHaveLength(32)
@@ -134,7 +134,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     })
     expectCode(
       () => aadPort.setAAD(aadCipher, Uint8Array.of(1, 2, 3)),
-      'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     )
     aadPort.setAAD(aadCipher, Uint8Array.of(1, 2))
     expect(aadPort.final(aadCipher).authTag).toHaveLength(16)
@@ -146,7 +146,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
           key: Uint8Array.of(1, 2, 3),
           kind: 'hmac'
         }),
-      'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     )
   })
 
@@ -169,11 +169,11 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     const failed = throwingPort.createContext({ algorithm: 'sha256', kind: 'hash' })
     expectCode(
       () => throwingPort.update(failed, Uint8Array.of(1)),
-      'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+      'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
     )
     expectCode(
       () => throwingPort.update(failed, Uint8Array.of(1)),
-      'ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED'
+      'ERR_HOLONOMY_CRYPTO_DISPOSED'
     )
     expect(() => throwingPort.createContext({ algorithm: 'sha256', kind: 'hash' })).not.toThrow()
   })
@@ -195,9 +195,9 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     const handle = port.createContext({ algorithm: 'sha256', kind: 'hash' })
     expectCode(
       () => port.update(handle, Uint8Array.of(1)),
-      'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+      'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
     )
-    expectCode(() => port.digest(handle), 'ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED')
+    expectCode(() => port.digest(handle), 'ERR_HOLONOMY_CRYPTO_DISPOSED')
   })
 
   it('rejects async provider returns and releases the affected context', () => {
@@ -211,9 +211,9 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     const handle = port.createContext({ algorithm: 'sha256', kind: 'hash' })
     expectCode(
       () => port.update(handle, Uint8Array.of(1)),
-      'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+      'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
     )
-    expectCode(() => port.digest(handle), 'ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED')
+    expectCode(() => port.digest(handle), 'ERR_HOLONOMY_CRYPTO_DISPOSED')
   })
 
   it('absorbs rejected async provider returns without raw details or unhandled rejections', async () => {
@@ -233,7 +233,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
       const handle = port.createContext({ algorithm: 'sha256', kind: 'hash' })
       expectCode(
         () => port.update(handle, Uint8Array.of(1)),
-        'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+        'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
       )
       await Promise.resolve()
       expect(unhandled).toEqual([])
@@ -270,7 +270,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
       const first = port.createContext({ algorithm: 'sha256', kind: 'hash' })
       expectCode(
         () => port.update(first, Uint8Array.of(1)),
-        'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+        'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
       )
 
       const speciesPoisoned = Promise.reject(new Error('raw species rejection'))
@@ -288,7 +288,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
       const second = port.createContext({ algorithm: 'sha256', kind: 'hash' })
       expectCode(
         () => port.update(second, Uint8Array.of(2)),
-        'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+        'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
       )
 
       const thenable = {}
@@ -302,7 +302,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
       const third = port.createContext({ algorithm: 'sha256', kind: 'hash' })
       expectCode(
         () => port.update(third, Uint8Array.of(3)),
-        'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+        'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
       )
 
       const providerObserved = Promise.reject(new Error('provider-owned raw rejection'))
@@ -318,7 +318,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
       const fourth = port.createContext({ algorithm: 'sha256', kind: 'hash' })
       expectCode(
         () => port.update(fourth, Uint8Array.of(4)),
-        'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+        'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
       )
 
       await providerObservation
@@ -352,7 +352,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     })
     expectCode(
       () => port.createContext(request as never),
-      'ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED'
+      'ERR_HOLONOMY_CRYPTO_DISPOSED'
     )
     expect(creates).toBe(0)
   })
@@ -372,7 +372,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     )
     expectCode(
       () => invalid.createContext({ algorithm: 'sha1', kind: 'hash' }),
-      'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+      'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
     )
     expect(invalidDisposals).toBe(1)
 
@@ -390,7 +390,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     )
     expectCode(
       () => thenable.createContext({ algorithm: 'sha1', kind: 'hash' }),
-      'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+      'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
     )
     expect(thenableDisposals).toBe(1)
 
@@ -408,10 +408,10 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     const first = collision.createContext({ algorithm: 'sha1', kind: 'hash' })
     expectCode(
       () => collision.createContext({ algorithm: 'sha1', kind: 'hash' }),
-      'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+      'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
     )
     expect(collisionDisposals).toBe(1)
-    expectCode(() => collision.digest(first), 'ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED')
+    expectCode(() => collision.digest(first), 'ERR_HOLONOMY_CRYPTO_DISPOSED')
   })
 
   it('validates exact digest lengths for SHA-1, SHA-256 and HMAC-SHA256', () => {
@@ -431,7 +431,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
         })
       )
       const handle = port.createContext(request)
-      expectCode(() => port.digest(handle), 'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+      expectCode(() => port.digest(handle), 'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
     }
   })
 
@@ -471,7 +471,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     port.createContext({ algorithm: 'sha256', key: new Uint8Array(16), kind: 'hmac' })
     expectCode(
       () => port.createContext({ algorithm: 'sha256', key: Uint8Array.of(1), kind: 'hmac' }),
-      'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     )
     port.disposeContext(first)
     expect(() =>
@@ -483,7 +483,7 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     ).not.toThrow()
     expectCode(
       () => port.timingSafeEqual(new Uint8Array(17), new Uint8Array(17)),
-      'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     )
 
     const outputBounded = createTestPort({
@@ -498,11 +498,11 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     outputBounded.update(outputHandle, new Uint8Array(16))
     expectCode(
       () => outputBounded.digest(outputHandle),
-      'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     )
     expectCode(
       () => outputBounded.update(outputHandle, Uint8Array.of(1)),
-      'ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED'
+      'ERR_HOLONOMY_CRYPTO_DISPOSED'
     )
   })
 
@@ -522,6 +522,6 @@ describe('cryptoPrimitivePort state and provider boundary', () => {
     port.dispose()
     port.dispose()
     expect(disposals).toBe(1)
-    expectCode(() => port.randomBytes(1), 'ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED')
+    expectCode(() => port.randomBytes(1), 'ERR_HOLONOMY_CRYPTO_DISPOSED')
   })
 })

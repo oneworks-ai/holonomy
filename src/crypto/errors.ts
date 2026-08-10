@@ -9,9 +9,9 @@ export type RuntimeCryptoErrorCode =
   | 'ERR_CRYPTO_HASH_FINALIZED'
   | 'ERR_CRYPTO_INVALID_STATE'
   | 'ERR_CRYPTO_RANDOM_UNAVAILABLE'
-  | 'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
-  | 'ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED'
-  | 'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+  | 'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
+  | 'ERR_HOLONOMY_CRYPTO_DISPOSED'
+  | 'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
 
 const ERROR_MESSAGES: Readonly<Record<RuntimeCryptoErrorCode, string>> = Object.freeze({
   ERR_INVALID_ARG_TYPE: 'The supplied crypto argument has an invalid type',
@@ -24,9 +24,9 @@ const ERROR_MESSAGES: Readonly<Record<RuntimeCryptoErrorCode, string>> = Object.
   ERR_CRYPTO_HASH_FINALIZED: 'Digest has already been called',
   ERR_CRYPTO_INVALID_STATE: 'The crypto context is in an invalid state',
   ERR_CRYPTO_RANDOM_UNAVAILABLE: 'Cryptographic random data is unavailable',
-  ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED: 'The mobile runtime crypto quota was exceeded',
-  ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED: 'The mobile runtime crypto resource was disposed',
-  ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED: 'The mobile runtime crypto operation failed'
+  ERR_HOLONOMY_RESOURCE_EXHAUSTED: 'The Holonomy Runtime crypto quota was exceeded',
+  ERR_HOLONOMY_CRYPTO_DISPOSED: 'The Holonomy Runtime crypto resource was disposed',
+  ERR_HOLONOMY_CRYPTO_OPERATION_FAILED: 'The Holonomy Runtime crypto operation failed'
 })
 
 interface CryptoErrorWithCode {

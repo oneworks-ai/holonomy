@@ -1,48 +1,48 @@
-export type MobileRuntimeErrorCode =
-  | 'ERR_MOBILE_RUNTIME_CALLBACK_FAILED'
-  | 'ERR_MOBILE_RUNTIME_CLOCK_NOT_MONOTONIC'
-  | 'ERR_MOBILE_RUNTIME_DISPOSED'
-  | 'ERR_MOBILE_RUNTIME_INVALID_OPTION'
-  | 'ERR_MOBILE_RUNTIME_MICROTASK_CHECKPOINT_FAILED'
-  | 'ERR_MOBILE_RUNTIME_NATIVE_REQUEST_NOT_PENDING'
-  | 'ERR_MOBILE_RUNTIME_TASK_BUDGET_EXCEEDED'
-  | 'ERR_MOBILE_RUNTIME_TURN_REENTRANT'
-  | 'ERR_MOBILE_RUNTIME_WAKEUP_FAILED'
+export type HolonomyRuntimeErrorCode =
+  | 'ERR_HOLONOMY_CALLBACK_FAILED'
+  | 'ERR_HOLONOMY_CLOCK_NOT_MONOTONIC'
+  | 'ERR_HOLONOMY_DISPOSED'
+  | 'ERR_HOLONOMY_INVALID_OPTION'
+  | 'ERR_HOLONOMY_MICROTASK_CHECKPOINT_FAILED'
+  | 'ERR_HOLONOMY_NATIVE_REQUEST_NOT_PENDING'
+  | 'ERR_HOLONOMY_TASK_BUDGET_EXCEEDED'
+  | 'ERR_HOLONOMY_TURN_REENTRANT'
+  | 'ERR_HOLONOMY_WAKEUP_FAILED'
 
-export class MobileRuntimeError extends Error {
-  readonly code: MobileRuntimeErrorCode
+export class HolonomyRuntimeError extends Error {
+  readonly code: HolonomyRuntimeErrorCode
 
-  constructor(code: MobileRuntimeErrorCode, message: string) {
+  constructor(code: HolonomyRuntimeErrorCode, message: string) {
     super(message)
     this.code = code
-    this.name = 'MobileRuntimeError'
+    this.name = 'HolonomyRuntimeError'
   }
 }
 
-export class EventLoopDisposedError extends MobileRuntimeError {
+export class EventLoopDisposedError extends HolonomyRuntimeError {
   constructor() {
     super(
-      'ERR_MOBILE_RUNTIME_DISPOSED',
-      'The mobile runtime event loop has been disposed'
+      'ERR_HOLONOMY_DISPOSED',
+      'The Holonomy Runtime event loop has been disposed'
     )
     this.name = 'EventLoopDisposedError'
   }
 }
 
-export class EventLoopBudgetExceededError extends MobileRuntimeError {
+export class EventLoopBudgetExceededError extends HolonomyRuntimeError {
   readonly budget: number
 
   constructor(budget: number) {
     super(
-      'ERR_MOBILE_RUNTIME_TASK_BUDGET_EXCEEDED',
-      `The mobile runtime callback budget of ${budget} was exhausted`
+      'ERR_HOLONOMY_TASK_BUDGET_EXCEEDED',
+      `The Holonomy Runtime callback budget of ${budget} was exhausted`
     )
     this.budget = budget
     this.name = 'EventLoopBudgetExceededError'
   }
 }
 
-export class EventLoopClockError extends MobileRuntimeError {
+export class EventLoopClockError extends HolonomyRuntimeError {
   readonly currentMs: number
   readonly previousMs: number | undefined
 
@@ -50,32 +50,32 @@ export class EventLoopClockError extends MobileRuntimeError {
     const message = !Number.isFinite(currentMs) || currentMs < 0
       ? `The host clock returned an invalid monotonic timestamp: ${String(currentMs)}`
       : `The host clock moved backwards from ${String(previousMs)}ms to ${currentMs}ms`
-    super('ERR_MOBILE_RUNTIME_CLOCK_NOT_MONOTONIC', message)
+    super('ERR_HOLONOMY_CLOCK_NOT_MONOTONIC', message)
     this.currentMs = currentMs
     this.previousMs = previousMs
     this.name = 'EventLoopClockError'
   }
 }
 
-export class EventLoopCallbackError extends MobileRuntimeError {
+export class EventLoopCallbackError extends HolonomyRuntimeError {
   readonly cause: unknown
 
   constructor(cause: unknown) {
     super(
-      'ERR_MOBILE_RUNTIME_CALLBACK_FAILED',
-      'A mobile runtime event-loop callback failed'
+      'ERR_HOLONOMY_CALLBACK_FAILED',
+      'A Holonomy Runtime event-loop callback failed'
     )
     this.cause = cause
     this.name = 'EventLoopCallbackError'
   }
 }
 
-export class EventLoopMicrotaskCheckpointError extends MobileRuntimeError {
+export class EventLoopMicrotaskCheckpointError extends HolonomyRuntimeError {
   readonly cause: unknown
 
   constructor(cause: unknown) {
     super(
-      'ERR_MOBILE_RUNTIME_MICROTASK_CHECKPOINT_FAILED',
+      'ERR_HOLONOMY_MICROTASK_CHECKPOINT_FAILED',
       'The host Promise microtask checkpoint failed'
     )
     this.cause = cause
@@ -83,12 +83,12 @@ export class EventLoopMicrotaskCheckpointError extends MobileRuntimeError {
   }
 }
 
-export class EventLoopWakeupError extends MobileRuntimeError {
+export class EventLoopWakeupError extends HolonomyRuntimeError {
   readonly cause: unknown
 
   constructor(cause: unknown) {
     super(
-      'ERR_MOBILE_RUNTIME_WAKEUP_FAILED',
+      'ERR_HOLONOMY_WAKEUP_FAILED',
       'The host event-loop wakeup request failed'
     )
     this.cause = cause
@@ -96,12 +96,12 @@ export class EventLoopWakeupError extends MobileRuntimeError {
   }
 }
 
-export class EventLoopNativeRequestNotPendingError extends MobileRuntimeError {
+export class EventLoopNativeRequestNotPendingError extends HolonomyRuntimeError {
   readonly requestId: string
 
   constructor(requestId: string) {
     super(
-      'ERR_MOBILE_RUNTIME_NATIVE_REQUEST_NOT_PENDING',
+      'ERR_HOLONOMY_NATIVE_REQUEST_NOT_PENDING',
       'The native request is not pending'
     )
     this.requestId = requestId
@@ -109,21 +109,21 @@ export class EventLoopNativeRequestNotPendingError extends MobileRuntimeError {
   }
 }
 
-export class EventLoopReentrantTurnError extends MobileRuntimeError {
+export class EventLoopReentrantTurnError extends HolonomyRuntimeError {
   constructor() {
     super(
-      'ERR_MOBILE_RUNTIME_TURN_REENTRANT',
-      'The mobile runtime event loop cannot run a reentrant turn'
+      'ERR_HOLONOMY_TURN_REENTRANT',
+      'The Holonomy Runtime event loop cannot run a reentrant turn'
     )
     this.name = 'EventLoopReentrantTurnError'
   }
 }
 
-export class EventLoopOptionError extends MobileRuntimeError {
+export class EventLoopOptionError extends HolonomyRuntimeError {
   constructor(name: string, value: unknown) {
     super(
-      'ERR_MOBILE_RUNTIME_INVALID_OPTION',
-      `Invalid mobile runtime event-loop option ${name}: ${String(value)}`
+      'ERR_HOLONOMY_INVALID_OPTION',
+      `Invalid Holonomy Runtime event-loop option ${name}: ${String(value)}`
     )
     this.name = 'EventLoopOptionError'
   }

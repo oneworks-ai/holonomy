@@ -32,7 +32,7 @@ export const PROCESS_CONSTRAINTS = [
   'Each write is rejected before byte copying or provider invocation when its UTF-8 or binary size exceeds frozen maxStdioChunkBytes; the default is 1048576 bytes.',
   'Host adapters may inject a lower maxStdioChunkBytes transport limit.',
   'Synchronous providers return boolean; asynchronous providers return Promise<boolean>, so Node stream backpressure compatibility is partial.',
-  'Dangerous or meaningless process controls throw ERR_MOBILE_RUNTIME_NOT_SUPPORTED.'
+  'Dangerous or meaningless process controls throw ERR_HOLONOMY_NOT_SUPPORTED.'
 ] as const
 
 export const URL_CONSTRAINTS = [

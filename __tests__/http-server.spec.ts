@@ -110,7 +110,7 @@ describe('http and WebSocket server v1', () => {
         })
       }
       const client = new HttpServerBridgeClient(bridge as never)
-      await expect(client.request(operation, {})).rejects.toMatchObject({ code: 'ERR_MOBILE_HTTP_PROTOCOL' })
+      await expect(client.request(operation, {})).rejects.toMatchObject({ code: 'ERR_HOLONOMY_HTTP_PROTOCOL' })
       expect(closes).toBe(1)
     }
   })
@@ -125,7 +125,7 @@ describe('http and WebSocket server v1', () => {
     })
     await listen(test.loop, server)
     await expect(settle(test.loop, test.provider.request(server.address()!, {}))).rejects.toMatchObject({
-      code: 'ERR_MOBILE_HTTP_ABORTED'
+      code: 'ERR_HOLONOMY_HTTP_ABORTED'
     })
     const second = await settle(test.loop, test.provider.request(server.address()!, {}))
     expect(second.statusCode).toBe(200)
@@ -156,7 +156,7 @@ describe('http and WebSocket server v1', () => {
     server.on('error', error => errors.push(error))
     await listen(test.loop, server)
     await expect(settle(test.loop, test.provider.request(server.address()!, {}))).rejects.toMatchObject({
-      code: 'ERR_MOBILE_HTTP_ABORTED'
+      code: 'ERR_HOLONOMY_HTTP_ABORTED'
     })
     const second = await settle(test.loop, test.provider.request(server.address()!, {}))
     expect(second).toMatchObject({ body: Buffer.from('second'), statusCode: 200 })
@@ -197,7 +197,7 @@ describe('http and WebSocket server v1', () => {
     server.on('upgrade', (_request, socket, head) => {
       heads.push(head)
       void socket.accept().then(async (websocket: WebSocket) => {
-        await expect(socket.accept()).rejects.toMatchObject({ code: 'ERR_MOBILE_HTTP_INVALID_STATE' })
+        await expect(socket.accept()).rejects.toMatchObject({ code: 'ERR_HOLONOMY_HTTP_INVALID_STATE' })
         websocket.close()
       }).catch((error: unknown) => acceptFailures.push(error))
     })
@@ -329,7 +329,7 @@ describe('http and WebSocket server v1', () => {
     server.listen()
 
     await expect(settle(test.loop, error)).resolves.toMatchObject({
-      code: 'ERR_MOBILE_HTTP_PERMISSION_DENIED',
+      code: 'ERR_HOLONOMY_HTTP_PERMISSION_DENIED',
       message: 'HTTP server operation was denied'
     })
     server.close()
@@ -348,7 +348,7 @@ describe('http and WebSocket server v1', () => {
 
     const first = test.provider.request(server.address()!, { url: '/first' })
     await expect(test.provider.request(server.address()!, { url: '/second' })).rejects.toMatchObject({
-      code: 'ERR_MOBILE_HTTP_LIMIT_EXCEEDED'
+      code: 'ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED'
     })
     await expect(settle(test.loop, first)).resolves.toMatchObject({ statusCode: 200 })
     await close(test.loop, server)

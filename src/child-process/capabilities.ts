@@ -6,8 +6,8 @@ const unsupported = (notes: string) => Object.freeze({ notes, status: 'unsupport
 export const CHILD_PROCESS_CAPABILITY_MATRIX = Object.freeze({
   api: Object.freeze({
     execFile: partial('Callback-only; literal git command registry with no shell or PATH lookup.'),
-    gitClone: partial('git clone --depth 1 [--branch <branch>] <url> <mobile-fs destination>.'),
-    gitRemoteConfig: supported('git -C <mobile-fs URL> config --get-regexp ^remote\\..*\\.url$.')
+    gitClone: partial('git clone --depth 1 [--branch <branch>] <url> <holonomy-fs destination>.'),
+    gitRemoteConfig: supported('git -C <holonomy-fs URL> config --get-regexp ^remote\\..*\\.url$.')
   }),
   lifecycle: Object.freeze({
     cancellation: 'adapter-owned first terminal races genuine platform AbortSignal against GitFacade completion',

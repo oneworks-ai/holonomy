@@ -23,14 +23,14 @@ export class HttpServerBridgeClient {
     args: NativeArgumentValue,
     binary?: readonly Uint8Array[]
   ): Promise<NativeResult> {
-    if (this.disposed) throw createHttpServerError('ERR_MOBILE_HTTP_DISPOSED')
+    if (this.disposed) throw createHttpServerError('ERR_HOLONOMY_HTTP_DISPOSED')
     const request = this.createRequest(operation, args, binary)
     this.pending.add(request.id)
     try {
       const result = await this.bridge.request(request)
       if (this.disposed) {
         for (const resource of result.resources ?? []) resource.close('http_runtime_disposed')
-        throw createHttpServerError('ERR_MOBILE_HTTP_DISPOSED')
+        throw createHttpServerError('ERR_HOLONOMY_HTTP_DISPOSED')
       }
       return this.decodeUnaryResult(operation, result)
     } catch (error) {
@@ -59,7 +59,7 @@ export class HttpServerBridgeClient {
       : this.isAcknowledgement(result.value)
     if (!resourcesValid || binary.length !== 0 || !valueValid) {
       for (const resource of resources) resource.close('unexpected_unary_resource')
-      throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
     }
     return result
   }
@@ -71,7 +71,7 @@ export class HttpServerBridgeClient {
   }
 
   stream(operation: string, args: NativeArgumentValue): NativeStream {
-    if (this.disposed) throw createHttpServerError('ERR_MOBILE_HTTP_DISPOSED')
+    if (this.disposed) throw createHttpServerError('ERR_HOLONOMY_HTTP_DISPOSED')
     try {
       const source = this.bridge.stream(this.createRequest(operation, args))
       this.streams.add(source)

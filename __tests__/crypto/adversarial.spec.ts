@@ -156,8 +156,8 @@ describe('crypto adversarial admission', () => {
     )
     const hash = throwing.createContext({ algorithm: 'sha256', kind: 'hash' })
     expect(() => throwing.update(hash, Uint8Array.of(1))).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED',
-      message: 'The mobile runtime crypto operation failed'
+      code: 'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED',
+      message: 'The Holonomy Runtime crypto operation failed'
     }))
   })
 
@@ -249,8 +249,8 @@ describe('crypto adversarial admission', () => {
       define(Array.prototype, Symbol.iterator, iteratorDescriptor)
     }
     expect(failure).toEqual(expect.objectContaining({
-      code: 'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED',
-      message: 'The mobile runtime crypto operation failed'
+      code: 'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED',
+      message: 'The Holonomy Runtime crypto operation failed'
     }))
     expect(String(failure)).not.toContain('native secret')
     expect(contextDisposals).toBe(2)

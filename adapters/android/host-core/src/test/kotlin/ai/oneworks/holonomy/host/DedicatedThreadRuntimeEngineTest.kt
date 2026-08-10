@@ -1,4 +1,4 @@
-package ai.oneworks.mobile.runtime.host
+package ai.oneworks.holonomy.host
 
 import java.util.Collections
 import java.util.concurrent.CountDownLatch

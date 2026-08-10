@@ -20,9 +20,9 @@ import type {
   VariableDeclaration
 } from 'acorn'
 
-import { MobileModuleLoaderError } from './errors.js'
-import { DEFAULT_MOBILE_MODULE_LOADER_LIMITS } from './types.js'
-import type { MobileModuleLoaderLimits, ModuleDependencyKind, PlannedModuleFormat } from './types.js'
+import { HolonomyModuleLoaderError } from './errors.js'
+import { DEFAULT_HOLONOMY_MODULE_LOADER_LIMITS } from './types.js'
+import type { HolonomyModuleLoaderLimits, ModuleDependencyKind, PlannedModuleFormat } from './types.js'
 
 export interface AnalyzedDependency {
   kind: ModuleDependencyKind
@@ -36,7 +36,7 @@ export interface AnalyzedModuleSource {
   usesDlopen: boolean
 }
 
-type AstLimits = Pick<MobileModuleLoaderLimits, 'maxAstDepth' | 'maxAstNodes'>
+type AstLimits = Pick<HolonomyModuleLoaderLimits, 'maxAstDepth' | 'maxAstNodes'>
 
 interface LexicalScope {
   readonly bindings: Set<string>
@@ -83,9 +83,9 @@ const isNode = (value: unknown): value is AnyNode => (
 )
 
 const resourceExhausted = (url: string, resource: string) =>
-  new MobileModuleLoaderError(
-    'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED',
-    `Mobile module resource limit exceeded: ${resource}`,
+  new HolonomyModuleLoaderError(
+    'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED',
+    `Holonomy module resource limit exceeded: ${resource}`,
     { url }
   )
 
@@ -439,8 +439,8 @@ const dependencyFromRequire = (
     ? undefined
     : staticSpecifier(firstArgument)
   if (specifier == null) {
-    throw new MobileModuleLoaderError(
-      'ERR_MOBILE_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED',
+    throw new HolonomyModuleLoaderError(
+      'ERR_HOLONOMY_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED',
       `Non-literal ${kind === 'require' ? 'require()' : 'require.resolve()'} is not supported`,
       { url }
     )
@@ -463,8 +463,8 @@ const parseProgram = (
     })
   } catch (error) {
     if (isParserCapacityError(error)) throw resourceExhausted(url, 'parser capacity')
-    throw new MobileModuleLoaderError(
-      'ERR_MOBILE_MODULE_SOURCE_INVALID',
+    throw new HolonomyModuleLoaderError(
+      'ERR_HOLONOMY_MODULE_SOURCE_INVALID',
       `Module source contains invalid ${format === 'commonjs' ? 'CommonJS' : 'ES module'} syntax`,
       { diagnosticCode: 'INVALID_SOURCE_SYNTAX', url }
     )
@@ -475,7 +475,7 @@ export const analyzeModuleSource = (
   source: string,
   format: PlannedModuleFormat,
   url: string,
-  limits: AstLimits = DEFAULT_MOBILE_MODULE_LOADER_LIMITS
+  limits: AstLimits = DEFAULT_HOLONOMY_MODULE_LOADER_LIMITS
 ): AnalyzedModuleSource => {
   if (format === 'json') {
     return { dependencies: [], exportNames: ['default'], usesDlopen: false }
@@ -495,14 +495,14 @@ export const analyzeModuleSource = (
     const dynamicCapability = dynamicComputedCapability(node)
     if (dynamicCapability != null && isUnbound(scope, dynamicCapability)) {
       if (dynamicCapability === 'require') {
-        throw new MobileModuleLoaderError(
-          'ERR_MOBILE_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED',
+        throw new HolonomyModuleLoaderError(
+          'ERR_HOLONOMY_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED',
           'Dynamic computed access on global require is not supported',
           { url }
         )
       }
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_NATIVE_ADDON_UNSUPPORTED',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_NATIVE_ADDON_UNSUPPORTED',
         'Dynamic computed access on global process is not supported',
         { url }
       )

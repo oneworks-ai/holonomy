@@ -12,7 +12,7 @@ export type EventLoopTaskKind =
 
 export type HostEventLoopTermination =
   | {
-    code: 'ERR_MOBILE_RUNTIME_SHUTDOWN'
+    code: 'ERR_HOLONOMY_SHUTDOWN'
     kind: 'shutdown'
   }
   | {

@@ -4,15 +4,15 @@ import { concatenateBytes, decodeBytes, toBytes } from './bytes.js'
 import { FS_OPERATIONS, constants } from './constants.js'
 import { closeResourceHandles, parseFsResourceResult, parseFsResultWithoutResources } from './contract.js'
 import { createFsError, notSupported } from './errors.js'
-import { MobileFsFileHandle } from './file-handle.js'
+import { HolonomyFsFileHandle } from './file-handle.js'
 import { parseDirentRecords, parseStatRecord } from './metadata.js'
 import { FsNativeClient } from './native-client.js'
 import { normalizeMode, parseOpenFlags } from './open-flags.js'
 import { assertSupportedOptions } from './options.js'
 import { parseFsPath } from './path.js'
-import { MobileFsReadStream } from './read-stream.js'
+import { HolonomyFsReadStream } from './read-stream.js'
 import { readResultInteger, readResultRecord, readResultString, readResultValue } from './result-validation.js'
-import { MobileFsWatcher } from './watch-stream.js'
+import { HolonomyFsWatcher } from './watch-stream.js'
 
 import type { NativeBridge, NativeResourceHandle } from '../native-port/types.js'
 import type { FsDispatchOptions } from './native-client.js'
@@ -47,17 +47,17 @@ const readPositiveLimit = (value: number | undefined, fallback: number) => {
   return resolved
 }
 
-export class MobileNodeFsFacade implements NodeFsFacade {
+export class HolonomyNodeFsFacade implements NodeFsFacade {
   readonly constants = constants
   readonly promises: FsPromisesFacade
   readonly #chunkBytes: number
   readonly #client: FsNativeClient
-  readonly #handles = new Set<MobileFsFileHandle>()
+  readonly #handles = new Set<HolonomyFsFileHandle>()
   readonly #maxReadFileBytes: number
   readonly #now?: () => number
-  readonly #streams = new Set<MobileFsReadStream>()
+  readonly #streams = new Set<HolonomyFsReadStream>()
   readonly #transactions = new Set<NativeResourceHandle>()
-  readonly #watchers = new Set<MobileFsWatcher>()
+  readonly #watchers = new Set<HolonomyFsWatcher>()
   #disposePromise?: Promise<void>
   #disposed = false
 
@@ -236,7 +236,7 @@ export class MobileNodeFsFacade implements NodeFsFacade {
       closeResourceHandles(output.resources, 'undeclared_fs_resource')
       throw createFsError('EIO', 'open')
     }
-    const handle = new MobileFsFileHandle(
+    const handle = new HolonomyFsFileHandle(
       this.#client,
       output.resources[0],
       this.#chunkBytes,
@@ -481,7 +481,7 @@ export class MobileNodeFsFacade implements NodeFsFacade {
       'createReadStream',
       options
     )
-    const stream = new MobileFsReadStream(
+    const stream = new HolonomyFsReadStream(
       nativeStream,
       closed => this.#streams.delete(closed)
     )
@@ -518,7 +518,7 @@ export class MobileNodeFsFacade implements NodeFsFacade {
       'watch',
       options
     )
-    const watcher = new MobileFsWatcher(stream, closed => this.#watchers.delete(closed))
+    const watcher = new HolonomyFsWatcher(stream, closed => this.#watchers.delete(closed))
     this.#watchers.add(watcher)
     return watcher
   }
@@ -594,7 +594,7 @@ export class MobileNodeFsFacade implements NodeFsFacade {
       return Object.freeze({ ...(options.signal === undefined ? {} : { signal: options.signal }) })
     }
     if (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs < 0 || this.#now == null) {
-      throw createFsError(this.#now == null ? 'ERR_MOBILE_RUNTIME_NOT_SUPPORTED' : 'EINVAL', syscall)
+      throw createFsError(this.#now == null ? 'ERR_HOLONOMY_NOT_SUPPORTED' : 'EINVAL', syscall)
     }
     let now: number
     try {
@@ -732,7 +732,7 @@ export class MobileNodeFsFacade implements NodeFsFacade {
     flags: FsOpenFlags,
     mode: number,
     options: FsDispatchOptions
-  ): Promise<MobileFsFileHandle> {
+  ): Promise<HolonomyFsFileHandle> {
     const parsedFlags = parseOpenFlags(flags)
     const output = parseFsResourceResult(
       await this.#client.request(
@@ -755,7 +755,7 @@ export class MobileNodeFsFacade implements NodeFsFacade {
       closeResourceHandles(output.resources, 'undeclared_fs_resource')
       throw createFsError('EIO', 'open')
     }
-    const handle = new MobileFsFileHandle(
+    const handle = new HolonomyFsFileHandle(
       this.#client,
       output.resources[0],
       this.#chunkBytes,
@@ -773,4 +773,4 @@ export class MobileNodeFsFacade implements NodeFsFacade {
 export const createNodeFsFacade = (
   bridge: NativeBridge,
   options?: NodeFsFacadeOptions
-) => new MobileNodeFsFacade(bridge, options)
+) => new HolonomyNodeFsFacade(bridge, options)

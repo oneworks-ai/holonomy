@@ -1,13 +1,13 @@
-package ai.oneworks.mobile.runtime.v8
+package ai.oneworks.holonomy.v8
 
 import android.content.res.AssetManager
 import android.os.Build
-import ai.oneworks.mobile.runtime.host.DedicatedThreadRuntimeEngine
-import ai.oneworks.mobile.runtime.host.RuntimeCapabilities
-import ai.oneworks.mobile.runtime.host.RuntimeEngine
-import ai.oneworks.mobile.runtime.host.RuntimeImplementationStage
-import ai.oneworks.mobile.runtime.host.RuntimeMicrotaskMode
-import ai.oneworks.mobile.runtime.host.RuntimeNativeHost
+import ai.oneworks.holonomy.host.DedicatedThreadRuntimeEngine
+import ai.oneworks.holonomy.host.RuntimeCapabilities
+import ai.oneworks.holonomy.host.RuntimeEngine
+import ai.oneworks.holonomy.host.RuntimeImplementationStage
+import ai.oneworks.holonomy.host.RuntimeMicrotaskMode
+import ai.oneworks.holonomy.host.RuntimeNativeHost
 
 object RuntimeEngineFactory {
     fun create(
@@ -29,7 +29,7 @@ internal class JavetRuntimeAdapterFactory(
     private val nativeHost: RuntimeNativeHost,
     private val bootstrapAssetPath: String,
     private val runtimeArchitecture: String,
-) : ai.oneworks.mobile.runtime.host.RuntimeAdapterFactory {
+) : ai.oneworks.holonomy.host.RuntimeAdapterFactory {
     override val capabilities = RuntimeCapabilities(
         implementationStage = RuntimeImplementationStage.BOOTSTRAP,
         microtaskMode = RuntimeMicrotaskMode.AUTO,
@@ -38,9 +38,9 @@ internal class JavetRuntimeAdapterFactory(
     )
 
     override fun create(
-        threadGuard: ai.oneworks.mobile.runtime.host.RuntimeThreadGuard,
-        host: ai.oneworks.mobile.runtime.host.RuntimeAdapterHost,
-    ): ai.oneworks.mobile.runtime.host.RuntimeAdapter = JavetRuntimeAdapter(
+        threadGuard: ai.oneworks.holonomy.host.RuntimeThreadGuard,
+        host: ai.oneworks.holonomy.host.RuntimeAdapterHost,
+    ): ai.oneworks.holonomy.host.RuntimeAdapter = JavetRuntimeAdapter(
         assets = assets,
         bootstrapAssetPath = bootstrapAssetPath,
         host = host,

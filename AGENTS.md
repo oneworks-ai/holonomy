@@ -1,6 +1,12 @@
-# Mobile Runtime Package
+# Holonomy Runtime Package
 
-`@oneworks/mobile-runtime` owns platform-neutral JavaScript runtime behavior used by mobile hosts. Android, Javet and V8 bindings adapt to the package ports; they do not own JavaScript scheduling semantics.
+`@oneworks/holonomy` owns platform-neutral JavaScript runtime behavior used by native hosts. Android, Javet and V8 bindings adapt to the package ports; they do not own JavaScript scheduling semantics.
+
+## Naming contract
+
+- The public project, package and runtime brand is **Holonomy**. Public TypeScript APIs, stable error identifiers, virtual schemes, Android namespaces and generated declarations use Holonomy naming.
+- Do not reintroduce `MobileRuntime`, `MobileModuleLoader`, `MobileFs`, `ERR_MOBILE_RUNTIME_*`, `mobile-fs://` or `@oneworks/mobile-runtime` compatibility aliases. The clean rename happened before a public npm release.
+- “Mobile” remains a deployment category, not the runtime identity. Host-specific adapters may describe mobile behavior without becoming owners of the shared runtime contract.
 
 ## Entry points
 
@@ -11,7 +17,7 @@
 - `src/http-server/`: bounded inbound `node:http` / `ws` server facade, NativePort contract and virtual-host provider.
 - `src/event-loop/errors.ts`: stable runtime error codes.
 - `src/crypto/`: bounded synchronous engine-internal crypto intrinsic port, guarded provider installation, `node:crypto` synthetic module, Web crypto installer and precise capability matrix.
-- `src/module-loader/mobile-module-loader.ts`: canonical resolution, verified source loading, graph planning and module cache ownership.
+- `src/module-loader/holonomy-module-loader.ts`: canonical resolution, verified source loading, graph planning and module cache ownership.
 - `src/module-loader/source-analysis.ts`: Acorn AST dependency/export analysis; do not replace it with regex or a private lexer.
 - `src/module-loader/types.ts`: platform-neutral host port plus `ModulePlan` and engine-facing require/cache contracts.
 - `src/module-loader/errors.ts`: stable resolution, integrity, package and evaluation-boundary error codes.
@@ -20,7 +26,7 @@
 - `src/native-port/native-resource.ts`: guest-opaque cross-request resource handle identity.
 - `src/native-port/types.ts`: platform-neutral request, event, authority and credit contracts.
 - `src/streams/`: memory-only Web and Node stream state machines, explicit bare-V8 globals, capability matrix and synthetic-module registry.
-- `src/node-fs/`: virtual `mobile-fs://` authorities, the intentionally partial
+- `src/node-fs/`: virtual `holonomy-fs://` authorities, the intentionally partial
   `node:fs` facade and the conformance-only in-memory `NativePort` provider.
 - `src/storage/`: authorized binary KV, asynchronous SQLite and opaque credential-handle contracts over `NativeBridge`.
 - `src/web-network/index.ts`: fetch/WebSocket shim, network authority, versioned operations and scripted provider.
@@ -83,7 +89,7 @@
 - `host.git` composes the existing FS authority, HTTP(S) Network authority and Native Bridge; it does not own a second request lifecycle, credential store, virtual path parser or network policy.
 - Repository identity is a Bridge-issued `git.repository` opaque resource. The provider owns its repository token, Git-specific quota and read/write lock; the facade never exposes or serializes that token.
 - Provider adapters must re-authorize the injected principal/capabilities, operation, repository binding, virtual path, resolved remote/redirect and credential reference immediately before work. Guest data never carries authority or credential material.
-- V1 supports authorized repository open, bounded status, allowlisted repository config reads, redacted remote listing, and progress-bearing clone/fetch/push. Clone paths are `mobile-fs://workspace` URLs and remote transport is HTTP(S) only.
+- V1 supports authorized repository open, bounded status, allowlisted repository config reads, redacted remote listing, and progress-bearing clone/fetch/push. Clone paths are `holonomy-fs://workspace` URLs and remote transport is HTTP(S) only.
 - Native Bridge remains the owner of cancellation, monotonic deadlines, call identity, progress credit, late-event rejection, generic in-flight quota and disposal. Git providers own `maxOpenRepositories`, transfer/progress limits and shared-read/exclusive-write repository locks.
 - Errors cross the facade only as stable `git.*` codes and fixed messages. Provider/native messages, URLs, paths, remote responses and exception classes are never exposed.
 - Arbitrary shell/argv, hooks, native credential helpers, environment/home/keychain reads, raw config writes/listing, arbitrary refspecs, deletion pushes, SSH/scp/git/file transports, commit/checkout/worktrees/diff/history/submodules and native paths are explicitly unsupported.
@@ -121,7 +127,7 @@
 - Production parsing calls the lockfile-pinned Acorn parser directly. `source-analysis.ts` has one non-exported-from-package test seam solely for deterministic parser-capacity normalization; do not expose it through public loader options or package entry points.
 - Planning and engine evaluation are separate. Android/Javet/V8 consumes `ModulePlan` and the loader's require/evaluation-cache contract without reimplementing resolution.
 - Resolution and planning may await the host. Public `resolve` / `createPlan` / `load` calls enter one FIFO cache transaction; recursive resolution reuses that transaction, and failures remove only keys first published by it.
-- `MobileModuleLoaderLimits` is descriptor-snapshotted and frozen per loader. Only its six plain, own, enumerable data properties are admitted; accessors, symbols, unknown keys, exotic prototypes and exceptional proxies fail without invoking user getters.
+- `HolonomyModuleLoaderLimits` is descriptor-snapshotted and frozen per loader. Only its six plain, own, enumerable data properties are admitted; accessors, symbols, unknown keys, exotic prototypes and exceptional proxies fail without invoking user getters.
 - Source, per-plan total bytes, module/dependency count and Acorn AST node/depth budgets fail with one stable resource-exhaustion code before unsafe work continues.
 - Acorn analysis uses an iterative, quota-bounded walk with lexical scopes. Only unbound global `require` and `process` identifiers activate Node-specific admission checks.
 - `createRequire` remains synchronous by admitting only resolutions already recorded while building a plan. Synchronous require/evaluation cache access is unavailable while an async plan transaction is active, so engine code cannot observe cycle placeholders.

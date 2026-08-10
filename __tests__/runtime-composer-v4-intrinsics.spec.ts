@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { RuntimeEventLoop, createMobileRuntime } from '../src/index.js'
-import type { HostEventLoopPort, MobileRuntime, MobileRuntimeOptions, NativePort } from '../src/index.js'
+import { RuntimeEventLoop, createHolonomyRuntime } from '../src/index.js'
+import type { HolonomyRuntime, HolonomyRuntimeOptions, HostEventLoopPort, NativePort } from '../src/index.js'
 
 const host = (): HostEventLoopPort => ({ checkpointMicrotasks() {}, now: () => 0, requestWakeup() {}, terminate() {} })
 const port = (): NativePort => ({ cancel() {}, closeResource() {}, dispatch() {}, dispose() {}, grantCredits() {} })
@@ -32,7 +32,7 @@ const nodeCore = () => ({
   stdio: { write: () => true },
   virtualRoot: '/app'
 })
-const options = (): MobileRuntimeOptions => ({
+const options = (): HolonomyRuntimeOptions => ({
   authority: { capabilities: [], principal: 'principal' },
   eventLoop: new RuntimeEventLoop(host()),
   nativePort: port(),
@@ -67,7 +67,7 @@ describe('runtime composer V4 captured intrinsics', () => {
       Function.prototype.call = function(this: Function, receiver: unknown, ...args: unknown[]) {
         return Reflect.apply(call, this, [receiver, ...args])
       }
-      result = createMobileRuntime(input)
+      result = createHolonomyRuntime(input)
     } finally {
       if (authority) Object.defineProperty(Object.prototype, 'authority', authority)
       else Reflect.deleteProperty(Object.prototype, 'authority')
@@ -78,7 +78,7 @@ describe('runtime composer V4 captured intrinsics', () => {
       globalThis.String = string
       Function.prototype.call = call
     }
-    const runtime = await result as MobileRuntime
+    const runtime = await result as HolonomyRuntime
     expect(runtime.getSnapshot().disposed).toBe(false)
     await runtime.dispose()
   })
@@ -87,7 +87,7 @@ describe('runtime composer V4 captured intrinsics', () => {
     const safeInteger = Number.isSafeInteger
     const string = globalThis.String
     const index = Object.getOwnPropertyDescriptor(Array.prototype, '0')
-    const input = options() as MobileRuntimeOptions & { extra?: true }
+    const input = options() as HolonomyRuntimeOptions & { extra?: true }
     input.extra = true
     let result: Promise<unknown> | undefined
     try {
@@ -101,7 +101,7 @@ describe('runtime composer V4 captured intrinsics', () => {
       globalThis.String = (() => {
         throw new Error('raw marker')
       }) as never
-      result = createMobileRuntime(input)
+      result = createHolonomyRuntime(input)
     } finally {
       if (index) Object.defineProperty(Array.prototype, '0', index)
       else Reflect.deleteProperty(Array.prototype, '0')

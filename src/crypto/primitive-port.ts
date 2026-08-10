@@ -66,7 +66,7 @@ export class CryptoPrimitivePort {
     const state = this.#state
     if (state.providerCallActive) {
       state.providerReentryDetected = true
-      throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+      throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
     }
     if (state.disposed) return
     if ((typeof handle !== 'object' && typeof handle !== 'function') || handle === null) {
@@ -75,7 +75,7 @@ export class CryptoPrimitivePort {
     const record = weakMapGet(state.contexts, handle as object)
     if (record === undefined) return invalidArgumentType()
     if (!releaseRecord(state, record, 'released')) {
-      throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+      throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
     }
   }
 
@@ -83,7 +83,7 @@ export class CryptoPrimitivePort {
     const state = this.#state
     if (state.providerCallActive) {
       state.providerReentryDetected = true
-      throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+      throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
     }
     if (state.disposed) return
     state.disposed = true
@@ -98,6 +98,6 @@ export class CryptoPrimitivePort {
       const outcome = callProvider(state, undefined, () => state.provider.dispose())
       if (!outcome.ok || outcome.result !== undefined) failed = true
     }
-    if (failed) throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+    if (failed) throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
   }
 }

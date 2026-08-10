@@ -10,7 +10,7 @@ import {
   EventLoopOptionError,
   EventLoopReentrantTurnError,
   EventLoopWakeupError,
-  MobileRuntimeError
+  HolonomyRuntimeError
 } from './errors.js'
 import type {
   EventLoopCallback,
@@ -389,7 +389,7 @@ export class RuntimeEventLoop {
       return
     }
     this.finalizeTermination({
-      code: 'ERR_MOBILE_RUNTIME_SHUTDOWN',
+      code: 'ERR_HOLONOMY_SHUTDOWN',
       kind: 'shutdown'
     })
   }
@@ -559,18 +559,18 @@ export class RuntimeEventLoop {
       callback()
     } catch (error) {
       if (this.disposed) {
-        throw error instanceof MobileRuntimeError
+        throw error instanceof HolonomyRuntimeError
           ? error
           : new EventLoopCallbackError(error)
       }
-      if (error instanceof MobileRuntimeError) {
+      if (error instanceof HolonomyRuntimeError) {
         return this.fail(error)
       }
       return this.fail(new EventLoopCallbackError(error))
     }
   }
 
-  private fail(error: MobileRuntimeError): never {
+  private fail(error: HolonomyRuntimeError): never {
     this.finalizeTermination({ code: error.code, error, kind: 'error' })
     throw error
   }
@@ -664,7 +664,7 @@ export class RuntimeEventLoop {
   }
 
   private normalizeWakeupError(error: unknown) {
-    return error instanceof MobileRuntimeError
+    return error instanceof HolonomyRuntimeError
       ? error
       : new EventLoopWakeupError(error)
   }

@@ -26,7 +26,7 @@ const weakMapHasIntrinsic = RuntimeWeakMap.prototype.has
 const weakMapSetIntrinsic = RuntimeWeakMap.prototype.set
 
 if (setSizeGetter === undefined) {
-  throw new Error('Required mobile runtime intrinsics are unavailable')
+  throw new Error('Required Holonomy Runtime intrinsics are unavailable')
 }
 
 export const callIntrinsic = <Result>(

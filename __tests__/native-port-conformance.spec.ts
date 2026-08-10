@@ -114,7 +114,7 @@ describe('native bridge event-loop integration and hostile admission', () => {
     fatal.host.advanceTo(9)
 
     expect(() => fatal.loop.getCurrentTime()).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_CLOCK_NOT_MONOTONIC' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_CLOCK_NOT_MONOTONIC' })
     )
     await expect(pending).rejects.toMatchObject({ code: 'internal' })
     expect(fatal.port.cancellations[0]).toMatchObject({ reason: 'loop_error' })
@@ -274,7 +274,7 @@ describe('native bridge event-loop integration and hostile admission', () => {
     expect(loop.getCurrentTime()).toBe(10)
     host.advanceTo(9)
     expect(() => loop.getCurrentTime()).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_CLOCK_NOT_MONOTONIC' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_CLOCK_NOT_MONOTONIC' })
     )
     expect(loop.isDisposed).toBe(true)
   })

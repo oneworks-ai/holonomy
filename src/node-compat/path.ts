@@ -97,7 +97,7 @@ export const joinPosix = (...paths: string[]): string => {
 export const resolvePosixPath = (cwd: string, ...paths: string[]): string => {
   assertPath(cwd, 'cwd')
   if (!isAbsolutePosix(cwd)) {
-    invalidArgument('cwd', 'mobile runtime cwd must be an absolute POSIX path')
+    invalidArgument('cwd', 'Holonomy Runtime cwd must be an absolute POSIX path')
   }
   let resolved = ''
   let absolute = false

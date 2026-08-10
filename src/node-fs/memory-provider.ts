@@ -3,7 +3,7 @@
 import { authorizeFsPath, createFsAuthorityRegistry, resolveProviderAuthority } from './authority.js'
 import { FS_NATIVE_MODULE, FS_OPERATIONS } from './constants.js'
 import { fsFailure, fsSuccess } from './contract.js'
-import { createFsError, isMobileFsError } from './errors.js'
+import { createFsError, isHolonomyFsError } from './errors.js'
 import { parseOpenFlags } from './open-flags.js'
 import { formatFsPath, parseFsPath } from './path.js'
 
@@ -282,7 +282,7 @@ export class MemoryFsNativePort implements NativePort {
       }
       sink({ id: request.id, ...fsSuccess(output as never), type: 'result' })
     } catch (error) {
-      const fsError = isMobileFsError(error)
+      const fsError = isHolonomyFsError(error)
         ? error
         : createFsError('EIO')
       if (!['EACCES', 'EEXIST', 'ENOENT'].includes(fsError.code)) {
@@ -413,7 +413,7 @@ export class MemoryFsNativePort implements NativePort {
     const path = requirePath(read(args, 'path'), 'access')
     const mode = requireInteger(read(args, 'mode'), 0)
     if ((mode & ~7) !== 0 || (mode & 1) !== 0) {
-      throw createFsError('ERR_MOBILE_RUNTIME_NOT_SUPPORTED')
+      throw createFsError('ERR_HOLONOMY_NOT_SUPPORTED')
     }
     if ((mode & 4) !== 0) authorizeFsPath(authority, path, 'read', 'access')
     if ((mode & 2) !== 0) authorizeFsPath(authority, path, 'write', 'access')

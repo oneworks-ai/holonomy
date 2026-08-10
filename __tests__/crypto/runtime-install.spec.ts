@@ -41,7 +41,7 @@ describe('guarded crypto runtime installation', () => {
     })
     installed.dispose()
     expect(() => installed.createSyntheticModuleBinding()).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_CRYPTO_DISPOSED' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_CRYPTO_DISPOSED' })
     )
   })
 
@@ -56,8 +56,8 @@ describe('guarded crypto runtime installation', () => {
       }
     })
     expect(() => installCryptoRuntime({ provider })).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED',
-      message: 'The mobile runtime crypto operation failed'
+      code: 'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED',
+      message: 'The Holonomy Runtime crypto operation failed'
     }))
     expect(adapterCloses).toBe(1)
   })
@@ -73,7 +73,7 @@ describe('guarded crypto runtime installation', () => {
       digest: context => retainedHmacKey === undefined ? base.digest(context) : new Uint8Array(1)
     })
     expect(() => installCryptoRuntime({ provider })).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'
+      code: 'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'
     }))
     expect(retainedHmacKey).toEqual(new Uint8Array(20))
   })

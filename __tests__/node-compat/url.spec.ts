@@ -48,7 +48,7 @@ describe('node:url virtual file boundary', () => {
     })
     expect(custom.fileURLToPath('app://oneworks/cache/a')).toBe('/app/cache/a')
     expect(() => custom.fileURLToPath('app://runtime/cache/a')).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_INVALID_URL' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_INVALID_URL' })
     )
   })
 
@@ -64,7 +64,7 @@ describe('node:url virtual file boundary', () => {
       expect(() => url.fileURLToPath(input), input).toThrow()
     }
     expect(() => url.pathToFileURL('/app/../../etc/passwd')).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_OUT_OF_BOUNDS' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_OUT_OF_BOUNDS' })
     )
   })
 
@@ -88,7 +88,7 @@ describe('node:url virtual file boundary', () => {
       ]
     ) {
       expect(() => createUrlSyntheticModule({ appBaseUrl, virtualRoot: '/app' })).toThrowError(
-        expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_INVALID_ARGUMENT' })
+        expect.objectContaining({ code: 'ERR_HOLONOMY_INVALID_ARGUMENT' })
       )
     }
   })

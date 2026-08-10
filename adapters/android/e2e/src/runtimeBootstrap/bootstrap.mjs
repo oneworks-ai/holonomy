@@ -1,7 +1,7 @@
 /* eslint-disable max-lines -- The generated E2E bootstrap keeps its composer state and controls together. */
 
 import { RuntimeEventLoop } from './modules/event-loop/index.js'
-import { createMobileRuntime } from './modules/runtime/index.js'
+import { createHolonomyRuntime } from './modules/runtime/index.js'
 import { RuntimeTextDecoder, RuntimeURL, RuntimeURLSearchParams } from './runtime-web-standards.mjs'
 
 const host = globalThis.__oneworksAndroidHost
@@ -135,7 +135,7 @@ globalThis.__oneworksAndroidTurn = () => {
 }
 
 let runtime
-createMobileRuntime({
+createHolonomyRuntime({
   authority: { capabilities: [], principal: 'android-m2-e2e' },
   eventLoop,
   moduleLoader: { readModule: readFixture, rootUrl: 'app:///fixtures/' },
@@ -149,7 +149,7 @@ createMobileRuntime({
   state.phase = 'failed'
 })
 
-globalThis.__oneworksAndroidM2 = Object.freeze({
+globalThis.__oneworksHolonomy = Object.freeze({
   dispose() {
     state.phase = 'disposing'
     eventLoop.setTimeout(() => {

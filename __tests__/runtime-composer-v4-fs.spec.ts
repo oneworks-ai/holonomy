@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 
-import { MemoryFsNativePort, RuntimeEventLoop, createFsAuthority, createMobileRuntime } from '../src/index.js'
+import { MemoryFsNativePort, RuntimeEventLoop, createFsAuthority, createHolonomyRuntime } from '../src/index.js'
 import type { HostEventLoopPort } from '../src/index.js'
 
 const host = (): HostEventLoopPort => ({ checkpointMicrotasks() {}, now: () => 0, requestWakeup() {}, terminate() {} })
@@ -40,7 +40,7 @@ describe('runtime composer V4 node:fs synthetic module', () => {
     })
     const source = 'import fs from "node:fs"; export default fs;'
     const bytes = new TextEncoder().encode(source)
-    const runtime = await createMobileRuntime({
+    const runtime = await createHolonomyRuntime({
       authority: { capabilities: ['host.fs.v1'], principal: 'plugin' },
       eventLoop: new RuntimeEventLoop(host()),
       nativePort: new MemoryFsNativePort({ authorities: [authority] }),

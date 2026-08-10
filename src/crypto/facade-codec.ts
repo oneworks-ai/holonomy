@@ -123,13 +123,13 @@ export const copyBoundedInput = (
   if (typeof value !== 'string') {
     const snapshot = inspectBytes(value)
     if (snapshot.byteLength > maximumBytes) {
-      throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+      throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
     }
     return copyInspectedBytes(snapshot)
   }
   const normalized = normalizeInputEncoding(encoding)
   const byteLength = encodedByteLength(value, normalized)
-  if (byteLength > maximumBytes) throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+  if (byteLength > maximumBytes) throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
   if (normalized === 'utf8' || normalized === 'utf-8') return encodeCryptoUtf8(value)
   return normalized === 'hex' ? decodeHex(value, byteLength) : decodeBase64(value, byteLength)
 }
@@ -137,7 +137,7 @@ export const copyBoundedInput = (
 export const inspectBoundedBytes = (value: Uint8Array, maximumBytes: number): Uint8Array => {
   const snapshot = inspectBytes(value)
   if (snapshot.byteLength > maximumBytes) {
-    throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+    throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
   }
   return copyInspectedBytes(snapshot)
 }

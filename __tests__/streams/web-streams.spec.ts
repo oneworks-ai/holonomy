@@ -67,7 +67,7 @@ describe('pure JavaScript Web Streams subset', () => {
     })
     const reader = stream.getReader()
     await expect(stream.cancel()).rejects.toMatchObject({
-      code: 'ERR_MOBILE_STREAM_INVALID_STATE'
+      code: 'ERR_HOLONOMY_STREAM_INVALID_STATE'
     })
     await expect(reader.read()).resolves.toEqual({ done: false, value: 1 })
     await reader.cancel('done')
@@ -117,10 +117,10 @@ describe('pure JavaScript Web Streams subset', () => {
     const reader = new RuntimeReadableStreamDefaultReader(readable)
     expect(readable.locked).toBe(true)
     expect(() => readable.getReader()).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_STREAM_INVALID_STATE' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_STREAM_INVALID_STATE' })
     )
     expect(() => new RuntimeReadableStreamDefaultReader(readable)).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_STREAM_INVALID_STATE' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_STREAM_INVALID_STATE' })
     )
     reader.releaseLock()
     expect(readable.locked).toBe(false)
@@ -129,10 +129,10 @@ describe('pure JavaScript Web Streams subset', () => {
     const writer = new RuntimeWritableStreamDefaultWriter(writable)
     expect(writable.locked).toBe(true)
     expect(() => writable.getWriter()).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_STREAM_INVALID_STATE' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_STREAM_INVALID_STATE' })
     )
     expect(() => new RuntimeWritableStreamDefaultWriter(writable)).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_STREAM_INVALID_STATE' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_STREAM_INVALID_STATE' })
     )
     writer.releaseLock()
     expect(writable.locked).toBe(false)
@@ -405,10 +405,10 @@ describe('pure JavaScript Web Streams subset', () => {
     expect(reader.closed).toBe(capturedReaderClosed)
     reader.releaseLock()
     const readerRelease = await capturedReaderClosed.catch(error => error)
-    expect(readerRelease).toMatchObject({ code: 'ERR_MOBILE_STREAM_INVALID_STATE' })
+    expect(readerRelease).toMatchObject({ code: 'ERR_HOLONOMY_STREAM_INVALID_STATE' })
     await expect(reader.closed).rejects.toBe(readerRelease)
     expect(reader.closed).toBe(capturedReaderClosed)
-    await expect(reader.read()).rejects.toMatchObject({ code: 'ERR_MOBILE_STREAM_INVALID_STATE' })
+    await expect(reader.read()).rejects.toMatchObject({ code: 'ERR_HOLONOMY_STREAM_INVALID_STATE' })
 
     let readableController!: RuntimeReadableStreamDefaultController<number>
     const pendingReadable = new RuntimeReadableStream<number>({
@@ -419,7 +419,7 @@ describe('pure JavaScript Web Streams subset', () => {
     const pendingReader = pendingReadable.getReader()
     const pendingRead = pendingReader.read()
     expect(() => pendingReader.releaseLock()).toThrowError(
-      expect.objectContaining({ code: 'ERR_MOBILE_STREAM_INVALID_STATE' })
+      expect.objectContaining({ code: 'ERR_HOLONOMY_STREAM_INVALID_STATE' })
     )
     expect(pendingReadable.locked).toBe(true)
     readableController.enqueue(1)
@@ -449,7 +449,7 @@ describe('pure JavaScript Web Streams subset', () => {
     await expect(writer.ready).rejects.toBe(closedRelease)
     expect(writer.closed).toBe(capturedClosed)
     expect(writer.ready).toBe(capturedReady)
-    await expect(writer.write(2)).rejects.toMatchObject({ code: 'ERR_MOBILE_STREAM_INVALID_STATE' })
+    await expect(writer.write(2)).rejects.toMatchObject({ code: 'ERR_HOLONOMY_STREAM_INVALID_STATE' })
     finishWrite()
     await expect(pendingWrite).resolves.toBeUndefined()
     expect(writable.locked).toBe(false)

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "ai.oneworks.mobile.runtime.v8"
+    namespace = "ai.oneworks.holonomy.v8"
     compileSdk = 35
 
     defaultConfig {

@@ -18,7 +18,7 @@ export type FsErrorCode =
   | 'ENOTDIR'
   | 'ENOTEMPTY'
   | 'EPERM'
-  | 'ERR_MOBILE_RUNTIME_NOT_SUPPORTED'
+  | 'ERR_HOLONOMY_NOT_SUPPORTED'
   | 'ETIMEDOUT'
   | 'EXDEV'
 

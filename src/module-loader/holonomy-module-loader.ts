@@ -1,14 +1,14 @@
 /* eslint-disable max-lines -- the loader keeps resolution and its caches under one state owner. */
-import { MobileModuleLoaderError, RequireEsmError } from './errors.js'
+import { HolonomyModuleLoaderError, RequireEsmError } from './errors.js'
 import { sha256Hex } from './sha256.js'
 import { analyzeModuleSource } from './source-analysis.js'
-import { DEFAULT_MOBILE_MODULE_LOADER_LIMITS } from './types.js'
+import { DEFAULT_HOLONOMY_MODULE_LOADER_LIMITS } from './types.js'
 import type {
   CreateModulePlanOptions,
+  HolonomyModuleLoaderLimits,
+  HolonomyModuleLoaderOptions,
   HostModuleLoaderPort,
   HostModuleReadContext,
-  MobileModuleLoaderLimits,
-  MobileModuleLoaderOptions,
   ModuleDependency,
   ModuleDependencyInterop,
   ModuleEvaluationCacheEntry,
@@ -49,7 +49,7 @@ const LIMIT_KEYS = [
   'maxModules',
   'maxSourceBytes',
   'maxTotalSourceBytesPerPlan'
-] as const satisfies readonly (keyof MobileModuleLoaderLimits)[]
+] as const satisfies readonly (keyof HolonomyModuleLoaderLimits)[]
 const LIMIT_KEY_SET = new Set<string>(LIMIT_KEYS)
 
 interface VerifiedSource {
@@ -102,23 +102,23 @@ const normalizeDigest = (value: string) => {
 const unique = <T>(values: readonly T[]) => [...new Set(values)]
 
 const invalidLimits = () =>
-  new MobileModuleLoaderError(
-    'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED',
-    'Mobile module limits must be a plain object containing only enumerable data properties'
+  new HolonomyModuleLoaderError(
+    'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED',
+    'Holonomy module limits must be a plain object containing only enumerable data properties'
   )
 
 const snapshotLimits = (
-  value: Partial<MobileModuleLoaderLimits> | undefined
-): Readonly<MobileModuleLoaderLimits> => {
+  value: Partial<HolonomyModuleLoaderLimits> | undefined
+): Readonly<HolonomyModuleLoaderLimits> => {
   let descriptors: PropertyDescriptorMap
   try {
     if (value == null || typeof value !== 'object' || Object.getPrototypeOf(value) !== Object.prototype) {
-      if (value === undefined) return DEFAULT_MOBILE_MODULE_LOADER_LIMITS
+      if (value === undefined) return DEFAULT_HOLONOMY_MODULE_LOADER_LIMITS
       throw invalidLimits()
     }
     descriptors = Object.getOwnPropertyDescriptors(value)
   } catch (error) {
-    if (error instanceof MobileModuleLoaderError) throw error
+    if (error instanceof HolonomyModuleLoaderError) throw error
     throw invalidLimits()
   }
 
@@ -132,10 +132,10 @@ const snapshotLimits = (
 
   const resolved = Object.fromEntries(LIMIT_KEYS.map((key) => {
     const descriptor = descriptors[key]
-    const limit = descriptor == null ? DEFAULT_MOBILE_MODULE_LOADER_LIMITS[key] : descriptor.value
+    const limit = descriptor == null ? DEFAULT_HOLONOMY_MODULE_LOADER_LIMITS[key] : descriptor.value
     if (!Number.isSafeInteger(limit) || limit <= 0) throw invalidLimits()
     return [key, limit]
-  })) as unknown as MobileModuleLoaderLimits
+  })) as unknown as HolonomyModuleLoaderLimits
   return Object.freeze(resolved)
 }
 
@@ -266,8 +266,8 @@ const selectConditionalTarget = (
   return undefined
 }
 
-export class MobileModuleLoader {
-  readonly limits: Readonly<MobileModuleLoaderLimits>
+export class HolonomyModuleLoader {
+  readonly limits: Readonly<HolonomyModuleLoaderLimits>
   readonly rootUrl: string
 
   private readonly allowJsonModules: boolean
@@ -287,7 +287,7 @@ export class MobileModuleLoader {
   private readonly reentrantHostErrors = new WeakSet<object>()
   private transactionTail: Promise<void> = Promise.resolve()
 
-  constructor(port: HostModuleLoaderPort, options: MobileModuleLoaderOptions) {
+  constructor(port: HostModuleLoaderPort, options: HolonomyModuleLoaderOptions) {
     this.port = port
     this.rootUrl = this.normalizeRootUrl(options.rootUrl)
     this.allowJsonModules = options.allowJsonModules === true
@@ -308,8 +308,8 @@ export class MobileModuleLoader {
       const canonicalUrl = this.canonicalizeAppUrl(url, this.rootUrl, false)
       const normalizedDigest = normalizeDigest(digest)
       if (normalizedDigest == null) {
-        throw new MobileModuleLoaderError(
-          'ERR_MOBILE_MODULE_INTEGRITY',
+        throw new HolonomyModuleLoaderError(
+          'ERR_HOLONOMY_MODULE_INTEGRITY',
           `Invalid trusted SHA-256 digest for ${canonicalUrl}`,
           { url: canonicalUrl }
         )
@@ -341,8 +341,8 @@ export class MobileModuleLoader {
     transaction: LoaderTransaction
   ): Promise<string> {
     if (specifier === '' || specifier.trim() !== specifier || specifier.includes('\0')) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_URL',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_URL',
         `Invalid module specifier: ${JSON.stringify(specifier)}`,
         { specifier }
       )
@@ -357,9 +357,9 @@ export class MobileModuleLoader {
       return this.publishResolution(transaction, resolutionKey, resolvedUrl)
     }
     if (SCHEME.test(specifier) && !specifier.startsWith('app:')) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_UNSUPPORTED_SCHEME',
-        `Unsupported mobile module URL scheme in ${specifier}`,
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_UNSUPPORTED_SCHEME',
+        `Unsupported Holonomy module URL scheme in ${specifier}`,
         { specifier }
       )
     }
@@ -379,8 +379,8 @@ export class MobileModuleLoader {
       specifier === '' || specifier.includes('\0') || specifier.includes('\\') ||
       (!specifier.startsWith('.') && !specifier.startsWith('/') && !specifier.startsWith('app:'))
     ) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_URL',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_URL',
         `Resource URL must be app-root-relative or module-relative: ${specifier}`,
         { specifier }
       )
@@ -500,23 +500,23 @@ export class MobileModuleLoader {
     try {
       root = new URL(value)
     } catch {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_URL',
-        `Invalid mobile module root URL: ${value}`,
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_URL',
+        `Invalid Holonomy module root URL: ${value}`,
         { diagnosticCode: 'INVALID_URL', url: value }
       )
     }
     if (root.protocol !== 'app:') {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_UNSUPPORTED_SCHEME',
-        `Mobile module root must use app:, received ${root.protocol}`,
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_UNSUPPORTED_SCHEME',
+        `Holonomy module root must use app:, received ${root.protocol}`,
         { url: value }
       )
     }
     if (root.search !== '' || root.hash !== '') {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_URL',
-        'Mobile module root cannot include a query or fragment',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_URL',
+        'Holonomy module root cannot include a query or fragment',
         { url: value }
       )
     }
@@ -532,8 +532,8 @@ export class MobileModuleLoader {
 
   private canonicalizeAppUrl(value: string, parentUrl: string, allowFragment: boolean) {
     if (value.includes('\\') || value.includes('\0')) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_URL',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_URL',
         `Invalid app URL: ${value}`,
         { url: value }
       )
@@ -542,22 +542,22 @@ export class MobileModuleLoader {
     try {
       url = new URL(value, parentUrl)
     } catch {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_URL',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_URL',
         `Invalid app URL: ${value}`,
         { diagnosticCode: 'INVALID_URL', url: value }
       )
     }
     if (url.protocol !== 'app:') {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_UNSUPPORTED_SCHEME',
-        `Unsupported mobile module URL scheme: ${url.protocol}`,
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_UNSUPPORTED_SCHEME',
+        `Unsupported Holonomy module URL scheme: ${url.protocol}`,
         { url: value }
       )
     }
     if (!allowFragment && url.hash !== '') {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_URL',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_URL',
         'Module URLs cannot include fragments',
         { url: url.toString() }
       )
@@ -565,8 +565,8 @@ export class MobileModuleLoader {
     this.assertSafeEncodedPath(url, value)
     const root = new URL(this.rootUrl)
     if (url.host !== root.host || !url.pathname.startsWith(root.pathname)) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_PATH_ESCAPE',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_PATH_ESCAPE',
         `Module URL escapes the app root: ${url.toString()}`,
         { url: url.toString() }
       )
@@ -576,8 +576,8 @@ export class MobileModuleLoader {
 
   private assertSafeEncodedPath(url: URL, original: string) {
     if (/%(?:00|2f|5c)/iu.test(url.pathname)) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_URL',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_URL',
         `Encoded separator or NUL is not allowed in app URLs: ${original}`,
         { url: original }
       )
@@ -586,8 +586,8 @@ export class MobileModuleLoader {
       const decoded = decodeURIComponent(url.pathname)
       if (decoded.includes('\\') || decoded.includes('\0')) throw new Error('unsafe path')
     } catch {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_URL',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_URL',
         `Invalid encoded app URL path: ${original}`,
         { diagnosticCode: 'INVALID_URL', url: original }
       )
@@ -599,8 +599,8 @@ export class MobileModuleLoader {
       specifier.includes('?') || specifier.includes('#') || specifier === 'node:' ||
       this.port.syntheticNodeModules[specifier] == null
     ) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_SYNTHETIC_NOT_FOUND',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_SYNTHETIC_NOT_FOUND',
         `Synthetic module is not declared by the host: ${specifier}`,
         { specifier }
       )
@@ -629,9 +629,9 @@ export class MobileModuleLoader {
     for (const candidate of unique(candidates)) {
       if (await this.readVerifiedSource(candidate, transaction) != null) return candidate
     }
-    throw new MobileModuleLoaderError(
-      'ERR_MOBILE_MODULE_NOT_FOUND',
-      `Cannot find mobile module ${url}`,
+    throw new HolonomyModuleLoaderError(
+      'ERR_HOLONOMY_MODULE_NOT_FOUND',
+      `Cannot find Holonomy module ${url}`,
       { url }
     )
   }
@@ -644,8 +644,8 @@ export class MobileModuleLoader {
   ) {
     const parsed = splitPackageSpecifier(specifier)
     if (parsed == null) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_NOT_FOUND',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_NOT_FOUND',
         `Invalid or unsupported bare package specifier: ${specifier}`,
         { specifier }
       )
@@ -664,8 +664,8 @@ export class MobileModuleLoader {
       if (!parent.pathname.startsWith(root.pathname) || parent.pathname === searchDirectory.pathname) break
       searchDirectory = parent
     }
-    throw new MobileModuleLoaderError(
-      'ERR_MOBILE_MODULE_NOT_FOUND',
+    throw new HolonomyModuleLoaderError(
+      'ERR_HOLONOMY_MODULE_NOT_FOUND',
       `Cannot find package ${parsed.packageName} from ${parentUrl}`,
       { specifier }
     )
@@ -675,8 +675,8 @@ export class MobileModuleLoader {
     const cached = this.packageCache.get(rootUrl)
     if (cached != null) return cached
     if (cached === null) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_PACKAGE_CONFIG',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_PACKAGE_CONFIG',
         `Invalid cached package configuration at ${rootUrl}`,
         { url: rootUrl }
       )
@@ -685,8 +685,8 @@ export class MobileModuleLoader {
     const source = await this.readVerifiedSource(packageJsonUrl, transaction)
     if (source == null) {
       this.publishPackage(transaction, rootUrl, null)
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_PACKAGE_CONFIG',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_PACKAGE_CONFIG',
         `Missing package.json at ${packageJsonUrl}`,
         { url: packageJsonUrl }
       )
@@ -706,8 +706,8 @@ export class MobileModuleLoader {
       return parsed
     } catch {
       this.publishPackage(transaction, rootUrl, null)
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_PACKAGE_CONFIG',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_PACKAGE_CONFIG',
         `Invalid package.json at ${packageJsonUrl}`,
         { diagnosticCode: 'INVALID_PACKAGE_JSON', url: packageJsonUrl }
       )
@@ -733,7 +733,7 @@ export class MobileModuleLoader {
           selected.pattern
         )
       if (target == null) {
-        throw new MobileModuleLoaderError(
+        throw new HolonomyModuleLoaderError(
           'ERR_PACKAGE_PATH_NOT_EXPORTED',
           `Package subpath ${exportKey} is not exported by ${rootUrl}`,
           { specifier, url: rootUrl }
@@ -749,16 +749,16 @@ export class MobileModuleLoader {
       target ??= './index.js'
     }
     if (!target.startsWith('./') || target.includes('\0') || target.includes('\\')) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INVALID_PACKAGE_CONFIG',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INVALID_PACKAGE_CONFIG',
         `Package export target must be package-relative: ${String(target)}`,
         { specifier, url: rootUrl }
       )
     }
     const resolved = this.canonicalizeAppUrl(target, rootUrl, false)
     if (!resolved.startsWith(rootUrl)) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_PATH_ESCAPE',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_PATH_ESCAPE',
         `Package export escapes package root: ${target}`,
         { specifier, url: resolved }
       )
@@ -782,8 +782,8 @@ export class MobileModuleLoader {
       return null
     }
     if (!(hostSource.bytes instanceof Uint8Array) || typeof hostSource.sha256 !== 'string') {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_SOURCE_INVALID',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_SOURCE_INVALID',
         'Host module source must contain canonical bytes and a SHA-256 digest',
         { diagnosticCode: 'INVALID_SOURCE_BYTES', url }
       )
@@ -794,8 +794,8 @@ export class MobileModuleLoader {
     const claimedDigest = normalizeDigest(hostSource.sha256)
     const expectedDigest = this.expectedIntegrity.get(url)
     if (claimedDigest == null || digest !== claimedDigest || (expectedDigest != null && digest !== expectedDigest)) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_INTEGRITY',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_INTEGRITY',
         `SHA-256 integrity verification failed for ${url}`,
         { url }
       )
@@ -804,8 +804,8 @@ export class MobileModuleLoader {
     try {
       source = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
     } catch {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_SOURCE_INVALID',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_SOURCE_INVALID',
         `Module source is not valid UTF-8: ${url}`,
         { diagnosticCode: 'INVALID_SOURCE_BYTES', url }
       )
@@ -835,23 +835,23 @@ export class MobileModuleLoader {
   private assertSupportedModuleExtension(url: string) {
     const extension = pathExtension(url)
     if (extension === '.node') {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_NATIVE_ADDON_UNSUPPORTED',
-        `Native addons are not supported by the mobile runtime: ${url}`,
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_NATIVE_ADDON_UNSUPPORTED',
+        `Native addons are not supported by the Holonomy Runtime: ${url}`,
         { url }
       )
     }
     if (extension === '.json' && !this.allowJsonModules) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_JSON_UNSUPPORTED',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_JSON_UNSUPPORTED',
         `JSON modules are disabled: ${url}`,
         { url }
       )
     }
     if (!['.cjs', '.js', '.mjs', ...(this.allowJsonModules ? ['.json'] : [])].includes(extension)) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_FORMAT_UNSUPPORTED',
-        `Unsupported mobile module format: ${extension === '' ? '<none>' : extension}`,
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_FORMAT_UNSUPPORTED',
+        `Unsupported Holonomy module format: ${extension === '' ? '<none>' : extension}`,
         { url }
       )
     }
@@ -911,9 +911,9 @@ export class MobileModuleLoader {
     }
     const source = await this.readVerifiedSource(url, transaction)
     if (source == null) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_NOT_FOUND',
-        `Cannot load mobile module ${url}`,
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_NOT_FOUND',
+        `Cannot load Holonomy module ${url}`,
         { url }
       )
     }
@@ -922,8 +922,8 @@ export class MobileModuleLoader {
       try {
         JSON.parse(source.source)
       } catch {
-        throw new MobileModuleLoaderError(
-          'ERR_MOBILE_MODULE_SOURCE_INVALID',
+        throw new HolonomyModuleLoaderError(
+          'ERR_HOLONOMY_MODULE_SOURCE_INVALID',
           `Invalid JSON module ${url}`,
           { diagnosticCode: 'INVALID_SOURCE_SYNTAX', url }
         )
@@ -934,9 +934,9 @@ export class MobileModuleLoader {
       throw this.resourceExhausted('module dependencies', url)
     }
     if (analysis.usesDlopen) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_NATIVE_ADDON_UNSUPPORTED',
-        `process.dlopen is not supported by the mobile runtime: ${url}`,
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_NATIVE_ADDON_UNSUPPORTED',
+        `process.dlopen is not supported by the Holonomy Runtime: ${url}`,
         { url }
       )
     }
@@ -952,15 +952,15 @@ export class MobileModuleLoader {
 
     for (const dependency of analysis.dependencies) {
       if (dependency.kind === 'require' && dependency.specifier == null) {
-        throw new MobileModuleLoaderError(
-          'ERR_MOBILE_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED',
+        throw new HolonomyModuleLoaderError(
+          'ERR_HOLONOMY_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED',
           `Dynamic require() is not supported in ${url}`,
           { url }
         )
       }
       if (dependency.kind === 'require-resolve' && dependency.specifier == null) {
-        throw new MobileModuleLoaderError(
-          'ERR_MOBILE_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED',
+        throw new HolonomyModuleLoaderError(
+          'ERR_HOLONOMY_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED',
           `Dynamic require.resolve() is not supported in ${url}`,
           { url }
         )
@@ -1093,16 +1093,16 @@ export class MobileModuleLoader {
   }
 
   private resourceExhausted(resource: string, url?: string) {
-    return new MobileModuleLoaderError(
-      'ERR_MOBILE_MODULE_RESOURCE_EXHAUSTED',
-      `Mobile module resource limit exceeded: ${resource}`,
+    return new HolonomyModuleLoaderError(
+      'ERR_HOLONOMY_MODULE_RESOURCE_EXHAUSTED',
+      `Holonomy module resource limit exceeded: ${resource}`,
       { url }
     )
   }
 
   private createReentrantHostError() {
-    const error = new MobileModuleLoaderError(
-      'ERR_MOBILE_MODULE_REENTRANT_HOST_CALL',
+    const error = new HolonomyModuleLoaderError(
+      'ERR_HOLONOMY_MODULE_REENTRANT_HOST_CALL',
       'HostModuleLoaderPort cannot reenter public module-loader APIs while reading a module'
     )
     this.reentrantHostErrors.add(error)
@@ -1122,9 +1122,9 @@ export class MobileModuleLoader {
     if (error != null && typeof error === 'object' && this.reentrantHostErrors.has(error)) {
       throw error
     }
-    throw new MobileModuleLoaderError(
-      'ERR_MOBILE_MODULE_HOST_READ_FAILED',
-      'The mobile module host could not read a requested module',
+    throw new HolonomyModuleLoaderError(
+      'ERR_HOLONOMY_MODULE_HOST_READ_FAILED',
+      'The Holonomy module host could not read a requested module',
       { diagnosticCode: 'HOST_READ_FAILED', url }
     )
   }
@@ -1132,8 +1132,8 @@ export class MobileModuleLoader {
   private assertSynchronousCacheAccess() {
     this.assertPublicAdmissionAllowed()
     if (this.activeTransaction == null) return
-    throw new MobileModuleLoaderError(
-      'ERR_MOBILE_MODULE_TRANSACTION_ACTIVE',
+    throw new HolonomyModuleLoaderError(
+      'ERR_HOLONOMY_MODULE_TRANSACTION_ACTIVE',
       'Synchronous module cache access is unavailable while a plan transaction is active'
     )
   }
@@ -1158,8 +1158,8 @@ export class MobileModuleLoader {
 
   private snapshotModule(module: MutablePlannedModule | undefined): PlannedModule {
     if (module == null) {
-      throw new MobileModuleLoaderError(
-        'ERR_MOBILE_MODULE_NOT_FOUND',
+      throw new HolonomyModuleLoaderError(
+        'ERR_HOLONOMY_MODULE_NOT_FOUND',
         'Module is not present in the loader cache'
       )
     }
@@ -1186,8 +1186,8 @@ export class MobileModuleLoader {
   private resolvePlanned(specifier: string, parentUrl: string, mode: ModuleResolutionMode) {
     const resolved = this.resolutionCache.get(this.resolutionKey(parentUrl, mode, specifier))
     if (resolved != null) return resolved
-    throw new MobileModuleLoaderError(
-      'ERR_MOBILE_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED',
+    throw new HolonomyModuleLoaderError(
+      'ERR_HOLONOMY_MODULE_DYNAMIC_REQUIRE_UNSUPPORTED',
       'CommonJS require requests must be admitted while building the module plan',
       { specifier, url: parentUrl }
     )
@@ -1196,8 +1196,8 @@ export class MobileModuleLoader {
   private cachedModule(url: string) {
     const module = this.moduleCache.get(url)
     if (module != null) return module
-    throw new MobileModuleLoaderError(
-      'ERR_MOBILE_MODULE_NOT_FOUND',
+    throw new HolonomyModuleLoaderError(
+      'ERR_HOLONOMY_MODULE_NOT_FOUND',
       'Module is not present in the completed module plan',
       { url }
     )

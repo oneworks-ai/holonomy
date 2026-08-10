@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-describe('mobile runtime bare V8-compatible import', () => {
+describe('holonomy runtime bare V8-compatible import', () => {
   it('does not read AbortSignal or EventTarget while evaluating the root module', async () => {
     const abortSignal = Object.getOwnPropertyDescriptor(globalThis, 'AbortSignal')
     const eventTarget = Object.getOwnPropertyDescriptor(globalThis, 'EventTarget')

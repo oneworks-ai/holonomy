@@ -26,7 +26,7 @@ export const digestContext = (
   )
   if (!releaseRecord(state, record, 'finalized')) {
     zeroBytes(output)
-    throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+    throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
   }
   return output
 }
@@ -53,7 +53,7 @@ const inspectFinalResult = (
       ])
     return { record, snapshot }
   } catch {
-    return terminalFailure(state, record, cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'))
+    return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
   }
 }
 
@@ -65,7 +65,7 @@ export const finalContext = (
   if (record.kind === 'decipher') {
     if (typeof snapshot.authenticated !== 'boolean') {
       zeroBytes(snapshot.output, state.limits.maxInFlightContextBytes)
-      return terminalFailure(state, record, cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'))
+      return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
     }
     if (!snapshot.authenticated) {
       zeroBytes(snapshot.output, state.limits.maxInFlightContextBytes)
@@ -79,7 +79,7 @@ export const finalContext = (
     )
     if (!releaseRecord(state, record, 'finalized')) {
       zeroBytes(output)
-      throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+      throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
     }
     return freeze({ output })
   }
@@ -104,7 +104,7 @@ export const finalContext = (
   if (!releaseRecord(state, record, 'finalized')) {
     zeroBytes(output)
     zeroBytes(authTag)
-    throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+    throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
   }
   return freeze({ authTag, output })
 }

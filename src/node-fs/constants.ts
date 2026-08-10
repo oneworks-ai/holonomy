@@ -1,7 +1,7 @@
 export const FS_NATIVE_MODULE = 'host.fs'
 export const FS_OPERATION_VERSION = 1
 export const FS_REQUIRED_CAPABILITY = 'host.fs.v1'
-export const FS_VIRTUAL_SCHEME = 'mobile-fs'
+export const FS_VIRTUAL_SCHEME = 'holonomy-fs'
 
 export const FS_ROOT_AUTHORITIES = Object.freeze(
   [

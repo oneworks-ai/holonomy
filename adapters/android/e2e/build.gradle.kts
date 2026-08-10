@@ -48,11 +48,11 @@ val prepareRuntimeAssets by tasks.registering(Exec::class) {
 }
 
 android {
-    namespace = "ai.oneworks.mobile.runtime.e2e"
+    namespace = "ai.oneworks.holonomy.e2e"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "ai.oneworks.mobile.runtime.e2e"
+        applicationId = "ai.oneworks.holonomy.e2e"
         minSdk = 29
         targetSdk = 35
         versionCode = 1

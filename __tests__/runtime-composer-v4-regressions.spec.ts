@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { RuntimeComposerError, RuntimeEventLoop, createMobileRuntime } from '../src/index.js'
-import type { HostEventLoopPort, MobileRuntimeOptions, NativePort } from '../src/index.js'
+import { RuntimeComposerError, RuntimeEventLoop, createHolonomyRuntime } from '../src/index.js'
+import type { HolonomyRuntimeOptions, HostEventLoopPort, NativePort } from '../src/index.js'
 
 const host = (): HostEventLoopPort => ({ checkpointMicrotasks() {}, now: () => 0, requestWakeup() {}, terminate() {} })
 const port = (): NativePort => ({ cancel() {}, closeResource() {}, dispatch() {}, dispose() {}, grantCredits() {} })
@@ -32,7 +32,7 @@ const nodeCore = () => ({
   stdio: { write: () => true },
   virtualRoot: '/app'
 })
-const base = (): MobileRuntimeOptions => ({
+const base = (): HolonomyRuntimeOptions => ({
   authority: { capabilities: ['host.network.http'], principal: 'principal' },
   eventLoop: new RuntimeEventLoop(host()),
   nativePort: port(),
@@ -45,7 +45,7 @@ describe('runtime composer V4 remaining regressions', () => {
     const options = base()
     const origins = Array.from<string>({ length: 1 })
     ;(options as { network?: unknown }).network = { authority: { allowedOrigins: origins }, principal: 'principal' }
-    await expect(createMobileRuntime(options)).rejects.toMatchObject({ code: invalid })
+    await expect(createHolonomyRuntime(options)).rejects.toMatchObject({ code: invalid })
   })
 
   it('rejects accessor NetworkAuthority origins without invoking it', async () => {
@@ -60,7 +60,7 @@ describe('runtime composer V4 remaining regressions', () => {
       }
     })
     ;(options as { network?: unknown }).network = { authority, principal: 'principal' }
-    await expect(createMobileRuntime(options)).rejects.toMatchObject({ code: invalid })
+    await expect(createHolonomyRuntime(options)).rejects.toMatchObject({ code: invalid })
     expect(reads).toBe(0)
   })
 
@@ -81,9 +81,9 @@ describe('runtime composer V4 remaining regressions', () => {
       }
       const forged = new RuntimeComposerError(invalid)
       expect(forged.code).toBe(invalid)
-      const options = base() as MobileRuntimeOptions & { extra?: boolean }
+      const options = base() as HolonomyRuntimeOptions & { extra?: boolean }
       options.extra = true
-      result = createMobileRuntime(options)
+      result = createHolonomyRuntime(options)
     } finally {
       WeakSet.prototype.add = add
       WeakSet.prototype.has = has

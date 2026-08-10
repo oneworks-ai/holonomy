@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { RuntimeEventLoop, createMobileRuntime } from '../src/index.js'
+import { RuntimeEventLoop, createHolonomyRuntime } from '../src/index.js'
 import type { HostEventLoopPort, NativeCallToken, NativePort } from '../src/index.js'
 import { setRuntimeComposerFactoriesForTest } from '../src/runtime/factories.js'
 import type { RuntimeComposerFactories } from '../src/runtime/factories.js'
@@ -62,7 +62,7 @@ describe('runtime composer V4 pending bridge disposal', () => {
     }
     process.on('unhandledRejection', onUnhandled)
     try {
-      const creation = createMobileRuntime({
+      const creation = createHolonomyRuntime({
         authority: {
           capabilities: ['host.fs.v1', 'http.server', 'host.network.http', 'host.git.v1'],
           principal: 'principal'
@@ -112,7 +112,7 @@ describe('runtime composer V4 pending bridge disposal', () => {
       grantCredits() {}
     }
     const loop = new RuntimeEventLoop(host())
-    const runtime = await createMobileRuntime({
+    const runtime = await createHolonomyRuntime({
       authority: { capabilities: [], principal: 'principal' },
       eventLoop: loop,
       nativePort,

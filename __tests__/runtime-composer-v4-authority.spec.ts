@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { RuntimeEventLoop, createMobileRuntime } from '../src/index.js'
-import type { HostEventLoopPort, MobileRuntimeOptions, NativePort } from '../src/index.js'
+import { RuntimeEventLoop, createHolonomyRuntime } from '../src/index.js'
+import type { HolonomyRuntimeOptions, HostEventLoopPort, NativePort } from '../src/index.js'
 import { gitAuthorityInput } from './git-fixture.js'
 
 const host = (): HostEventLoopPort => ({ checkpointMicrotasks() {}, now: () => 0, requestWakeup() {}, terminate() {} })
@@ -31,15 +31,15 @@ const nodeCore = () => ({
   stdio: { write: () => true },
   virtualRoot: '/app'
 })
-const compose = (authority: MobileRuntimeOptions['authority'], extras: Record<string, unknown>) =>
-  createMobileRuntime(
+const compose = (authority: HolonomyRuntimeOptions['authority'], extras: Record<string, unknown>) =>
+  createHolonomyRuntime(
     {
       authority,
       eventLoop: new RuntimeEventLoop(host()),
       nativePort: port(),
       nodeCore: nodeCore(),
       ...extras
-    } as MobileRuntimeOptions
+    } as HolonomyRuntimeOptions
   )
 const storage = () => ({
   capabilities: ['host.storage.v1'],

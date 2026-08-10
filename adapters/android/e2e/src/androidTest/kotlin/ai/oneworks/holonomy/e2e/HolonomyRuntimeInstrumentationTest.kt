@@ -1,15 +1,15 @@
-package ai.oneworks.mobile.runtime.e2e
+package ai.oneworks.holonomy.e2e
 
 import android.content.res.AssetManager
 import android.os.Build
 import android.os.SystemClock
-import ai.oneworks.mobile.runtime.host.FailClosedRuntimeNativeHost
-import ai.oneworks.mobile.runtime.host.RuntimeEngineErrorCode
-import ai.oneworks.mobile.runtime.host.RuntimeEngineException
-import ai.oneworks.mobile.runtime.host.RuntimeEvaluation
-import ai.oneworks.mobile.runtime.host.RuntimeImplementationStage
-import ai.oneworks.mobile.runtime.host.RuntimeMicrotaskMode
-import ai.oneworks.mobile.runtime.v8.RuntimeEngineFactory
+import ai.oneworks.holonomy.host.FailClosedRuntimeNativeHost
+import ai.oneworks.holonomy.host.RuntimeEngineErrorCode
+import ai.oneworks.holonomy.host.RuntimeEngineException
+import ai.oneworks.holonomy.host.RuntimeEvaluation
+import ai.oneworks.holonomy.host.RuntimeImplementationStage
+import ai.oneworks.holonomy.host.RuntimeMicrotaskMode
+import ai.oneworks.holonomy.v8.RuntimeEngineFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.util.concurrent.ExecutionException
@@ -26,7 +26,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class AndroidM2RuntimeInstrumentationTest {
+class HolonomyRuntimeInstrumentationTest {
     @Test
     fun testActualComposerInventoryPlanningEventLoopNativeTerminationAndDisposal() {
         val nativeHost = FailClosedRuntimeNativeHost()
@@ -71,7 +71,7 @@ class AndroidM2RuntimeInstrumentationTest {
                 assertEquals("undefined", rawHost.getString(key))
             }
 
-            engine.evaluate("__oneworksAndroidM2.exercisePlan()").get(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            engine.evaluate("__oneworksHolonomy.exercisePlan()").get(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             state = awaitState(engine, "module plan") { it.optJSONObject("plan")?.optString("phase") == "planned" }
             val plan = state.getJSONObject("plan")
             assertEquals("planned", plan.getString("phase"))
@@ -79,7 +79,7 @@ class AndroidM2RuntimeInstrumentationTest {
             assertTrue(modules.toString().contains("node:path"))
             assertTrue(modules.toString().contains("synthetic"))
 
-            engine.evaluate("__oneworksAndroidM2.exerciseEventLoop()")
+            engine.evaluate("__oneworksHolonomy.exerciseEventLoop()")
                 .get(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             state = awaitState(engine, "host-driven event loop") {
                 it.optJSONArray("eventOrder")?.length() == 3
@@ -87,7 +87,7 @@ class AndroidM2RuntimeInstrumentationTest {
             assertEquals("[\"macrotask\",\"promise\",\"timer\"]", state.getJSONArray("eventOrder").toString())
             assertEquals("[\"macrotask\",\"timer\"]", state.getJSONArray("turnKinds").toString())
 
-            engine.evaluate("__oneworksAndroidM2.exerciseWakeupRearm()")
+            engine.evaluate("__oneworksHolonomy.exerciseWakeupRearm()")
                 .get(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             state = awaitState(engine, "cancelled and rearmed wakeups") {
                 it.optJSONArray("wakeupOrder")?.length() == 2
@@ -95,7 +95,7 @@ class AndroidM2RuntimeInstrumentationTest {
             assertEquals("[\"early\",\"late\"]", state.getJSONArray("wakeupOrder").toString())
 
             val nativeAdmission = jsonEvaluation(
-                engine.evaluate("__oneworksAndroidM2.exerciseNativeCompletion()")
+                engine.evaluate("__oneworksHolonomy.exerciseNativeCompletion()")
                     .get(TIMEOUT_SECONDS, TimeUnit.SECONDS),
             )
             assertEquals(1, nativeAdmission.getInt("beforeTurn"))
@@ -118,13 +118,13 @@ class AndroidM2RuntimeInstrumentationTest {
             engine.start().get(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             assertEquals("ready", inspect(engine).getString("phase"))
 
-            engine.evaluate("__oneworksAndroidM2.exerciseFatalTermination()")
+            engine.evaluate("__oneworksHolonomy.exerciseFatalTermination()")
                 .get(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             SystemClock.sleep(FATAL_UNWIND_WAIT_MS)
             engine.start().get(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             assertEquals("ready", inspect(engine).getString("phase"))
 
-            engine.evaluate("__oneworksAndroidM2.dispose()")
+            engine.evaluate("__oneworksHolonomy.dispose()")
                 .get(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             state = awaitState(engine, "composer disposal") { it.optString("phase") == "disposed" }
             assertEquals("disposed", state.getString("phase"))
@@ -155,14 +155,14 @@ class AndroidM2RuntimeInstrumentationTest {
         }
     }
 
-    private fun inspect(engine: ai.oneworks.mobile.runtime.host.RuntimeEngine): JSONObject =
+    private fun inspect(engine: ai.oneworks.holonomy.host.RuntimeEngine): JSONObject =
         jsonEvaluation(
-            engine.evaluate("__oneworksAndroidM2.inspect()")
+            engine.evaluate("__oneworksHolonomy.inspect()")
                 .get(TIMEOUT_SECONDS, TimeUnit.SECONDS),
         )
 
     private fun awaitState(
-        engine: ai.oneworks.mobile.runtime.host.RuntimeEngine,
+        engine: ai.oneworks.holonomy.host.RuntimeEngine,
         description: String,
         predicate: (JSONObject) -> Boolean,
     ): JSONObject {

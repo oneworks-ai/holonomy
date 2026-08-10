@@ -9,7 +9,7 @@ export const randomBytes = (state: PrimitivePortState, size: number): Uint8Array
   if (typeof size !== 'number') return invalidArgumentType()
   if (!Number.isSafeInteger(size) || size < 0) return outOfRange()
   if (size > state.limits.maxRandomBytesPerCall) {
-    throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+    throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
   }
   reserveTransient(state, size)
   let providerOutput: Uint8Array | undefined
@@ -35,7 +35,7 @@ export const randomBytes = (state: PrimitivePortState, size: number): Uint8Array
     if (
       error instanceof Error &&
       'code' in error &&
-      (error as { code?: string }).code === 'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      (error as { code?: string }).code === 'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     ) {
       throw error
     }
@@ -58,7 +58,7 @@ export const timingSafeEqual = (
     throw cryptoError('ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH')
   }
   if (firstSnapshot.byteLength > state.limits.maxCompareBytes) {
-    throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+    throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
   }
   const transientBytes = firstSnapshot.byteLength + secondSnapshot.byteLength
   reserveTransient(state, transientBytes)
@@ -69,12 +69,12 @@ export const timingSafeEqual = (
     second = copyInspectedBytes(secondSnapshot)
     const outcome = callProvider(state, undefined, () => state.provider.timingSafeEqual(first!, second!))
     if (!outcome.ok || typeof outcome.result !== 'boolean') {
-      throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+      throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
     }
     return outcome.result
   } catch (error) {
     if (error instanceof Error && 'code' in error) throw error
-    throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+    throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
   } finally {
     zeroBytes(first)
     zeroBytes(second)

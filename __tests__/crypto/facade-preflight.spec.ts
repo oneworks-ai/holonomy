@@ -22,7 +22,7 @@ describe('crypto facade bounded admission', () => {
     const crypto = createCryptoSyntheticModule(port)
     const hash = crypto.createHash('sha256')
     expect(() => hash.update('abc')).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     }))
     expect(updates).toBe(0)
     expect(hash.update('ab').digest('hex')).toHaveLength(64)
@@ -116,7 +116,7 @@ describe('crypto facade bounded admission', () => {
       createFakePort(rejectedOutput, rejectedTag, true)
     ).createCipheriv('aes-256-gcm', new Uint8Array(32), new Uint8Array(12))
     expect(() => rejectedCipher.final()).toThrowError(expect.objectContaining({
-      code: 'ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED'
+      code: 'ERR_HOLONOMY_RESOURCE_EXHAUSTED'
     }))
     expect(rejectedOutput).toEqual(new Uint8Array(2))
     expect(rejectedTag).toEqual(new Uint8Array(16))
@@ -235,6 +235,6 @@ describe('crypto facade bounded admission', () => {
         limits: { maxRandomBytesPerCall: 65_535 },
         provider: createTestProvider()
       })
-    ).toThrowError(expect.objectContaining({ code: 'ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED' }))
+    ).toThrowError(expect.objectContaining({ code: 'ERR_HOLONOMY_CRYPTO_OPERATION_FAILED' }))
   })
 })

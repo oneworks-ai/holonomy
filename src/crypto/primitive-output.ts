@@ -15,14 +15,14 @@ export const copyProviderOutput = (
   try {
     snapshot = inspectBytes(value)
   } catch {
-    return terminalFailure(state, record, cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'))
+    return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
   }
   if (state.disposed) {
-    return terminalFailure(state, record, cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'))
+    return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
   }
   if (!validateLength(snapshot.byteLength)) {
     zeroBytes(snapshot.bytes, state.limits.maxInFlightContextBytes)
-    return terminalFailure(state, record, cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'))
+    return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
   }
   try {
     reserveTransient(state, snapshot.byteLength)
@@ -33,7 +33,7 @@ export const copyProviderOutput = (
   try {
     return copyInspectedBytes(snapshot)
   } catch {
-    return terminalFailure(state, record, cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED'))
+    return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
   } finally {
     zeroBytes(snapshot.bytes, state.limits.maxInFlightContextBytes)
     releaseTransient(state, snapshot.byteLength)

@@ -36,17 +36,17 @@ const validateContextAdmission = (
   initialBytes: number
 ): void => {
   if (runtimeSetSize(state.activeRecords) + state.reservedContextSlots >= state.limits.maxContexts) {
-    throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+    throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
   }
   if (request.kind === 'hmac' && request.key.byteLength > state.limits.maxHmacKeyBytes) {
-    throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+    throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
   }
   if (request.kind === 'cipher' || request.kind === 'decipher') {
     if (request.key.byteLength !== 32) throw cryptoError('ERR_CRYPTO_INVALID_KEYLEN')
     if (request.iv.byteLength !== 12) throw cryptoError('ERR_CRYPTO_INVALID_IV')
   }
   if (initialBytes > state.limits.maxInFlightContextBytes - state.retainedBytes - state.transientBytes) {
-    throw cryptoError('ERR_MOBILE_RUNTIME_RESOURCE_EXHAUSTED')
+    throw cryptoError('ERR_HOLONOMY_RESOURCE_EXHAUSTED')
   }
 }
 
@@ -98,19 +98,19 @@ export const createContext = (
     )
     context = outcome.result
     providerCreated = outcome.returned
-    if (!outcome.ok) throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+    if (!outcome.ok) throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
     assertAdmission(state, generation)
     if ((typeof context !== 'object' && typeof context !== 'function') || context === null) {
       disposeProviderContext(state, context)
       providerCreated = false
-      throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+      throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
     }
     if (weakMapHas(state.providerContextOwners, context as object)) {
       const existing = weakMapGet(state.providerContextOwners, context as object)
       disposeProviderContext(state, context)
       providerCreated = false
       if (existing !== undefined) releaseRecord(state, existing, 'released', true)
-      throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+      throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
     }
     assertAdmission(state, generation)
     const record: ContextRecord = {
@@ -149,7 +149,7 @@ export const createContext = (
     state.retainedBytes -= initialBytes
     state.reservedContextSlots -= 1
     if (error instanceof Error && 'code' in error) throw error
-    throw cryptoError('ERR_MOBILE_RUNTIME_CRYPTO_OPERATION_FAILED')
+    throw cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED')
   } finally {
     zeroBytes(keyCopy)
     zeroBytes(ivCopy)

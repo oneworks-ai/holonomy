@@ -16,8 +16,8 @@ describe('git v1 authority and capability contract', () => {
   it('composes virtual FS, HTTP(S) network and credential-reference grants', () => {
     const authority = createGitAuthority(gitAuthorityInput())
 
-    expect(authorizeGitPath(authority, 'mobile-fs://workspace/project', 'write')).toEqual({
-      href: 'mobile-fs://workspace/project',
+    expect(authorizeGitPath(authority, 'holonomy-fs://workspace/project', 'write')).toEqual({
+      href: 'holonomy-fs://workspace/project',
       permission: 'write',
       rootId: 'workspace-1'
     })
@@ -62,7 +62,7 @@ describe('git v1 authority and capability contract', () => {
       sessionGitControls: { status: 'partial' }
     })
     expect(GIT_CAPABILITY_MATRIX.lifecycle.progress).toContain('Native Bridge')
-    expect(GIT_CAPABILITY_MATRIX.security.paths).toContain('mobile-fs://workspace')
+    expect(GIT_CAPABILITY_MATRIX.security.paths).toContain('holonomy-fs://workspace')
     expect(GIT_CAPABILITY_MATRIX.unsupported).toMatchObject({
       arbitraryShell: { status: 'unsupported' },
       credentialHelper: { status: 'unsupported' },

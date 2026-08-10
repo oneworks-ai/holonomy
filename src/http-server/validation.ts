@@ -16,14 +16,14 @@ export interface DecodedIncomingRequest {
 
 const recordValue = (value: NativeJsonValue | undefined): Record<string, NativeJsonValue> => {
   if (value == null || typeof value !== 'object' || Array.isArray(value)) {
-    throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+    throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
   }
   return value as Record<string, NativeJsonValue>
 }
 
 const requiredString = (record: Record<string, NativeJsonValue>, key: string) => {
   const value = record[key]
-  if (typeof value !== 'string') throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+  if (typeof value !== 'string') throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
   return value
 }
 
@@ -36,7 +36,7 @@ export const decodeAddress = (value: NativeJsonValue | undefined): HttpServerAdd
     address !== '127.0.0.1' || family !== 'IPv4' || !Number.isSafeInteger(port) ||
     (port as number) <= 0 || (port as number) > 65_535
   ) {
-    throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+    throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
   }
   return Object.freeze({ address, family, port: port as number })
 }
@@ -47,21 +47,21 @@ export const normalizeHeaderEntries = (
   source: readonly (readonly [string, string])[],
   limits: Readonly<HttpServerLimits>
 ) => {
-  if (source.length > limits.maxHeaders) throw createHttpServerError('ERR_MOBILE_HTTP_LIMIT_EXCEEDED')
+  if (source.length > limits.maxHeaders) throw createHttpServerError('ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED')
   const headers: Record<string, string | string[]> = Object.create(null) as Record<string, string | string[]>
   const rawHeaders: string[] = []
   let bytes = 0
   for (const entry of source) {
     if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== 'string' || typeof entry[1] !== 'string') {
-      throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
     }
     const name = entry[0].trim().toLowerCase()
     const value = entry[1]
     if (name === '' || /[^!#$%&'*+.^_`|~0-9a-z-]/u.test(name) || /[\0\r\n]/u.test(value)) {
-      throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
     }
     bytes += headerBytes(name, value)
-    if (bytes > limits.maxHeaderBytes) throw createHttpServerError('ERR_MOBILE_HTTP_LIMIT_EXCEEDED')
+    if (bytes > limits.maxHeaderBytes) throw createHttpServerError('ERR_HOLONOMY_HTTP_LIMIT_EXCEEDED')
     rawHeaders.push(name, value)
     const previous = headers[name]
     if (previous === undefined) headers[name] = value
@@ -83,11 +83,11 @@ export const decodeIncomingRequest = (
   const kind = requiredString(record, 'kind')
   const headerValue = record.headers
   if ((kind !== 'request' && kind !== 'upgrade') || !Array.isArray(headerValue)) {
-    throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+    throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
   }
   const entries = headerValue.map(entry => {
     if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== 'string' || typeof entry[1] !== 'string') {
-      throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+      throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
     }
     return [entry[0], entry[1]] as const
   })
@@ -99,7 +99,7 @@ export const decodeIncomingRequest = (
     method === '' || method.length > 32 || /[^!#$%&'*+.^`|~\w-]/u.test(method) ||
     url === '' || url.length > 8_192 || /[\0\r\n]/u.test(url) || httpVersion !== '1.1'
   ) {
-    throw createHttpServerError('ERR_MOBILE_HTTP_PROTOCOL')
+    throw createHttpServerError('ERR_HOLONOMY_HTTP_PROTOCOL')
   }
   return Object.freeze({
     headers: normalized.headers,

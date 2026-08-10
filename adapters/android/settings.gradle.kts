@@ -14,7 +14,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "oneworks-mobile-runtime-android"
+rootProject.name = "oneworks-holonomy-android"
 include(":host-core")
 include(":v8-host")
 include(":e2e")

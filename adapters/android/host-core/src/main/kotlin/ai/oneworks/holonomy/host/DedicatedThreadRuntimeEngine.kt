@@ -1,4 +1,4 @@
-package ai.oneworks.mobile.runtime.host
+package ai.oneworks.holonomy.host
 
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService

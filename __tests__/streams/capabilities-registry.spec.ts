@@ -28,7 +28,7 @@ describe('stream capability matrix and synthetic modules', () => {
       objectMode: { status: 'unsupported' }
     })
     expect(STREAM_CAPABILITY_MATRIX.modules['node:stream'].constraints).toContain(
-      'finished preserves an original destroy error by identity. Repeated no-error premature observations reuse one ERR_MOBILE_STREAM_PREMATURE_CLOSE object; Node uses ERR_STREAM_PREMATURE_CLOSE and does not promise that object identity.'
+      'finished preserves an original destroy error by identity. Repeated no-error premature observations reuse one ERR_HOLONOMY_STREAM_PREMATURE_CLOSE object; Node uses ERR_STREAM_PREMATURE_CLOSE and does not promise that object identity.'
     )
     expect(STREAM_CAPABILITY_MATRIX.modules['node:stream'].constraints).toContain(
       'Pipe cleanup runs before user error listeners for runtime Stream destinations. Foreign writable destinations use append-listener fallback, so a throwing pre-existing error listener can prevent pipe cleanup.'

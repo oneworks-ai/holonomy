@@ -53,7 +53,7 @@ export interface HostModuleLoaderPort {
   syntheticNodeModules: Readonly<Record<string, SyntheticNodeModuleDefinition>>
 }
 
-export interface MobileModuleLoaderLimits {
+export interface HolonomyModuleLoaderLimits {
   readonly maxAstDepth: number
   readonly maxAstNodes: number
   readonly maxDependenciesPerModule: number
@@ -62,7 +62,7 @@ export interface MobileModuleLoaderLimits {
   readonly maxTotalSourceBytesPerPlan: number
 }
 
-export const DEFAULT_MOBILE_MODULE_LOADER_LIMITS: Readonly<MobileModuleLoaderLimits> = Object.freeze({
+export const DEFAULT_HOLONOMY_MODULE_LOADER_LIMITS: Readonly<HolonomyModuleLoaderLimits> = Object.freeze({
   maxAstDepth: 8_192,
   maxAstNodes: 250_000,
   maxDependenciesPerModule: 4_096,
@@ -71,13 +71,13 @@ export const DEFAULT_MOBILE_MODULE_LOADER_LIMITS: Readonly<MobileModuleLoaderLim
   maxTotalSourceBytesPerPlan: 32 * 1_024 * 1_024
 })
 
-export interface MobileModuleLoaderOptions {
+export interface HolonomyModuleLoaderOptions {
   /** File-like virtual root such as `app:///bundle/`. */
   rootUrl: string
   /** Optional trusted digest manifest keyed by canonical module URL. */
   integrity?: Readonly<Record<string, string>>
   /** Frozen fail-closed budgets applied independently to every public plan/load transaction. */
-  limits?: Partial<MobileModuleLoaderLimits>
+  limits?: Partial<HolonomyModuleLoaderLimits>
   /** Enables workspace source conditions only when a host compiled those assets. */
   resolutionProfile?: 'production' | 'source'
   allowJsonModules?: boolean

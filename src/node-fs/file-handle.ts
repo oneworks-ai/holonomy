@@ -29,7 +29,7 @@ const readRange = (
   }
 }
 
-export class MobileFsFileHandle implements FsFileHandle {
+export class HolonomyFsFileHandle implements FsFileHandle {
   #closePromise?: Promise<void>
   #closed = false
 
@@ -37,7 +37,7 @@ export class MobileFsFileHandle implements FsFileHandle {
     private readonly client: FsNativeClient,
     private readonly resource: NativeResourceHandle,
     private readonly chunkBytes: number,
-    private readonly onClose: (handle: MobileFsFileHandle) => void
+    private readonly onClose: (handle: HolonomyFsFileHandle) => void
   ) {}
 
   get isClosed() {

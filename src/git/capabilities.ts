@@ -14,7 +14,7 @@ export const GIT_CAPABILITY_MATRIX = Object.freeze({
       'Explicit branch-to-branch update; force requires force-with-lease and provider authorization; deletion is unavailable.'
     ),
     remoteList: partial('Unauthorized URLs are omitted and embedded credentials are never returned.'),
-    repositoryOpen: supported('Authorized mobile-fs workspace URL becomes a Bridge-issued opaque repository handle.'),
+    repositoryOpen: supported('Authorized holonomy-fs workspace URL becomes a Bridge-issued opaque repository handle.'),
     status: partial('Branch, head, upstream, ahead/behind and bounded changed-file metadata; no patches or history.')
   }),
   consumers: Object.freeze({
@@ -56,7 +56,7 @@ export const GIT_CAPABILITY_MATRIX = Object.freeze({
   module: 'host.git',
   security: Object.freeze({
     credentials: 'host-owned secret resolved only from an authorized opaque reference',
-    paths: 'mobile-fs://workspace authority only',
+    paths: 'holonomy-fs://workspace authority only',
     remoteSchemes: Object.freeze(['http', 'https']),
     providerReauthorizationRequired: true,
     stableRedactedErrors: true
