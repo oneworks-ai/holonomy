@@ -3,6 +3,7 @@
   "type": "module",
   "version": "1.0.0-rc.2",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@11.7.0",
   "description": "Platform-neutral mobile JavaScript runtime primitives for One Works",
   "imports": {
