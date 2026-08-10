@@ -1,0 +1,40 @@
+{
+  "name": "@fixture/f1-runtime",
+  "type": "module",
+  "exports": {
+    ".": {
+      "__oneworks__": {
+        "source": "./source/default-plugin.mjs"
+      },
+      "source": "./source/source-plugin.mjs",
+      "import": "./dist/import-plugin.mjs",
+      "module": "./dist/module-plugin.mjs",
+      "default": "./dist/default-plugin.mjs"
+    },
+    "./named": {
+      "import": "./dist/named-plugin.js",
+      "default": "./dist/named-plugin.js"
+    },
+    "./cjs": {
+      "require": "./dist/plugin.cjs",
+      "default": "./dist/plugin.cjs"
+    },
+    "./esm-only": {
+      "import": "./dist/esm-only.mjs",
+      "default": "./dist/esm-only.mjs"
+    },
+    "./module-only": {
+      "module": "./dist/module-plugin.mjs",
+      "default": "./dist/default-plugin.mjs"
+    },
+    "./default-only": {
+      "default": "./dist/default-plugin.mjs"
+    },
+    "./typescript": {
+      "import": "./dist/unsupported.ts"
+    },
+    "./tsx": {
+      "import": "./dist/unsupported.tsx"
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "name": "@oneworks/mobile-runtime",
+  "type": "module",
+  "version": "1.0.0-rc.2",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "description": "Platform-neutral mobile JavaScript runtime primitives for One Works",
+  "imports": {
+    "#~/*.js": {
+      "__oneworks__": {
+        "default": "./src/*.ts"
+      },
+      "default": "./dist/*.js"
+    }
+  },
+  "exports": {
+    ".": {
+      "__oneworks__": {
+        "default": "./src/index.ts"
+      },
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./module-loader": {
+      "__oneworks__": {
+        "default": "./src/module-loader/index.ts"
+      },
+      "types": "./dist/module-loader/index.d.ts",
+      "default": "./dist/module-loader/index.js"
+    },
+    "./git": {
+      "__oneworks__": {
+        "default": "./src/git/index.ts"
+      },
+      "types": "./dist/git/index.d.ts",
+      "default": "./dist/git/index.js"
+    },
+    "./http-server": {
+      "__oneworks__": {
+        "default": "./src/http-server/index.ts"
+      },
+      "types": "./dist/http-server/index.d.ts",
+      "default": "./dist/http-server/index.js"
+    },
+    "./node-fs": {
+      "__oneworks__": {
+        "default": "./src/node-fs/index.ts"
+      },
+      "types": "./dist/node-fs/index.d.ts",
+      "default": "./dist/node-fs/index.js"
+    },
+    "./storage": {
+      "__oneworks__": {
+        "default": "./src/storage/index.ts"
+      },
+      "types": "./dist/storage/index.d.ts",
+      "default": "./dist/storage/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "format": "dprint fmt",
+    "format:check": "dprint check",
+    "lint": "eslint .",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit --pretty false"
+  },
+  "dependencies": {
+    "acorn": "^8.18.0"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^6.0.0",
+    "@types/node": "^22.18.12",
+    "dprint": "^0.50.2",
+    "eslint": "^9.38.0",
+    "typescript": "^5.9.3",
+    "vitest": "^2.0.5"
+  }
+}

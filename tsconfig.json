@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "composite": false,
+    "target": "ESNext",
+    "customConditions": [
+      "__oneworks__"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "types": [
+      "vitest"
+    ],
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*",
+    "__tests__/**/*"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "composite": false,
+    "target": "ESNext",
+    "rootDir": "src",
+    "customConditions": [
+      "__oneworks__"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "strict": true,
+    "declaration": true,
+    "declarationMap": false,
+    "noEmit": false,
+    "outDir": "dist",
+    "sourceMap": false,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*"
+  ]
+}

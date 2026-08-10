@@ -1,0 +1,1 @@
+export const esmOnly = true
