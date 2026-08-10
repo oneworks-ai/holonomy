@@ -25,6 +25,8 @@
 - `src/storage/`: authorized binary KV, asynchronous SQLite and opaque credential-handle contracts over `NativeBridge`.
 - `src/web-network/index.ts`: fetch/WebSocket shim, network authority, versioned operations and scripted provider.
 - `src/index.ts`: public package exports.
+- `src/runtime/`: M2 unified runtime composer. It owns one Bridge created from a caller-owned Event Loop and NativePort, composes only explicitly enabled reviewed leaves, and never installs globals into ambient `globalThis`.
+  After disposal its operational facades, including all module-loader operations, reject `runtime_composer.disposed`; immutable loader limits/root URL and runtime module/global/capability/snapshot inspection remain available.
 
 ## Event-loop contract
 

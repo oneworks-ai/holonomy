@@ -63,6 +63,13 @@
       "types": "./dist/storage/index.d.ts",
       "default": "./dist/storage/index.js"
     },
+    "./runtime": {
+      "__oneworks__": {
+        "default": "./src/runtime/index.ts"
+      },
+      "types": "./dist/runtime/index.d.ts",
+      "default": "./dist/runtime/index.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
