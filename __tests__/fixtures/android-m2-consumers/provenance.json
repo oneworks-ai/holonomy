@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "sourceMainTask": "019fe11a-4aaa-7733-9173-2867a9a65777",
+  "sourceRevision": "ea3159294ce2c69a7d14dbdc3d4d4b1a1335396e",
+  "fixtures": {
+    "managed-plugin-git.mjs": {
+      "extraction": "Extracted the execFile Git remote-config call shape from managedPluginGit; retained executable, ordered argv, bounded options and callback completion only.",
+      "sha256": "4336fa76431af46d13a0b24e17aea44baaabed29c5b41d55babc15e3228f90f4",
+      "source": "managedPluginGit",
+      "transform": "Hand-transcribed to one ESM export; renamed the enclosing helper to readRemoteUrls and removed unrelated configuration flow without changing the literal argv surface."
+    },
+    "relay-websocket.mjs": {
+      "extraction": "Extracted the default ws construction and message-to-Buffer consumer shape from relayWebSocket; omitted forwarding-server ownership and lifecycle policy.",
+      "sha256": "b8a27d38f54309d8f9c2097b45ff4ff6aa125aaf77784cb7e1674e3aa3bd04b2",
+      "source": "relayWebSocket",
+      "transform": "Hand-transcribed to one ESM export with the original ws default import, constructor and message listener categories; URL and return wiring are fixture-local."
+    },
+    "workspace-fs.mjs": {
+      "extraction": "Extracted the node:fs createReadStream dependency and path-to-stream call shape from workspaceFs; omitted route, response and workspace authorization code.",
+      "sha256": "afbc3d952317c1c512a04b10cf48af6010722aef2caec198be49f8cbd72a6aa6",
+      "source": "workspaceFs",
+      "transform": "Hand-transcribed to one ESM export preserving the node:fs symbol and direct path argument; no filesystem behavior is emulated."
+    },
+    "workspace-http.mjs": {
+      "extraction": "Extracted node:buffer, node:process, fetch, AbortController, timeout and response-byte consumer categories from workspaceHttp; omitted forwarding-server request plumbing.",
+      "sha256": "4a6e0a2064fe1d09381bfb1b983fc398bd503ecd09410915951252e1284c9d4b",
+      "source": "workspaceHttp",
+      "transform": "Hand-transcribed to one ESM export with a fixture-local POST URL/body and 30000 ms abort timer while preserving the imported and ambient capability categories."
+    }
+  },
+  "sources": {
+    "managedPluginGit": {
+      "path": "packages/plugins/relay/src/config.ts",
+      "sha256": "545c24415a8344ab22e7cb8bfdb465dcf93606f8a4979d32a93a3686e96c9d30",
+      "surface": "execFile('git', ['-C', workspaceFolder, 'config', '--get-regexp', '^remote\\..*\\.url$'], callback)"
+    },
+    "relayWebSocket": {
+      "path": "packages/plugins/relay/src/server/workspace-websocket-forwarder.ts",
+      "sha256": "c221ab4407fdc8cce1ee0553a0b44a0e2d01d57e3b7fe29b2f4020fa5d9af4a4",
+      "surface": "default ws client with open/message/close/error lifecycle"
+    },
+    "workspaceFs": {
+      "path": "apps/server/src/routes/workspace.ts",
+      "sha256": "8ac45f8386e0aa074911235a00f37361ee015a83a2efd4b45084d0d40700b089",
+      "surface": "node:fs createReadStream plus workspace file/tree routes"
+    },
+    "workspaceHttp": {
+      "path": "packages/plugins/relay/src/server/workspace-http-forwarder.ts",
+      "sha256": "674792f8e3df23d59b2d50f394d540d0b45095993179a6f720288eef9c397bd4",
+      "surface": "node:buffer + node:process + fetch + AbortController + timer"
+    }
+  }
+}

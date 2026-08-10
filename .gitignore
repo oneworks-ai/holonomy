@@ -5,3 +5,6 @@ coverage/
 cache/
 *.tsbuildinfo
 .DS_Store
+adapters/android/.gradle/
+adapters/android/**/build/
+adapters/android/local.properties
