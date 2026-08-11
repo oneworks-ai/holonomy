@@ -5,6 +5,7 @@
 - Holonomy refers to the transformation accumulated while something is transported around a closed path. The brand is not limited to a Möbius strip; the durable idea is that local motion preserves a reviewed global contract while context can still change.
 - For this runtime, the transported object is a JavaScript application. Native hosts and engines may change, while scheduling, authority, resource identity, and lifecycle semantics remain owned by Holonomy.
 - The public line is **One runtime, every surface.** Keep it short and do not introduce competing taglines without a product-level decision.
+- The primary positioning is a platform-neutral Node-like runtime across native hosts. Explicit, observable, and constrainable capability boundaries are a secondary benefit that makes Agent workloads safer; mention this briefly without turning security into the headline or sole product goal.
 
 ## Visual identity
 
