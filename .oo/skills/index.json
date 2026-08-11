@@ -1,0 +1,9 @@
+{
+  "apiVersion": "1.0.0",
+  "skills": [
+    { "name": "manage-runtime-process", "path": "/.oo/skills/manage-runtime-process/SKILL.md" },
+    { "name": "debug-runtime-process", "path": "/.oo/skills/debug-runtime-process/SKILL.md" },
+    { "name": "mock-network-request", "path": "/.oo/skills/mock-network-request/SKILL.md" },
+    { "name": "manage-emulator", "path": "/.oo/skills/manage-emulator/SKILL.md" }
+  ]
+}

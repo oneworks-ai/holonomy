@@ -63,7 +63,8 @@ export const createNodeCoreSyntheticModules = (
       resolvedOptions.process,
       resolvedOptions.virtualRoot,
       resolvedOptions.stdio,
-      resolvedOptions.maxStdioChunkBytes
+      resolvedOptions.maxStdioChunkBytes,
+      resolvedOptions.processControl
     ),
     'node:url': createUrlSyntheticModule({
       appBaseUrl: resolvedOptions.appBaseUrl,

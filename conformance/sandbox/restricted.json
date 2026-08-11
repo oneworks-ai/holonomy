@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "network": {
+    "access": "restricted",
+    "allowedOrigins": [
+      "http://conformance.invalid"
+    ],
+    "allowedSchemes": [
+      "http"
+    ],
+    "allowPrivateNetwork": true,
+    "limits": {
+      "maxChunkBytes": 65536,
+      "maxConcurrentConnections": 8,
+      "maxHeaderBytes": 65536,
+      "maxHeaders": 128,
+      "maxRequestBodyBytes": 1048576,
+      "maxResponseBodyBytes": 8388608,
+      "maxUrlBytes": 65536,
+      "socketTimeoutMs": 30000
+    }
+  },
+  "filesystem": {
+    "access": "none"
+  }
+}

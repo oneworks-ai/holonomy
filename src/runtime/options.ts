@@ -20,8 +20,10 @@ const NETWORK_LIMITS = [
   'maxRedirects',
   'maxRequestBodyBytes',
   'maxResponseBodyBytes',
+  'maxUrlBytes',
   'maxWebSocketBufferedBytes',
-  'maxWebSocketMessageBytes'
+  'maxWebSocketMessageBytes',
+  'socketTimeoutMs'
 ] as const
 export const HTTP_LIMITS = [
   'maxChunkBytes',

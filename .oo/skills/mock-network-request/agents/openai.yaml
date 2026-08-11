@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mock Network Request"
+  short_description: "Install deterministic process-scoped network mocks"
+  default_prompt: "Use $mock-network-request to install and verify declarative network rules for one Holonomy process."

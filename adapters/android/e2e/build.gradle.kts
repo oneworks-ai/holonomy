@@ -4,42 +4,21 @@ plugins {
 }
 
 val repositoryRoot = rootProject.projectDir.resolve("../..").canonicalFile
-val generatedTypeScript = layout.buildDirectory.dir("generated/typescript")
 val generatedRuntimeAssets = layout.buildDirectory.dir("generated/runtimeAssets")
 
-val buildRuntimeJavaScript by tasks.registering(Exec::class) {
-    workingDir(repositoryRoot)
-    commandLine(
-        repositoryRoot.resolve("node_modules/.bin/tsc").absolutePath,
-        "-p",
-        repositoryRoot.resolve("tsconfig.build.json").absolutePath,
-        "--outDir",
-        generatedTypeScript.get().asFile.absolutePath,
-        "--declaration",
-        "false",
-    )
-    doFirst {
-        delete(generatedTypeScript)
-    }
-    inputs.files(repositoryRoot.resolve("src").walkTopDown().filter { it.isFile }.toList())
-    inputs.file(repositoryRoot.resolve("tsconfig.build.json"))
-    outputs.dir(generatedTypeScript)
-}
-
 val prepareRuntimeAssets by tasks.registering(Exec::class) {
-    dependsOn(buildRuntimeJavaScript)
     workingDir(repositoryRoot)
     commandLine(
         "node",
         layout.projectDirectory.file("tools/prepare-runtime-assets.mjs").asFile.absolutePath,
-        generatedTypeScript.get().asFile.absolutePath,
+        repositoryRoot.resolve("dist").absolutePath,
         repositoryRoot.resolve("src").absolutePath,
         layout.projectDirectory.dir("src/runtimeBootstrap").asFile.absolutePath,
         layout.projectDirectory.dir("src/runtimeFixtures").asFile.absolutePath,
         repositoryRoot.resolve("node_modules/acorn/dist/acorn.mjs").absolutePath,
         generatedRuntimeAssets.get().asFile.absolutePath,
     )
-    inputs.dir(generatedTypeScript)
+    inputs.dir(repositoryRoot.resolve("dist"))
     inputs.dir(layout.projectDirectory.dir("src/runtimeBootstrap"))
     inputs.dir(layout.projectDirectory.dir("src/runtimeFixtures"))
     inputs.file(layout.projectDirectory.file("tools/prepare-runtime-assets.mjs"))
@@ -81,6 +60,8 @@ tasks.configureEach {
 
 dependencies {
     implementation(project(":v8-host"))
+    implementation(project(":network-host"))
+    implementation(project(":session-host"))
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
 }

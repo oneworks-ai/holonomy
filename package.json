@@ -87,22 +87,80 @@
       "types": "./dist/runtime/index.d.ts",
       "default": "./dist/runtime/index.js"
     },
+    "./node-adapter": {
+      "types": "./adapters/node/src/index.d.mts",
+      "default": "./adapters/node/src/index.mjs"
+    },
     "./package.json": "./package.json"
   },
+  "bin": {
+    "holonomy": "./tools/holonomy.mjs"
+  },
   "files": [
+    "!tools/service/vitest.config.mjs",
+    ".oo/skills/*/SKILL.md",
+    ".oo/skills/*/references/*.md",
+    ".oo/skills/index.json",
+    "adapters/android/build.gradle.kts",
+    "adapters/android/e2e/build.gradle.kts",
+    "adapters/android/e2e/src/main",
+    "adapters/android/e2e/src/runtimeBootstrap",
+    "adapters/android/e2e/src/runtimeFixtures",
+    "adapters/android/e2e/tools/*.mjs",
+    "adapters/android/gradle.properties",
+    "adapters/android/gradle/wrapper",
+    "adapters/android/gradlew",
+    "adapters/android/gradlew.bat",
+    "adapters/android/host-core/build.gradle.kts",
+    "adapters/android/host-core/src/main",
+    "adapters/android/network-host/README*.md",
+    "adapters/android/network-host/build.gradle.kts",
+    "adapters/android/network-host/src/main",
+    "adapters/android/session-host/README*.md",
+    "adapters/android/session-host/build.gradle.kts",
+    "adapters/android/session-host/src/main",
+    "adapters/android/settings.gradle.kts",
+    "adapters/android/v8-host/build.gradle.kts",
+    "adapters/android/v8-host/src/main",
+    "adapters/node/README*.md",
+    "adapters/node/src",
     "dist",
-    "package.json"
+    "src",
+    "tools/*.d.mts",
+    "tools/*.mjs",
+    "tools/README*.md",
+    "tools/service/*.mjs",
+    "tools/service/README*.md"
   ],
   "scripts": {
+    "android:devtools": "node tools/android-devtools.mjs",
+    "android:device-test": "node tools/android-device-tests.mjs",
+    "holonomy": "node tools/holonomy.mjs",
+    "service": "node tools/service/entry.mjs",
     "build": "node --input-type=module --eval \"import { rmSync } from 'node:fs'; rmSync('dist', { force: true, recursive: true })\" && tsc -p tsconfig.build.json",
     "format": "dprint fmt",
     "format:check": "dprint check",
     "lint": "eslint .",
-    "test": "vitest run --config vitest.config.ts",
+    "test": "pnpm run test:topology && vitest run --config vitest.config.ts",
+    "test:cli": "pnpm run test:topology && vitest run --config vitest.config.ts __tests__/cli",
+    "test:adapter:android:device": "pnpm run android:device-test",
+    "test:adapter:android:unit": "node --input-type=module --eval \"import { androidBuildEnvironment, androidRoot, findAdb, run } from './tools/android-devtools-adb.mjs'; const adb = findAdb(); run('./gradlew', ['--offline', 'testAdapterUnit'], { cwd: androidRoot, env: androidBuildEnvironment(adb), inherit: true })\"",
+    "test:adapter:node": "pnpm run build && node --experimental-vm-modules --test adapters/node/test/*.test.mjs",
+    "test:js": "pnpm run test:topology && vitest run --config vitest.config.ts __tests__/js-api",
+    "test:package": "pnpm run build && node __tests__/verify-package-layout.mjs",
+    "test:e2e:android": "node tools/holonomy.mjs test \"conformance/specs/**/*.test.mjs\" --target android --sandbox conformance/sandbox/restricted.json",
+    "test:e2e:node": "node tools/holonomy.mjs test \"conformance/specs/**/*.test.mjs\" --target node --sandbox conformance/sandbox/restricted.json",
+    "test:runtime": "pnpm run test:topology && vitest run --config vitest.config.ts __tests__/js-runtime-kernel",
+    "test:service": "vitest run --config tools/service/vitest.config.mjs --no-cache",
+    "test:topology": "node __tests__/verify-test-topology.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit --pretty false"
   },
   "dependencies": {
-    "acorn": "^8.18.0"
+    "acorn": "^8.18.0",
+    "ajv": "^8.20.0"
+  },
+  "optionalDependencies": {
+    "electron": "43.3.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.0.0",

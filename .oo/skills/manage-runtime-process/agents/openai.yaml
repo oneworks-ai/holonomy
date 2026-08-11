@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage Runtime Process"
+  short_description: "Create, monitor, restart, and remove managed runtimes"
+  default_prompt: "Use $manage-runtime-process to launch and manage one Holonomy runtime through its OpenAPI lifecycle."

@@ -305,7 +305,7 @@ export class HolonomyModuleLoader {
     this.requireConditions = sourceProfile ? SOURCE_REQUIRE_CONDITIONS : DEFAULT_REQUIRE_CONDITIONS
 
     for (const [url, digest] of Object.entries(options.integrity ?? {})) {
-      const canonicalUrl = this.canonicalizeAppUrl(url, this.rootUrl, false)
+      const canonicalUrl = this.canonicalizeModuleUrl(url, this.rootUrl, false)
       const normalizedDigest = normalizeDigest(digest)
       if (normalizedDigest == null) {
         throw new HolonomyModuleLoaderError(
@@ -356,15 +356,8 @@ export class HolonomyModuleLoader {
       resolvedUrl = this.resolveSynthetic(specifier)
       return this.publishResolution(transaction, resolutionKey, resolvedUrl)
     }
-    if (SCHEME.test(specifier) && !specifier.startsWith('app:')) {
-      throw new HolonomyModuleLoaderError(
-        'ERR_HOLONOMY_MODULE_UNSUPPORTED_SCHEME',
-        `Unsupported Holonomy module URL scheme in ${specifier}`,
-        { specifier }
-      )
-    }
-    if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('app:')) {
-      const url = this.canonicalizeAppUrl(specifier, canonicalParent, false)
+    if (specifier.startsWith('.') || specifier.startsWith('/') || SCHEME.test(specifier)) {
+      const url = this.canonicalizeModuleUrl(specifier, canonicalParent, false)
       resolvedUrl = await this.resolveExistingModuleUrl(url, transaction)
     } else {
       resolvedUrl = await this.resolvePackage(specifier, canonicalParent, mode, transaction)
@@ -377,15 +370,15 @@ export class HolonomyModuleLoader {
     const canonicalParent = this.canonicalizeModuleParent(parentUrl)
     if (
       specifier === '' || specifier.includes('\0') || specifier.includes('\\') ||
-      (!specifier.startsWith('.') && !specifier.startsWith('/') && !specifier.startsWith('app:'))
+      (!specifier.startsWith('.') && !specifier.startsWith('/') && !SCHEME.test(specifier))
     ) {
       throw new HolonomyModuleLoaderError(
         'ERR_HOLONOMY_MODULE_INVALID_URL',
-        `Resource URL must be app-root-relative or module-relative: ${specifier}`,
+        `Resource URL must be root-relative, module-relative, or absolute: ${specifier}`,
         { specifier }
       )
     }
-    return this.canonicalizeAppUrl(specifier, canonicalParent, true)
+    return this.canonicalizeModuleUrl(specifier, canonicalParent, true)
   }
 
   async createPlan(entrySpecifier: string, options: CreateModulePlanOptions = {}): Promise<ModulePlan> {
@@ -506,10 +499,13 @@ export class HolonomyModuleLoader {
         { diagnosticCode: 'INVALID_URL', url: value }
       )
     }
-    if (root.protocol !== 'app:') {
+    if (
+      root.protocol === '' || root.protocol === 'node:' || root.pathname === '' ||
+      !root.href.startsWith(`${root.protocol}//`)
+    ) {
       throw new HolonomyModuleLoaderError(
         'ERR_HOLONOMY_MODULE_UNSUPPORTED_SCHEME',
-        `Holonomy module root must use app:, received ${root.protocol}`,
+        `Holonomy module root must use an absolute hierarchical URL, received ${value}`,
         { url: value }
       )
     }
@@ -527,14 +523,14 @@ export class HolonomyModuleLoader {
 
   private canonicalizeModuleParent(value: string) {
     if (value.startsWith('node:')) return this.resolveSynthetic(value)
-    return this.canonicalizeAppUrl(value, this.rootUrl, false)
+    return this.canonicalizeModuleUrl(value, this.rootUrl, false)
   }
 
-  private canonicalizeAppUrl(value: string, parentUrl: string, allowFragment: boolean) {
+  private canonicalizeModuleUrl(value: string, parentUrl: string, allowFragment: boolean) {
     if (value.includes('\\') || value.includes('\0')) {
       throw new HolonomyModuleLoaderError(
         'ERR_HOLONOMY_MODULE_INVALID_URL',
-        `Invalid app URL: ${value}`,
+        `Invalid module URL: ${value}`,
         { url: value }
       )
     }
@@ -544,15 +540,8 @@ export class HolonomyModuleLoader {
     } catch {
       throw new HolonomyModuleLoaderError(
         'ERR_HOLONOMY_MODULE_INVALID_URL',
-        `Invalid app URL: ${value}`,
+        `Invalid module URL: ${value}`,
         { diagnosticCode: 'INVALID_URL', url: value }
-      )
-    }
-    if (url.protocol !== 'app:') {
-      throw new HolonomyModuleLoaderError(
-        'ERR_HOLONOMY_MODULE_UNSUPPORTED_SCHEME',
-        `Unsupported Holonomy module URL scheme: ${url.protocol}`,
-        { url: value }
       )
     }
     if (!allowFragment && url.hash !== '') {
@@ -564,10 +553,16 @@ export class HolonomyModuleLoader {
     }
     this.assertSafeEncodedPath(url, value)
     const root = new URL(this.rootUrl)
-    if (url.host !== root.host || !url.pathname.startsWith(root.pathname)) {
+    if (
+      url.protocol !== root.protocol ||
+      url.username !== root.username ||
+      url.password !== root.password ||
+      url.host !== root.host ||
+      !url.pathname.startsWith(root.pathname)
+    ) {
       throw new HolonomyModuleLoaderError(
         'ERR_HOLONOMY_MODULE_PATH_ESCAPE',
-        `Module URL escapes the app root: ${url.toString()}`,
+        `Module URL escapes the configured root: ${url.toString()}`,
         { url: url.toString() }
       )
     }
@@ -578,7 +573,7 @@ export class HolonomyModuleLoader {
     if (/%(?:00|2f|5c)/iu.test(url.pathname)) {
       throw new HolonomyModuleLoaderError(
         'ERR_HOLONOMY_MODULE_INVALID_URL',
-        `Encoded separator or NUL is not allowed in app URLs: ${original}`,
+        `Encoded separator or NUL is not allowed in module URLs: ${original}`,
         { url: original }
       )
     }
@@ -588,7 +583,7 @@ export class HolonomyModuleLoader {
     } catch {
       throw new HolonomyModuleLoaderError(
         'ERR_HOLONOMY_MODULE_INVALID_URL',
-        `Invalid encoded app URL path: ${original}`,
+        `Invalid encoded module URL path: ${original}`,
         { diagnosticCode: 'INVALID_URL', url: original }
       )
     }
@@ -755,7 +750,7 @@ export class HolonomyModuleLoader {
         { specifier, url: rootUrl }
       )
     }
-    const resolved = this.canonicalizeAppUrl(target, rootUrl, false)
+    const resolved = this.canonicalizeModuleUrl(target, rootUrl, false)
     if (!resolved.startsWith(rootUrl)) {
       throw new HolonomyModuleLoaderError(
         'ERR_HOLONOMY_MODULE_PATH_ESCAPE',
@@ -1176,7 +1171,7 @@ export class HolonomyModuleLoader {
   private canonicalizeCachedModuleUrl(url: string) {
     return url.startsWith('node:')
       ? this.resolveSynthetic(url)
-      : this.canonicalizeAppUrl(url, this.rootUrl, false)
+      : this.canonicalizeModuleUrl(url, this.rootUrl, false)
   }
 
   private resolutionKey(parentUrl: string, mode: ModuleResolutionMode, specifier: string) {

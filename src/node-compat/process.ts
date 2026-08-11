@@ -4,7 +4,7 @@ import type { NodeEventListener } from './events.js'
 import { resolveMaxStdioChunkBytes } from './options.js'
 import { createRuntimeWritable } from './stdio.js'
 import type { RuntimeWritable } from './stdio.js'
-import type { RuntimeProcessSnapshot, RuntimeStdioProvider } from './types.js'
+import type { RuntimeProcessControl, RuntimeProcessSnapshot, RuntimeStdioProvider } from './types.js'
 import { assertPathWithinVirtualRoot } from './virtual-path.js'
 
 export type { RuntimeWritable } from './stdio.js'
@@ -13,6 +13,7 @@ export interface RuntimeProcess {
   readonly arch: string
   readonly argv: readonly string[]
   readonly env: Readonly<Record<string, string>>
+  exitCode: number
   readonly execPath: string
   readonly pid: number
   readonly platform: string
@@ -74,13 +75,15 @@ export const createProcessSyntheticModule = (
   snapshotInput: RuntimeProcessSnapshot,
   virtualRoot: string,
   stdio: RuntimeStdioProvider,
-  maxStdioChunkBytes?: number
+  maxStdioChunkBytes?: number,
+  control?: RuntimeProcessControl
 ): ProcessSyntheticModule => {
   const snapshot = cloneSnapshot(snapshotInput, virtualRoot)
   const stdioChunkLimit = resolveMaxStdioChunkBytes(maxStdioChunkBytes)
   const emitter = new EventEmitter()
+  let exitCode = 0
   const unsupported = (feature: string) => () => notSupported(`process.${feature}`)
-  const runtimeProcess: RuntimeProcess = {
+  const runtimeProcess = {
     abort: unsupported('abort'),
     addListener(eventName, listener) {
       emitter.addListener(eventName, listener)
@@ -92,8 +95,16 @@ export const createProcessSyntheticModule = (
     cwd: () => snapshot.cwd,
     emit: (eventName, ...args) => emitter.emit(eventName, ...args),
     env: snapshot.env,
+    exitCode: 0,
     execPath: snapshot.execPath,
-    exit: unsupported('exit'),
+    exit(code = exitCode): never {
+      if (!Number.isSafeInteger(code) || code < 0 || code > 255) {
+        invalidArgument('process.exit', 'process exit code must be an integer from 0 to 255')
+      }
+      if (control == null) notSupported('process.exit')
+      control!.exit(code)
+      throw new Error('Holonomy process exited')
+    },
     kill: unsupported('kill'),
     nextTick: unsupported('nextTick'),
     off(eventName, listener) {
@@ -120,7 +131,17 @@ export const createProcessSyntheticModule = (
     stdout: createRuntimeWritable('stdout', stdio, stdioChunkLimit),
     umask: unsupported('umask'),
     versions: snapshot.versions
-  }
+  } as RuntimeProcess
+  Object.defineProperty(runtimeProcess, 'exitCode', {
+    enumerable: true,
+    get: () => exitCode,
+    set(value: number) {
+      if (!Number.isSafeInteger(value) || value < 0 || value > 255) {
+        invalidArgument('process.exitCode', 'process exitCode must be an integer from 0 to 255')
+      }
+      exitCode = value
+    }
+  })
   const frozenProcess = Object.freeze(runtimeProcess)
   return Object.freeze({ ...frozenProcess, default: frozenProcess })
 }

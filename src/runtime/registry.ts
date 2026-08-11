@@ -1,16 +1,8 @@
-import { CHILD_PROCESS_CAPABILITY_MATRIX, createChildProcessSyntheticModuleBinding } from '../child-process/index.js'
-import { CRYPTO_CAPABILITY_MATRIX } from '../crypto/index.js'
-import { GIT_CAPABILITY_MATRIX } from '../git/index.js'
-import { HTTP_SERVER_CAPABILITY_MATRIX, createHttpServerSyntheticModuleBindings } from '../http-server/index.js'
-import { NODE_CORE_CAPABILITY_MATRIX, createNodeCoreSyntheticModuleBindings } from '../node-compat/index.js'
-import { FS_CAPABILITY_MATRIX, createFsSyntheticModules } from '../node-fs/index.js'
-import { STORAGE_CAPABILITY_MATRIX } from '../storage/index.js'
-import {
-  STREAM_CAPABILITY_MATRIX,
-  createStreamSyntheticModuleBindings,
-  createWebStreamsGlobals
-} from '../streams/index.js'
-import { WEB_NETWORK_CAPABILITY_MATRIX } from '../web-network/index.js'
+import { createChildProcessSyntheticModuleBinding } from '../child-process/index.js'
+import { createHttpServerSyntheticModuleBindings } from '../http-server/index.js'
+import { createNodeCoreSyntheticModuleBindings } from '../node-compat/index.js'
+import { createFsSyntheticModules } from '../node-fs/index.js'
+import { createStreamSyntheticModuleBindings } from '../streams/index.js'
 import { runtimeComposerError } from './errors.js'
 import {
   createRuntimeRecord,
@@ -26,15 +18,22 @@ import type { GitFacade } from '../git/index.js'
 import type { HttpServerRuntime } from '../http-server/index.js'
 import type { NodeCoreCompatOptions } from '../node-compat/index.js'
 import type { NodeFsFacade } from '../node-fs/index.js'
+import type { createNodeTestSyntheticModules } from '../node-test/index.js'
+import type { InstalledRuntimeConsole } from '../runtime-console/index.js'
+import type { RuntimeTimers } from '../timers/index.js'
 import type { RuntimeSyntheticModuleBinding } from './types.js'
 
 const KEYS = Object.keys
 const SYNTHETIC_SPECIFIERS = [
   'node:buffer',
+  'node:assert/strict',
+  'node:console',
   'node:events',
   'node:os',
   'node:path',
   'node:process',
+  'node:test',
+  'node:timers',
   'node:stream',
   'node:stream/promises',
   'node:stream/web',
@@ -58,12 +57,26 @@ const binding = (
   }
   if (defaultValue !== undefined) {
     defineRuntimeData(exports, runtimeString(exports.length), 'default')
-    defineRuntimeData(target, 'default', defaultValue)
+    const descriptor = getRuntimeOwnDescriptor(target, 'default')
+    if (descriptor == null) defineRuntimeData(target, 'default', defaultValue)
+    else if (!('value' in descriptor) || descriptor.value !== defaultValue) {
+      throw runtimeComposerError('runtime_composer.invalid_options')
+    }
   }
   return freezeRuntimeValue({
     descriptor: freezeRuntimeValue({ exportNames: freezeRuntimeValue(exports) }),
     namespace: freezeRuntimeValue(target)
   })
+}
+
+const moduleNames = (namespace: object) => {
+  const keys = KEYS(namespace)
+  const names: string[] = []
+  for (let index = 0; index < keys.length; index += 1) {
+    const key = keys[index] as string
+    if (key !== 'default') defineRuntimeData(names, runtimeString(names.length), key)
+  }
+  return names
 }
 
 const add = (
@@ -85,15 +98,58 @@ const add = (
 const createRegistry = (
   input: {
     readonly crypto?: InstalledCryptoRuntime
+    readonly console?: InstalledRuntimeConsole
     readonly fs?: NodeFsFacade
     readonly git?: GitFacade
     readonly httpServer?: HttpServerRuntime
     readonly nodeCore: NodeCoreCompatOptions
+    readonly testModules: ReturnType<typeof createNodeTestSyntheticModules>
+    readonly timers?: RuntimeTimers
   }
 ) => {
   const modules = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
   add(modules, createNodeCoreSyntheticModuleBindings(input.nodeCore))
   add(modules, createStreamSyntheticModuleBindings())
+  {
+    const source = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
+    defineRuntimeData(
+      source,
+      'node:assert/strict',
+      binding(
+        input.testModules['node:assert/strict'],
+        moduleNames(input.testModules['node:assert/strict']),
+        input.testModules['node:assert/strict'].default
+      )
+    )
+    defineRuntimeData(
+      source,
+      'node:test',
+      binding(
+        input.testModules['node:test'],
+        moduleNames(input.testModules['node:test']),
+        input.testModules['node:test'].default
+      )
+    )
+    add(modules, source)
+  }
+  if (input.console != null) {
+    const source = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
+    defineRuntimeData(
+      source,
+      'node:console',
+      binding(
+        input.console.syntheticModule,
+        KEYS(input.console.syntheticModule),
+        input.console.syntheticModule.default
+      )
+    )
+    add(modules, source)
+  }
+  if (input.timers != null) {
+    const source = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
+    defineRuntimeData(source, 'node:timers', binding(input.timers.syntheticModule, KEYS(input.timers.syntheticModule)))
+    add(modules, source)
+  }
   if (input.fs != null) {
     for (const [specifier, module] of createFsSyntheticModules(input.fs)) {
       const names = KEYS(module.named)
@@ -117,57 +173,3 @@ const createRegistry = (
 }
 export const createRuntimeRegistry = (input: Parameters<typeof createRegistry>[0]) =>
   withUnshadowedObjectPrototypeKeys(SYNTHETIC_SPECIFIERS, () => createRegistry(input))
-
-export const createRuntimeGlobals = (crypto?: InstalledCryptoRuntime, network?: Record<string, object>) => {
-  const globals = createRuntimeRecord() as Record<string, object>
-  const streams = createWebStreamsGlobals()
-  const streamNames = KEYS(streams)
-  for (let index = 0; index < streamNames.length; index += 1) {
-    const name = streamNames[index] as string
-    const descriptor = getRuntimeOwnDescriptor(streams, name)
-    if (descriptor == null || !('value' in descriptor)) throw runtimeComposerError('runtime_composer.invalid_options')
-    defineRuntimeData(globals, name, descriptor.value)
-  }
-  if (network != null) {
-    const names = KEYS(network)
-    for (let index = 0; index < names.length; index += 1) {
-      const name = names[index] as string
-      const descriptor = getRuntimeOwnDescriptor(network, name)
-      if (descriptor == null || !('value' in descriptor)) throw runtimeComposerError('runtime_composer.invalid_options')
-      defineRuntimeData(globals, name, descriptor.value)
-    }
-  }
-  if (crypto != null) defineRuntimeData(globals, 'crypto', crypto.installWebCrypto({}) as unknown as object)
-  return freezeRuntimeValue(globals)
-}
-
-const status = (installed: boolean, matrix: unknown) =>
-  freezeRuntimeValue({ installed, matrix, status: installed ? 'installed' : 'unsupported' })
-export const createRuntimeCapabilities = (
-  input: {
-    readonly crypto?: InstalledCryptoRuntime
-    readonly fs: boolean
-    readonly git: boolean
-    readonly httpServer: boolean
-    readonly network: boolean
-    readonly storage: boolean
-  }
-) =>
-  freezeRuntimeValue({
-    'child-process': status(input.git, CHILD_PROCESS_CAPABILITY_MATRIX),
-    crypto: input.crypto == null
-      ? status(false, CRYPTO_CAPABILITY_MATRIX)
-      : freezeRuntimeValue({
-        descriptors: input.crypto.capabilityDescriptors,
-        installed: true,
-        matrix: CRYPTO_CAPABILITY_MATRIX,
-        status: 'installed'
-      }),
-    fs: status(input.fs, FS_CAPABILITY_MATRIX),
-    git: status(input.git, GIT_CAPABILITY_MATRIX),
-    'http-server': status(input.httpServer, HTTP_SERVER_CAPABILITY_MATRIX),
-    network: status(input.network, WEB_NETWORK_CAPABILITY_MATRIX),
-    'node-core': status(true, NODE_CORE_CAPABILITY_MATRIX),
-    storage: status(input.storage, STORAGE_CAPABILITY_MATRIX),
-    streams: status(true, STREAM_CAPABILITY_MATRIX)
-  })

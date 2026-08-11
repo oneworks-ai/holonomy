@@ -10,6 +10,14 @@ interface RuntimeEngine {
 
     fun evaluate(source: String): CompletableFuture<RuntimeEvaluation>
 
+    /** Executes one trusted-host supplied ES module with its canonical external URL. */
+    fun executeModule(module: RuntimeModuleSource): CompletableFuture<Unit>
+
+    /** Applies a bounded trusted-host control command on the owned runtime thread. */
+    fun control(operation: String, valueJson: String): CompletableFuture<Unit> = CompletableFuture.failedFuture(
+        RuntimeEngineException(RuntimeEngineErrorCode.NOT_SUPPORTED, "Runtime control is unavailable"),
+    )
+
     fun terminate(): CompletableFuture<Unit>
 
     fun dispose(): CompletableFuture<Unit>
@@ -34,6 +42,46 @@ data class RuntimeModuleSource(
     val resourceUrl: String,
     val source: String,
 )
+
+data class RuntimeProcessConfiguration(
+    val argv: List<String> = emptyList(),
+    val cwd: String = "/runtime",
+    val env: Map<String, String> = emptyMap(),
+    val execPath: String = "/runtime/holonomy",
+    val pid: Int = 1,
+)
+
+interface RuntimeProcessHost {
+    val configuration: RuntimeProcessConfiguration
+
+    fun write(stream: RuntimeOutputStream, chunk: String)
+
+    /** Optional lossy diagnostics side channel; it never participates in guest execution. */
+    fun networkDiagnostic(eventJson: String) = Unit
+
+    fun exit(code: Int)
+}
+
+enum class RuntimeOutputStream {
+    STDERR,
+    STDOUT,
+}
+
+object SilentRuntimeProcessHost : RuntimeProcessHost {
+    override val configuration = RuntimeProcessConfiguration()
+
+    override fun write(stream: RuntimeOutputStream, chunk: String) = Unit
+
+    override fun exit(code: Int) = Unit
+}
+
+fun interface RuntimeModuleResolver {
+    /**
+     * Resolves a guest module without imposing a URL scheme. Returning null is the only
+     * not-found signal; the returned resource URL must be absolute and becomes its V8 identity.
+     */
+    fun resolve(specifier: String, referrerUrl: String?): RuntimeModuleSource?
+}
 
 data class RuntimeEvaluation(
     val kind: Kind,
@@ -68,12 +116,48 @@ class RuntimeEngineException(
     message: String,
 ) : IllegalStateException(message)
 
-fun interface RuntimeNativeHost {
+data class RuntimeNativeBinary(
+    val handle: String,
+    val data: ByteArray,
+)
+
+data class RuntimeNativeEvent(
+    val eventJson: String,
+    val binary: List<RuntimeNativeBinary> = emptyList(),
+)
+
+fun interface RuntimeNativeEventSink {
+    fun emit(event: RuntimeNativeEvent)
+}
+
+fun interface RuntimeNativeResourceEventSink {
+    fun emit(eventJson: String)
+}
+
+interface RuntimeNativeHost : AutoCloseable {
+    /** Host-owned capability configuration consumed before the guest global is removed. */
+    fun configurationJson(): String = "{\"capabilities\":[]}"
+
     /**
-     * Receives the validated guest request separately from provider-only context.
-     * Implementations must re-authorize the context and return one terminal JSON envelope.
+     * Receives validated request metadata separately from copied binary and provider-only context.
+     * Implementations re-authorize immediately before work and emit only bounded stable events.
      */
-    fun dispatch(requestJson: String, contextJson: String): String
+    fun dispatch(
+        requestId: String,
+        requestJson: String,
+        contextJson: String,
+        binary: List<RuntimeNativeBinary>,
+        sink: RuntimeNativeEventSink,
+        resourceSink: RuntimeNativeResourceEventSink,
+    )
+
+    fun cancel(callToken: String, reason: String?) = Unit
+
+    fun closeResource(ownerCallToken: String, providerToken: String, reason: String?) = Unit
+
+    fun grantCredits(callToken: String, credits: Int) = Unit
+
+    override fun close() = Unit
 }
 
 class FailClosedRuntimeNativeHost : RuntimeNativeHost {
@@ -89,16 +173,23 @@ class FailClosedRuntimeNativeHost : RuntimeNativeHost {
     var lastContextJson: String? = null
         private set
 
-    override fun dispatch(requestJson: String, contextJson: String): String {
+    override fun dispatch(
+        requestId: String,
+        requestJson: String,
+        contextJson: String,
+        binary: List<RuntimeNativeBinary>,
+        sink: RuntimeNativeEventSink,
+        resourceSink: RuntimeNativeResourceEventSink,
+    ) {
         dispatchCount += 1
         lastRequestJson = requestJson
         lastContextJson = contextJson
-        return FAIL_CLOSED_TERMINAL
+        sink.emit(RuntimeNativeEvent("{\"id\":\"$requestId\",$FAIL_CLOSED_TERMINAL_BODY"))
     }
 
     private companion object {
-        private const val FAIL_CLOSED_TERMINAL =
-            "{\"type\":\"error\",\"error\":{\"domain\":\"runtime\",\"code\":\"capability_unsupported\"}}"
+        private const val FAIL_CLOSED_TERMINAL_BODY =
+            "\"type\":\"error\",\"error\":{\"domain\":\"runtime\",\"code\":\"capability_unsupported\"}}"
     }
 }
 
@@ -122,6 +213,18 @@ interface RuntimeAdapterHost {
         callback: () -> Unit,
     )
 
+    /** Queues auxiliary adapter work on the dedicated runtime thread for the current generation. */
+    fun requestRuntimeTask(callback: () -> Unit)
+
+    /** Owns native monotonic timer records and delivers due IDs on the runtime thread. */
+    fun scheduleTimer(
+        delayMs: Long,
+        intervalMs: Long?,
+        callback: (Long) -> Unit,
+    ): Long
+
+    fun cancelTimer(timerId: Long): Boolean
+
     /** Queues termination after the current runtime callback unwinds. */
     fun requestTermination()
 }
@@ -130,6 +233,12 @@ interface RuntimeAdapter : AutoCloseable {
     fun start()
 
     fun evaluate(source: String): RuntimeEvaluation
+
+    fun executeModule(module: RuntimeModuleSource)
+
+    fun control(operation: String, valueJson: String) {
+        throw RuntimeEngineException(RuntimeEngineErrorCode.NOT_SUPPORTED, "Runtime control is unavailable")
+    }
 
     /** This is the only adapter operation that may be called off the runtime thread. */
     fun terminateExecution()
@@ -175,3 +284,22 @@ internal fun validateModuleSource(module: RuntimeModuleSource): RuntimeEngineExc
     }
     return null
 }
+
+internal fun validateRuntimeControl(operation: String, valueJson: String): RuntimeEngineException? {
+    if (!RUNTIME_CONTROL_OPERATION.matches(operation)) {
+        return RuntimeEngineException(
+            RuntimeEngineErrorCode.INVALID_ARGUMENT,
+            "Invalid runtime control operation",
+        )
+    }
+    if (valueJson.toByteArray(Charsets.UTF_8).size !in 1..MAX_RUNTIME_CONTROL_JSON_BYTES) {
+        return RuntimeEngineException(
+            RuntimeEngineErrorCode.INVALID_ARGUMENT,
+            "Invalid runtime control value",
+        )
+    }
+    return null
+}
+
+private const val MAX_RUNTIME_CONTROL_JSON_BYTES = 1024 * 1024
+private val RUNTIME_CONTROL_OPERATION = Regex("[a-z][A-Za-z0-9_.-]{0,63}")

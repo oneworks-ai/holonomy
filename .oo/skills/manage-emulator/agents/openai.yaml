@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage Emulator"
+  short_description: "Start, inspect, restart, and stop owned emulators"
+  default_prompt: "Use $manage-emulator to manage a Holonomy-owned Android emulator through the OpenAPI service."

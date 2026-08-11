@@ -69,5 +69,25 @@ export default config(
       'no-console': 'off',
       'ts/strict-boolean-expressions': 'off'
     }
+  },
+  {
+    files: ['conformance/**/*.mjs'],
+    rules: {
+      'no-console': 'off',
+      'test/no-import-node-test': 'off'
+    }
+  },
+  {
+    files: ['examples/**/*.mjs'],
+    rules: {
+      'antfu/no-top-level-await': 'off',
+      'no-console': 'off'
+    }
+  },
+  {
+    files: ['.oo/skills/*/agents/openai.yaml'],
+    rules: {
+      'yaml/plain-scalar': 'off'
+    }
   }
 )
