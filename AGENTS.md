@@ -2,6 +2,8 @@
 
 `@oneworks/holonomy` owns platform-neutral JavaScript runtime behavior used by native hosts. Android, Javet and V8 bindings adapt to package ports and own only engine-thread, monotonic scheduling and operating-system primitives; they do not reinterpret guest APIs or test semantics.
 
+Read [`.oo/rules/project-identity.md`](.oo/rules/project-identity.md) before changing the public positioning, icon assets, root README structure or the boundary between public documentation and internal design notes.
+
 ## Naming contract
 
 - The public project, package and runtime brand is **Holonomy**. Public TypeScript APIs, stable error identifiers, virtual schemes, Android namespaces and generated declarations use Holonomy naming.
