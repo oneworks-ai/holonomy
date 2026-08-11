@@ -13,7 +13,7 @@
 - The sphere occupies about 72% of the square export. The Gaussian gravity well sits slightly above the sphere's mathematical bottom and remains visible without an opaque ground-shadow ellipse. Depth comes from projection, line opacity, dashes, and grid deformation—not glow, material fill, or an extra shadow patch.
 - Light and dark path gradients are authored separately. The light loop uses higher-luminance blue, cyan, violet, pink, and orange stops instead of an inverted dark asset.
 - The source preview lives in the `oneworks-ai/icon` repository. `assets/holonomy-icon-light.png` and `assets/holonomy-icon-dark.png` are repository-facing 1024-by-1024 static exports; regenerate both from that preview instead of filtering or hand-editing either bitmap.
-- README exports keep a transparent alpha background so GitHub supplies the surrounding light or dark field. The two assets still carry appearance-specific geometry and path colors; do not collapse them into one image or bake a white/black square into either PNG.
+- README exports isolate the transparent sphere and closed path, omitting both the flat field and gravity plane so GitHub supplies the surrounding light or dark surface. The two assets still carry appearance-specific geometry and path colors; do not collapse them into one image or bake a white/black square into either PNG. The full icon preview retains the gravity plane as part of the broader visual concept.
 
 ## Documentation boundary
 
