@@ -9,12 +9,13 @@
 
 ## Visual identity
 
-- The canonical concept is a transparent wireframe sphere above a gravity-warped plane. A closed triangular path connects one pole to two equatorial points separated by 90 degrees.
+- The canonical geometry is a sphere with a closed triangular path connecting one pole to two equatorial points separated by 90 degrees. The wireframe-and-gravity-plane rendering remains the scientific concept view; the flat Goldberg rendering is the compact repository mark.
 - Use a 30-degree elevated view and a full-opacity spectral path. Dark mode uses a pure-black field, translucent white front geometry, and darker dashed rear geometry; light mode uses a pure-white field, black front geometry, and lighter dashed rear geometry.
 - The sphere occupies about 72% of the square export. The Gaussian gravity well sits slightly above the sphere's mathematical bottom and remains visible without an opaque ground-shadow ellipse. Depth comes from projection, line opacity, dashes, and grid deformation—not glow, material fill, or an extra shadow patch.
-- Light and dark path gradients are authored separately. The light loop uses higher-luminance blue, cyan, violet, pink, and orange stops instead of an inverted dark asset.
+- Light and dark spectral path gradients are authored separately for the wireframe and solid renderers. The light loop uses higher-luminance blue, cyan, violet, pink, and orange stops instead of an inverted dark asset.
 - The source preview lives in the `oneworks-ai/icon` repository. `assets/holonomy-icon-light.png` and `assets/holonomy-icon-dark.png` are repository-facing 1024-by-1024 static exports; regenerate both from that preview instead of filtering or hand-editing either bitmap.
-- README exports isolate the transparent sphere and closed path, omitting both the flat field and gravity plane so GitHub supplies the surrounding light or dark surface. The two assets still carry appearance-specific geometry and path colors; do not collapse them into one image or bake a white/black square into either PNG. The full icon preview retains the gravity plane as part of the broader visual concept.
+- The repository mark uses a frequency-six Goldberg mesh and the Node.js core green `#3F873F` as a restrained homage to the runtime lineage. The spherical tiling and Holonomy path stay structurally distinct from Node.js's hexagonal logo; do not copy that enclosing mark or expand this into a multi-brand lockup.
+- README exports isolate the transparent flat sphere, geodesic path and outer ring, omitting the gravity plane so GitHub supplies the surrounding light or dark surface. The dark asset uses a pale-green path and ring; the light asset uses deep green. Do not collapse them into one image or bake a white/black square into either PNG. The full icon preview retains the gravity plane as part of the broader visual concept.
 
 ## Documentation boundary
 
