@@ -1,6 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
+        android:name=".HolonomyE2eApplication"
         android:allowBackup="false"
-        android:label="OneWorks Holonomy Runtime M2 E2E"
-        android:supportsRtl="true" />
+        android:label="Holonomy DevTools"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true">
+        <activity
+            android:name=".HolonomyRuntimeActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:theme="@style/HolonomyRuntimeSessionTheme" />
+    </application>
 </manifest>

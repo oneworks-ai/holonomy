@@ -9,6 +9,11 @@ export interface RuntimeProcessSnapshot {
   readonly versions: Readonly<{ node: string }>
 }
 
+export interface RuntimeProcessControl {
+  /** Requests generic process termination. The host owns isolate teardown after the current callback unwinds. */
+  exit(code: number): void
+}
+
 export interface RuntimeStdioProvider {
   /** Receives text or bytes directly; hosts must not add base64 transport. */
   write(
@@ -49,6 +54,7 @@ export interface NodeCoreCompatOptions {
   readonly process: RuntimeProcessSnapshot
   readonly os: RuntimeOsSnapshot
   readonly stdio: RuntimeStdioProvider
+  readonly processControl?: RuntimeProcessControl
   /** Maximum bytes per write; defaults to 1 MiB and may be lowered to the host limit. */
   readonly maxStdioChunkBytes?: number
   /** Defaults to app://runtime/ and is accepted by fileURLToPath. */

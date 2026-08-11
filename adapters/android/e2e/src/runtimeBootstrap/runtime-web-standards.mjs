@@ -9,6 +9,55 @@ const normalizePath = (input) => {
   return `/${output.join('/')}${trailingSlash && output.length > 0 ? '/' : ''}`
 }
 
+const decodePart = value => decodeURIComponent(value.replaceAll('+', ' '))
+const encodePart = value => encodeURIComponent(value).replaceAll('%20', '+')
+
+export class RuntimeURLSearchParams {
+  #entries
+  #update
+
+  constructor(value = '', update = () => {}) {
+    const source = String(value).replace(/^\?/u, '')
+    this.#entries = source === ''
+      ? []
+      : source.split('&').map(item => {
+        const split = item.indexOf('=')
+        return split < 0
+          ? [decodePart(item), '']
+          : [decodePart(item.slice(0, split)), decodePart(item.slice(split + 1))]
+      })
+    this.#update = update
+  }
+
+  *entries() {
+    for (const entry of this.#entries) yield [...entry]
+  }
+
+  get(name) {
+    return this.#entries.find(entry => entry[0] === String(name))?.[1] ?? null
+  }
+
+  keys() {
+    return this.#entries.map(entry => entry[0]).values()
+  }
+
+  set(name, value) {
+    const key = String(name)
+    const next = this.#entries.filter(entry => entry[0] !== key)
+    next.push([key, String(value)])
+    this.#entries = next
+    this.#update(this.toString())
+  }
+
+  toString() {
+    return this.#entries.map(([name, value]) => `${encodePart(name)}=${encodePart(value)}`).join('&')
+  }
+
+  [Symbol.iterator]() {
+    return this.entries()
+  }
+}
+
 const parseAbsolute = (value) => {
   const match = /^([a-z][a-z\d+.-]*:)(?:\/\/([^/?#]*))?(\/[^?#]*)?(\?[^#]*)?(#.*)?$/iu.exec(value)
   if (match == null) throw new TypeError('Invalid URL')
@@ -17,7 +66,8 @@ const parseAbsolute = (value) => {
   const credentials = credentialsEnd >= 0 ? authority.slice(0, credentialsEnd) : ''
   const host = credentialsEnd >= 0 ? authority.slice(credentialsEnd + 1) : authority
   const credentialSeparator = credentials.indexOf(':')
-  const portSeparator = host.lastIndexOf(':')
+  const bracketEnd = host.startsWith('[') ? host.indexOf(']') : -1
+  const portSeparator = bracketEnd >= 0 ? (host[bracketEnd + 1] === ':' ? bracketEnd + 1 : -1) : host.lastIndexOf(':')
   return {
     hash: match[5] ?? '',
     hostname: portSeparator > 0 ? host.slice(0, portSeparator) : host,
@@ -77,21 +127,21 @@ export class RuntimeURL {
     return this.toString()
   }
 
+  get origin() {
+    return `${this.protocol}//${this.host}`
+  }
+
+  get searchParams() {
+    return new RuntimeURLSearchParams(this.search, value => {
+      this.search = value === '' ? '' : `?${value}`
+    })
+  }
+
   toString() {
     const credentials = this.username === ''
       ? ''
       : `${this.username}${this.password === '' ? '' : `:${this.password}`}@`
     return `${this.protocol}//${credentials}${this.host}${this.pathname}${this.search}${this.hash}`
-  }
-}
-
-export class RuntimeURLSearchParams {
-  constructor(value = '') {
-    this.value = String(value).replace(/^\?/u, '')
-  }
-
-  toString() {
-    return this.value
   }
 }
 

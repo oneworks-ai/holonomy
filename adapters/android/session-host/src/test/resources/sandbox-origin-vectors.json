@@ -1,0 +1,62 @@
+{
+  "origins": [
+    { "input": "http://127.0.0.1", "accepted": true, "canonical": "http://127.0.0.1" },
+    { "input": "http://127.000.000.001", "accepted": false, "canonical": "http://127.0.0.1" },
+    { "input": "http://2130706433", "accepted": false, "canonical": "http://127.0.0.1" },
+    { "input": "http://0177.0.0.1", "accepted": false, "canonical": "http://127.0.0.1" },
+    { "input": "http://[2001:db8::1]", "accepted": true, "canonical": "http://[2001:db8::1]" },
+    { "input": "http://[2001:0db8::1]", "accepted": false, "canonical": "http://[2001:db8::1]" },
+    { "input": "http://[2001:DB8::1]", "accepted": false, "canonical": "http://[2001:db8::1]" },
+    { "input": "http://[2001:db8:0:0:0:0:0:1]", "accepted": false, "canonical": "http://[2001:db8::1]" },
+    { "input": "http://[2001:db8::]", "accepted": true, "canonical": "http://[2001:db8::]" },
+    { "input": "http://[2001::1:0:0:1:1]", "accepted": true, "canonical": "http://[2001::1:0:0:1:1]" },
+    { "input": "http://[2001:0:0:1:0:0:1:1]", "accepted": false, "canonical": "http://[2001::1:0:0:1:1]" },
+    { "input": "http://[::]", "accepted": true, "canonical": "http://[::]" },
+    { "input": "http://[::ffff:c000:280]", "accepted": true, "canonical": "http://[::ffff:c000:280]" },
+    { "input": "http://[::ffff:192.0.2.128]", "accepted": false, "canonical": "http://[::ffff:c000:280]" },
+    { "input": "http://[::ffff:192.168.001.001]", "accepted": false, "canonical": null },
+    { "input": "https://xn--bcher-kva.example", "accepted": true, "canonical": "https://xn--bcher-kva.example" },
+    { "input": "https://bücher.example", "accepted": false, "canonical": "https://xn--bcher-kva.example" },
+    { "input": "https://xn--Bcher-kva.example", "accepted": false, "canonical": "https://xn--bcher-kva.example" },
+    { "input": "https://example.com.", "accepted": true, "canonical": "https://example.com." },
+    { "input": "HTTPS://API.EXAMPLE", "accepted": false, "canonical": "https://api.example" },
+    { "input": "http://example.com:8080", "accepted": true, "canonical": "http://example.com:8080" },
+    { "input": "http://example.com:0", "accepted": true, "canonical": "http://example.com:0" },
+    { "input": "http://example.com:", "accepted": false, "canonical": "http://example.com" },
+    { "input": "http://example.com:80", "accepted": false, "canonical": "http://example.com" },
+    { "input": "https://example.com:443", "accepted": false, "canonical": "https://example.com" },
+    { "input": "http://example.com:080", "accepted": false, "canonical": "http://example.com" },
+    { "input": "http://[2001:db8::1]:80", "accepted": false, "canonical": "http://[2001:db8::1]" },
+    { "input": "http://[fe80::1%25en0]", "accepted": false, "canonical": null },
+    { "input": "http://user@example.com", "accepted": false, "canonical": "http://example.com" },
+    { "input": "http://example.com/", "accepted": false, "canonical": "http://example.com" },
+    { "input": "http://example.com/path", "accepted": false, "canonical": "http://example.com" },
+    { "input": "http://example.com?query=1", "accepted": false, "canonical": "http://example.com" },
+    { "input": "http://example.com#fragment", "accepted": false, "canonical": "http://example.com" },
+    { "input": "http://[2001:db8:::1]", "accepted": false, "canonical": null }
+  ],
+  "digests": [
+    {
+      "name": "default-deny",
+      "access": "none",
+      "allowedOrigins": [],
+      "allowedSchemes": [],
+      "allowPrivateNetwork": false,
+      "filesystemAccess": "none",
+      "digest": "5e2ed175d63c0700bea4c6a2ec58882be4bf0e9a9f2e5499863f443a54b2b7ee"
+    },
+    {
+      "name": "ipv6-idn-restricted",
+      "access": "restricted",
+      "allowedOrigins": [
+        "http://[2001:db8::1]",
+        "http://[::ffff:c000:280]",
+        "https://xn--bcher-kva.example"
+      ],
+      "allowedSchemes": ["http", "https"],
+      "allowPrivateNetwork": false,
+      "filesystemAccess": "none",
+      "digest": "5858480325fa3043dad1a9076d2861bd790accf938a01a4d5a67e4f08b28b4a6"
+    }
+  ]
+}

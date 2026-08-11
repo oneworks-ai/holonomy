@@ -20,7 +20,7 @@
 
 ## Introduction
 
-Holonomy is a capability-secure, platform-neutral JavaScript runtime for native hosts. It provides bounded Node-compatible modules, Web APIs, and explicit host contracts without making Android, V8, or any single engine the owner of runtime semantics. Explicit, observable capability boundaries also make it a safer foundation for Agent workloads.
+Holonomy is a platform-neutral, Node-like JavaScript runtime for native hosts. It preserves reviewed scheduling, authority, resource-identity, and lifecycle semantics across host engines, with explicit and observable capability boundaries.
 
 ## Quick Start
 
@@ -30,6 +30,14 @@ pnpm typecheck
 pnpm build
 pnpm test
 ```
+
+## Documentation
+
+- [CLI and JavaScript usage](./tools/README.md)
+- [Service operations and managed processes](./tools/service/README.md)
+- [Android host documentation](./adapters/android/network-host/README.md) · [Session host](./adapters/android/session-host/README.md)
+- [Runtime execution and conformance](./docs/execution-and-conformance.md) · [Testing strategy](./docs/testing-strategy.md)
+- [Managed V8 DevTools](./tools/README.md)
 
 ## License
 

@@ -7,9 +7,12 @@ export * from './module-loader/index.js'
 export * from './native-port/index.js'
 export * from './node-compat/index.js'
 export * from './node-fs/index.js'
+export * from './node-test/index.js'
+export * from './runtime-console/index.js'
 export * from './runtime/index.js'
 export * from './storage/index.js'
 export * from './streams/index.js'
+export * from './timers/index.js'
 export * from './web-network/index.js'
 /* eslint-disable perfectionist/sort-exports -- NodeCore notSupported must follow the conflicting star exports. */
 // dprint-ignore

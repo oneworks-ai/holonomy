@@ -6,7 +6,10 @@ import type { HolonomyModuleLoader, HolonomyModuleLoaderOptions } from '../modul
 import type { NativeAuthority, NativeBridge, NativeBridgeOptions, NativePort } from '../native-port/index.js'
 import type { NodeCoreCompatOptions } from '../node-compat/index.js'
 import type { NodeFsFacade, NodeFsFacadeOptions } from '../node-fs/index.js'
+import type { HolonomyTestPlatform } from '../node-test/index.js'
+import type { InstalledRuntimeConsole } from '../runtime-console/index.js'
 import type { StorageAuthorityInput, StorageFacade } from '../storage/index.js'
+import type { RuntimeTimers } from '../timers/index.js'
 import type { NetworkAuthority, WebNetworkRuntime, WebNetworkRuntimeOptions } from '../web-network/index.js'
 
 export interface RuntimeSyntheticModuleBinding {
@@ -19,12 +22,15 @@ export interface HolonomyRuntimeOptions {
   readonly nativePort: NativePort
   readonly authority: NativeAuthority
   readonly nodeCore: NodeCoreCompatOptions
+  readonly console?: InstalledRuntimeConsole
   readonly bridge?: Omit<NativeBridgeOptions, 'authority' | 'eventLoop'>
   readonly fs?: NodeFsFacadeOptions
   readonly httpServer?: Omit<HttpServerRuntimeOptions, 'bridge'>
   readonly crypto?: CryptoPrimitivePortOptions
   readonly git?: GitAuthorityInput
   readonly storage?: StorageAuthorityInput
+  readonly testPlatform?: HolonomyTestPlatform
+  readonly timers?: RuntimeTimers
   readonly network?: Omit<WebNetworkRuntimeOptions, 'authority' | 'bridge'> & {
     readonly authority: NetworkAuthority
     /** Composer-level identity check; the network leaf itself never accepts a principal. */
@@ -59,7 +65,12 @@ export interface HolonomyRuntimeGlobals {
   readonly TransformStream: object
   readonly WritableStream: object
   readonly crypto?: object
+  readonly console?: object
   readonly fetch?: object
+  readonly clearInterval?: object
+  readonly clearTimeout?: object
+  readonly setInterval?: object
+  readonly setTimeout?: object
 }
 
 export interface HolonomyRuntimeSnapshot {
@@ -73,6 +84,7 @@ export interface HolonomyRuntime {
   readonly bridge: NativeBridge
   readonly capabilities: Readonly<Record<string, unknown>>
   readonly crypto?: InstalledCryptoRuntime
+  readonly console?: InstalledRuntimeConsole
   readonly eventLoop: RuntimeEventLoop
   readonly fs?: NodeFsFacade
   readonly git?: GitFacade
@@ -81,6 +93,7 @@ export interface HolonomyRuntime {
   readonly moduleLoader?: RuntimeModuleLoader
   readonly network?: WebNetworkRuntime
   readonly storage?: StorageFacade
+  readonly timers?: RuntimeTimers
   readonly syntheticModules: Readonly<Record<string, RuntimeSyntheticModuleBinding>>
   dispose(): Promise<void>
   getSnapshot(): HolonomyRuntimeSnapshot

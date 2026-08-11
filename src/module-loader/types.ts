@@ -43,7 +43,7 @@ export interface SyntheticNodeModuleDefinition {
 }
 
 export interface HostModuleLoaderPort {
-  /** Reads a canonical app URL. `null` is the only not-found signal. */
+  /** Reads a canonical URL under the configured root. `null` is the only not-found signal. */
   readModule(
     canonicalUrl: string,
     context: HostModuleReadContext
@@ -72,7 +72,7 @@ export const DEFAULT_HOLONOMY_MODULE_LOADER_LIMITS: Readonly<HolonomyModuleLoade
 })
 
 export interface HolonomyModuleLoaderOptions {
-  /** File-like virtual root such as `app:///bundle/`. */
+  /** Absolute hierarchical root; its scheme is host-defined (for example `memory://device/bundle/`). */
   rootUrl: string
   /** Optional trusted digest manifest keyed by canonical module URL. */
   integrity?: Readonly<Record<string, string>>

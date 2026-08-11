@@ -24,6 +24,8 @@ class DedicatedThreadRuntimeEngine(
     private var scheduledWakeup: ScheduledFuture<*>? = null
     private var scheduledWakeupAt: Long? = null
     private var wakeupSequence = 0L
+    private val nativeTimers = mutableMapOf<Long, NativeTimerRecord>()
+    private var nextNativeTimerId = 0L
 
     @Volatile
     private var lifecycle = Lifecycle.ACTIVE
@@ -61,6 +63,16 @@ class DedicatedThreadRuntimeEngine(
         return submitOperation { runtimeAdapter -> runtimeAdapter.evaluate(source) }
     }
 
+    override fun executeModule(module: RuntimeModuleSource): CompletableFuture<Unit> {
+        validateModuleSource(module)?.let { return failedFuture(it) }
+        return submitOperation { runtimeAdapter -> runtimeAdapter.executeModule(module) }
+    }
+
+    override fun control(operation: String, valueJson: String): CompletableFuture<Unit> {
+        validateRuntimeControl(operation, valueJson)?.let { return failedFuture(it) }
+        return submitOperation { runtimeAdapter -> runtimeAdapter.control(operation, valueJson) }
+    }
+
     override fun terminate(): CompletableFuture<Unit> {
         val future = CompletableFuture<Unit>()
         synchronized(schedulingLock) {
@@ -70,6 +82,7 @@ class DedicatedThreadRuntimeEngine(
 
             generation.incrementAndGet()
             cancelWakeupLocked()
+            cancelNativeTimersLocked()
             val terminationError = runCatching { adapter.get()?.terminateExecution() }.exceptionOrNull()
             executor.execute {
                 threadGuard.checkAccess()
@@ -99,6 +112,7 @@ class DedicatedThreadRuntimeEngine(
             lifecycle = Lifecycle.DISPOSING
             generation.incrementAndGet()
             cancelWakeupLocked()
+            cancelNativeTimersLocked()
             wakeupExecutor.shutdownNow()
             val terminationError = runCatching { adapter.get()?.terminateExecution() }.exceptionOrNull()
             executor.execute {
@@ -161,6 +175,17 @@ class DedicatedThreadRuntimeEngine(
                 callback: () -> Unit,
             ) = scheduleWakeup(adapterGeneration, deadlineMs, observedNowMs, callback)
 
+            override fun requestRuntimeTask(callback: () -> Unit) =
+                enqueueRuntimeTask(adapterGeneration, callback)
+
+            override fun scheduleTimer(
+                delayMs: Long,
+                intervalMs: Long?,
+                callback: (Long) -> Unit,
+            ): Long = scheduleNativeTimer(adapterGeneration, delayMs, intervalMs, callback)
+
+            override fun cancelTimer(timerId: Long): Boolean = cancelNativeTimer(adapterGeneration, timerId)
+
             override fun requestTermination() = requestFatalTermination(adapterGeneration)
         }
         return adapterFactory.create(threadGuard, host)
@@ -196,6 +221,107 @@ class DedicatedThreadRuntimeEngine(
         }
     }
 
+    private fun enqueueRuntimeTask(adapterGeneration: Long, callback: () -> Unit) {
+        synchronized(schedulingLock) {
+            if (lifecycle != Lifecycle.ACTIVE || generation.get() != adapterGeneration) return
+            executor.execute {
+                threadGuard.checkAccess()
+                if (lifecycle != Lifecycle.ACTIVE || generation.get() != adapterGeneration) return@execute
+                runCatching(callback).onFailure { requestFatalTermination(adapterGeneration) }
+            }
+        }
+    }
+
+    private fun scheduleNativeTimer(
+        adapterGeneration: Long,
+        delayMs: Long,
+        intervalMs: Long?,
+        callback: (Long) -> Unit,
+    ): Long = synchronized(schedulingLock) {
+        check(lifecycle == Lifecycle.ACTIVE && generation.get() == adapterGeneration) {
+            "The runtime timer generation is inactive"
+        }
+        require(delayMs >= 0L && (intervalMs == null || intervalMs >= 0L)) {
+            "Runtime timer delays must be non-negative"
+        }
+        val timerId = ++nextNativeTimerId
+        val deadlineMs = monotonicNowMs() + delayMs
+        val record = NativeTimerRecord(
+            callback = callback,
+            deadlineMs = deadlineMs,
+            generation = adapterGeneration,
+            id = timerId,
+            intervalMs = intervalMs,
+        )
+        nativeTimers[timerId] = record
+        scheduleNativeTimerLocked(record)
+        timerId
+    }
+
+    private fun cancelNativeTimer(adapterGeneration: Long, timerId: Long): Boolean = synchronized(schedulingLock) {
+        if (lifecycle != Lifecycle.ACTIVE || generation.get() != adapterGeneration) return@synchronized false
+        val record = nativeTimers.remove(timerId) ?: return@synchronized false
+        record.future?.cancel(false)
+        record.future = null
+        true
+    }
+
+    private fun scheduleNativeTimerLocked(record: NativeTimerRecord) {
+        val delayMs = (record.deadlineMs - monotonicNowMs()).coerceAtLeast(0L)
+        record.future = wakeupExecutor.schedule(
+            { deliverNativeTimer(record.id, record.generation) },
+            delayMs,
+            TimeUnit.MILLISECONDS,
+        )
+    }
+
+    private fun deliverNativeTimer(timerId: Long, adapterGeneration: Long) {
+        val delivery = synchronized(schedulingLock) {
+            val record = nativeTimers[timerId]
+            if (
+                record == null ||
+                lifecycle != Lifecycle.ACTIVE ||
+                generation.get() != adapterGeneration ||
+                record.generation != adapterGeneration
+            ) return@synchronized null
+            record.future = null
+            if (record.intervalMs == null) {
+                nativeTimers.remove(timerId)
+            } else {
+                record.deliveryQueued = true
+            }
+            record
+        } ?: return
+        executor.execute {
+            threadGuard.checkAccess()
+            val admitted = synchronized(schedulingLock) {
+                lifecycle == Lifecycle.ACTIVE &&
+                    generation.get() == adapterGeneration &&
+                    (delivery.intervalMs == null || nativeTimers[timerId] === delivery)
+            }
+            if (!admitted) return@execute
+            val error = runCatching { delivery.callback(timerId) }.exceptionOrNull()
+            if (error != null) {
+                requestFatalTermination(adapterGeneration)
+                return@execute
+            }
+            synchronized(schedulingLock) {
+                if (
+                    lifecycle != Lifecycle.ACTIVE ||
+                    generation.get() != adapterGeneration ||
+                    nativeTimers[timerId] !== delivery
+                ) return@synchronized
+                val intervalMs = delivery.intervalMs ?: return@synchronized
+                delivery.deliveryQueued = false
+                val now = monotonicNowMs()
+                val step = intervalMs.coerceAtLeast(1L)
+                val missed = ((now - delivery.deadlineMs).coerceAtLeast(0L) / step) + 1L
+                delivery.deadlineMs += missed * step
+                scheduleNativeTimerLocked(delivery)
+            }
+        }
+    }
+
     private fun enqueueWakeup(
         adapterGeneration: Long,
         sequence: Long,
@@ -228,6 +354,7 @@ class DedicatedThreadRuntimeEngine(
             if (lifecycle != Lifecycle.ACTIVE || generation.get() != adapterGeneration) return
             generation.incrementAndGet()
             cancelWakeupLocked()
+            cancelNativeTimersLocked()
             executor.execute {
                 threadGuard.checkAccess()
                 runCatching { adapter.getAndSet(null)?.close() }
@@ -245,6 +372,21 @@ class DedicatedThreadRuntimeEngine(
         scheduledWakeupAt = null
     }
 
+    private fun cancelNativeTimersLocked() {
+        nativeTimers.values.forEach { record -> record.future?.cancel(false) }
+        nativeTimers.clear()
+    }
+
+    private data class NativeTimerRecord(
+        val callback: (Long) -> Unit,
+        var deadlineMs: Long,
+        val generation: Long,
+        val id: Long,
+        val intervalMs: Long?,
+        var deliveryQueued: Boolean = false,
+        var future: ScheduledFuture<*>? = null,
+    )
+
     private enum class Lifecycle {
         ACTIVE,
         DISPOSING,
@@ -253,6 +395,8 @@ class DedicatedThreadRuntimeEngine(
 
     private companion object {
         private val nextEngineId = AtomicLong(0)
+
+        private fun monotonicNowMs(): Long = TimeUnit.NANOSECONDS.toMillis(System.nanoTime())
 
         private fun disposedError(): RuntimeEngineException = RuntimeEngineException(
             RuntimeEngineErrorCode.DISPOSED,

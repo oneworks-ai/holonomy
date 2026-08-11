@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debug Runtime Process"
+  short_description: "Open CDP and inspect one managed runtime"
+  default_prompt: "Use $debug-runtime-process to create an Inspector lease and debug one Holonomy runtime process."

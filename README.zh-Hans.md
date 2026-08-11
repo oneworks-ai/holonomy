@@ -20,7 +20,7 @@
 
 ## 介绍
 
-Holonomy 是一个面向原生宿主、能力安全且平台中立的 JavaScript 运行时。它提供边界明确的 Node 兼容模块、Web API 和宿主契约，同时不让 Android、V8 或任何单一引擎成为运行时语义的所有者。显式、可观测的能力边界也让它成为承载 Agent 工作负载的更安全基础。
+Holonomy 是面向原生宿主的平台中立 Node-like JavaScript 运行时。它在不同宿主引擎之间保持经过审阅的调度、权限、资源身份和生命周期语义，并提供明确、可观测的能力边界。
 
 ## 快速开始
 
@@ -30,6 +30,14 @@ pnpm typecheck
 pnpm build
 pnpm test
 ```
+
+## 文档
+
+- [CLI 与 JavaScript 用法](./tools/README.zh-Hans.md)
+- [Service 操作与受管进程](./tools/service/README.zh-Hans.md)
+- [Android 宿主文档](./adapters/android/network-host/README.zh-Hans.md) · [Session 宿主](./adapters/android/session-host/README.zh-Hans.md)
+- [Runtime 执行与 conformance](./docs/execution-and-conformance.md) · [测试策略](./docs/testing-strategy.zh-Hans.md)
+- [受管 V8 DevTools](./tools/README.zh-Hans.md)
 
 ## 许可证
 

@@ -4,6 +4,7 @@ import { authorizeNetworkUrl, resolveNetworkAuthority } from './authority.js'
 import { WEB_NETWORK_OPERATIONS } from './contract.js'
 import { createWebNetworkError } from './errors.js'
 import { NetworkBridgeClient, decodeNetworkValue } from './network-bridge-client.js'
+import { emitNetworkDiagnostic } from './network-diagnostics.js'
 import { validateRequestShape } from './request-validation.js'
 import { WebAbortController, WebAbortSignal } from './web-abort.js'
 import { WebBodyController } from './web-body.js'
@@ -13,7 +14,15 @@ import { WebResponse } from './web-response.js'
 
 import type { NativeResourceHandle, NativeStream } from '../native-port/types.js'
 import type { NetworkBridgeCallOptions } from './network-bridge-client.js'
-import type { ResolvedNetworkAuthority, WebFetchInit, WebNetworkRuntime, WebNetworkRuntimeOptions } from './types.js'
+import type {
+  NetworkDiagnosticsEvent,
+  NetworkDiagnosticsResponse,
+  NetworkHeaderEntries,
+  ResolvedNetworkAuthority,
+  WebFetchInit,
+  WebNetworkRuntime,
+  WebNetworkRuntimeOptions
+} from './types.js'
 import type { WebBodySource } from './web-body.js'
 import type { WebRequestInfo } from './web-request.js'
 
@@ -30,6 +39,66 @@ interface ConnectionLease {
   body?: NativeResponseBody
   released: boolean
   resource?: NativeResourceHandle
+}
+
+interface DiagnosticsTrace {
+  bodyCaptureBytes: number
+  bodyUnavailable: boolean
+  hop: number
+  requestId: string
+  source: 'mock' | 'real'
+  terminal: boolean
+}
+
+const SENSITIVE_HEADERS = new Set(['authorization', 'cookie', 'proxy-authorization', 'set-cookie'])
+const SENSITIVE_QUERY_PARTS = ['auth', 'credential', 'key', 'password', 'secret', 'token'] as const
+const APPLY = Reflect.apply
+const SET_HAS = Set.prototype.has
+const STRING_INCLUDES = String.prototype.includes
+const STRING_TO_LOWER_CASE = String.prototype.toLowerCase
+const lower = (value: string) => APPLY(STRING_TO_LOWER_CASE, value, [])
+const includes = (value: string, search: string) => APPLY(STRING_INCLUDES, value, [search])
+const setHas = <T>(set: Set<T>, value: T) => APPLY(SET_HAS, set, [value]) as boolean
+const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+
+const encodeDiagnosticBase64 = (bytes: Uint8Array) => {
+  let output = ''
+  for (let index = 0; index < bytes.length; index += 3) {
+    const first = bytes[index]!
+    const second = bytes[index + 1]
+    const third = bytes[index + 2]
+    output += BASE64[first >> 2]
+    output += BASE64[((first & 3) << 4) | ((second ?? 0) >> 4)]
+    output += second == null ? '=' : BASE64[((second & 15) << 2) | ((third ?? 0) >> 6)]
+    output += third == null ? '=' : BASE64[third & 63]
+  }
+  return output
+}
+
+const diagnosticHeaders = (headers: WebHeaders): NetworkHeaderEntries =>
+  Object.freeze(
+    [...headers].map(([name, value]) =>
+      Object.freeze(
+        [
+          name,
+          setHas(SENSITIVE_HEADERS, lower(name)) ? '<redacted>' : value
+        ] as const
+      )
+    )
+  )
+
+const diagnosticUrl = (input: URL | string) => {
+  const url = new URL(input.toString())
+  url.hash = ''
+  for (const key of [...url.searchParams.keys()]) {
+    const normalized = lower(key)
+    let sensitive = false
+    for (let index = 0; index < SENSITIVE_QUERY_PARTS.length; index += 1) {
+      if (includes(normalized, SENSITIVE_QUERY_PARTS[index]!)) sensitive = true
+    }
+    if (sensitive) url.searchParams.set(key, '<redacted>')
+  }
+  return url.toString()
 }
 
 const readHostConstructor = <TConstructor>(name: string) => {
@@ -56,10 +125,12 @@ const readResponseHead = (
   const statusText = record.statusText
   const hasBody = record.hasBody
   const responseUrl = record.url
+  const source = (record.source ?? 'real') as unknown
   if (
     !Number.isInteger(status) || (status as number) < 100 || (status as number) > 599 ||
     typeof statusText !== 'string' || /[\0\r\n]/u.test(statusText) ||
-    typeof hasBody !== 'boolean' || typeof responseUrl !== 'string'
+    typeof hasBody !== 'boolean' || typeof responseUrl !== 'string' ||
+    (source !== 'mock' && source !== 'real')
   ) throw createWebNetworkError('network.protocol_error')
   let parsedResponseUrl: URL
   try {
@@ -81,6 +152,7 @@ const readResponseHead = (
   return {
     hasBody,
     headers,
+    source: source as DiagnosticsTrace['source'],
     status: status as number,
     statusText,
     url: responseUrl
@@ -108,7 +180,10 @@ class NativeResponseBody implements WebBodySource {
     private readonly options: NetworkBridgeCallOptions,
     private readonly authority: ResolvedNetworkAuthority,
     private readonly isCurrent: () => boolean,
-    private readonly release: () => void
+    private readonly release: () => void,
+    private readonly onData: (chunk: Uint8Array) => void,
+    private readonly onFinished: (totalBytes: number) => void,
+    private readonly onFailed: (code: string, cancelled: boolean) => void
   ) {
     if (options.signal != null) {
       this.abortListener = () => this.cancel('abort')
@@ -133,6 +208,7 @@ class NativeResponseBody implements WebBodySource {
         throw createWebNetworkError('network.cancelled')
       }
       this.close('read_error')
+      this.onFailed((error as { code?: string })?.code ?? 'network.internal', false)
       throw this.client.normalizeError(error)
     }
     if (!this.isPullCurrent(cancellationEpoch)) {
@@ -142,6 +218,10 @@ class NativeResponseBody implements WebBodySource {
     if (result.done) {
       try {
         decodeNetworkValue(result.value?.value)
+        this.onFinished(this.totalBytes)
+      } catch (error) {
+        this.onFailed((error as { code?: string })?.code ?? 'network.protocol_error', false)
+        throw this.client.normalizeError(error)
       } finally {
         this.close('response_end')
       }
@@ -165,7 +245,9 @@ class NativeResponseBody implements WebBodySource {
       this.close('late_response_body')
       throw createWebNetworkError('network.cancelled')
     }
-    return binary[0].data.slice()
+    const chunk = binary[0].data.slice()
+    this.onData(chunk)
+    return chunk
   }
 
   cancel(reason?: string) {
@@ -175,6 +257,7 @@ class NativeResponseBody implements WebBodySource {
     void this.client.request(WEB_NETWORK_OPERATIONS.http.cancel, {
       response: this.resource
     }).catch(() => undefined)
+    this.onFailed('network.cancelled', true)
     this.close(reason ?? 'response_cancelled')
   }
 
@@ -202,6 +285,7 @@ class FetchRuntimeController {
   private readonly client: NetworkBridgeClient
   private disposed = false
   private generation = 0
+  private nextDiagnosticRequest = 1
 
   constructor(private readonly options: WebNetworkRuntimeOptions) {
     this.authority = resolveNetworkAuthority(options.authority)
@@ -238,6 +322,14 @@ class FetchRuntimeController {
   async fetch(input: WebRequestInfo, init: WebFetchInit = {}) {
     if (this.disposed) throw createWebNetworkError('network.cancelled')
     const generation = this.generation
+    const trace: DiagnosticsTrace = {
+      bodyCaptureBytes: 0,
+      bodyUnavailable: false,
+      hop: 0,
+      requestId: `${generation}.${this.nextDiagnosticRequest++}`,
+      source: 'real',
+      terminal: false
+    }
     const request = new WebRequest(input, init)
     let url = authorizeNetworkUrl(this.authority, request.url, 'http')
     let method = request.method
@@ -250,40 +342,77 @@ class FetchRuntimeController {
       ...(init.timeoutMs == null ? {} : { timeoutMs: init.timeoutMs })
     }
     const redirect = init.redirect ?? 'follow'
+    let redirectResponse: NetworkDiagnosticsResponse | undefined
     if (redirect !== 'follow' && redirect !== 'error' && redirect !== 'manual') {
       throw new TypeError('Invalid redirect mode')
     }
-    for (let count = 0;; count += 1) {
-      const response = await this.issue(url, method, headers, body, options, generation)
-      this.assertCurrent(generation, response.lease)
-      const location = response.head.headers.get('location')
-      if (!REDIRECT_STATUSES.has(response.head.status) || location == null || redirect === 'manual') {
-        return this.toResponse(response, count > 0, method, generation)
+    try {
+      for (let count = 0;; count += 1) {
+        this.emit({
+          headers: diagnosticHeaders(headers),
+          hasPostData: body !== undefined,
+          hop: trace.hop,
+          method,
+          ...(redirectResponse === undefined ? {} : { redirectResponse }),
+          requestId: trace.requestId,
+          timestampMs: this.timestamp(),
+          type: 'requestWillBeSent',
+          url: diagnosticUrl(url)
+        })
+        const response = await this.issue(url, method, headers, body, options, generation)
+        this.assertCurrent(generation, response.lease)
+        trace.source = response.head.source
+        this.emit({
+          headers: diagnosticHeaders(response.head.headers),
+          hop: trace.hop,
+          requestId: trace.requestId,
+          source: trace.source,
+          status: response.head.status,
+          statusText: response.head.statusText,
+          timestampMs: this.timestamp(),
+          type: 'responseReceived',
+          url: diagnosticUrl(response.head.url)
+        })
+        const location = response.head.headers.get('location')
+        if (!REDIRECT_STATUSES.has(response.head.status) || location == null || redirect === 'manual') {
+          return this.toResponse(response, count > 0, method, generation, trace)
+        }
+        this.closeConnection(response.lease, 'redirect')
+        if (redirect === 'error' || count >= this.authority.limits.maxRedirects) {
+          throw createWebNetworkError('network.redirect_limit')
+        }
+        const previousOrigin = url.origin
+        redirectResponse = Object.freeze({
+          headers: diagnosticHeaders(response.head.headers),
+          source: trace.source,
+          status: response.head.status,
+          statusText: response.head.statusText,
+          url: diagnosticUrl(response.head.url)
+        })
+        let redirectUrl: URL
+        try {
+          redirectUrl = new URL(location, url)
+        } catch {
+          throw createWebNetworkError('network.protocol_error')
+        }
+        redirectUrl.hash = ''
+        url = authorizeNetworkUrl(this.authority, redirectUrl, 'http')
+        trace.hop += 1
+        if (url.origin !== previousOrigin) headers.delete('authorization')
+        const rewriteToGet = (
+          response.head.status === 303 && method !== 'GET' && method !== 'HEAD'
+        ) || (
+          (response.head.status === 301 || response.head.status === 302) && method === 'POST'
+        )
+        if (rewriteToGet) {
+          method = 'GET'
+          body = undefined
+          for (const name of BODY_REPRESENTATION_HEADERS) headers.delete(name)
+        }
       }
-      this.closeConnection(response.lease, 'redirect')
-      if (redirect === 'error' || count >= this.authority.limits.maxRedirects) {
-        throw createWebNetworkError('network.redirect_limit')
-      }
-      const previousOrigin = url.origin
-      let redirectUrl: URL
-      try {
-        redirectUrl = new URL(location, url)
-      } catch {
-        throw createWebNetworkError('network.protocol_error')
-      }
-      redirectUrl.hash = ''
-      url = authorizeNetworkUrl(this.authority, redirectUrl, 'http')
-      if (url.origin !== previousOrigin) headers.delete('authorization')
-      const rewriteToGet = (
-        response.head.status === 303 && method !== 'GET' && method !== 'HEAD'
-      ) || (
-        (response.head.status === 301 || response.head.status === 302) && method === 'POST'
-      )
-      if (rewriteToGet) {
-        method = 'GET'
-        body = undefined
-        for (const name of BODY_REPRESENTATION_HEADERS) headers.delete(name)
-      }
+    } catch (error) {
+      this.failTrace(trace, (error as { code?: string })?.code ?? 'network.internal')
+      throw error
     }
   }
 
@@ -358,7 +487,8 @@ class FetchRuntimeController {
     response: Awaited<ReturnType<FetchRuntimeController['issue']>>,
     redirected: boolean,
     method: string,
-    generation: number
+    generation: number,
+    trace: DiagnosticsTrace
   ) {
     this.assertCurrent(generation, response.lease)
     if (response.options.signal?.aborted) {
@@ -374,13 +504,24 @@ class FetchRuntimeController {
       throw createWebNetworkError('network.protocol_error')
     }
     const body = response.head.hasBody
-      ? new NativeResponseBody(this.client, response.resource, response.options, this.authority, () => {
-        return this.isCurrent(generation)
-      }, () => this.releaseConnection(response.lease))
+      ? new NativeResponseBody(
+        this.client,
+        response.resource,
+        response.options,
+        this.authority,
+        () => {
+          return this.isCurrent(generation)
+        },
+        () => this.releaseConnection(response.lease),
+        chunk => this.emitData(trace, chunk),
+        totalBytes => this.finishTrace(trace, totalBytes),
+        (code, cancelled) => this.failTrace(trace, code, cancelled)
+      )
       : undefined
     response.lease.body = body
     if (!response.head.hasBody) {
       this.closeConnection(response.lease, 'no_response_body')
+      this.finishTrace(trace, 0)
     }
     return WebResponse.fromNetwork({
       body: new WebBodyController(body),
@@ -422,6 +563,60 @@ class FetchRuntimeController {
 
   private isCurrent(generation: number) {
     return !this.disposed && this.generation === generation
+  }
+
+  private emit(event: NetworkDiagnosticsEvent) {
+    emitNetworkDiagnostic(this.options.diagnostics, Object.freeze(event))
+  }
+
+  private emitData(trace: DiagnosticsTrace, chunk: Uint8Array) {
+    const limit = this.options.diagnosticsBodyLimitBytes ?? 0
+    const canCapture = !trace.bodyUnavailable && limit > 0 && trace.bodyCaptureBytes + chunk.byteLength <= limit
+    if (canCapture) trace.bodyCaptureBytes += chunk.byteLength
+    else if (limit > 0) trace.bodyUnavailable = true
+    this.emit({
+      ...(canCapture ? { dataBase64: encodeDiagnosticBase64(chunk) } : {}),
+      ...(trace.bodyUnavailable ? { bodyUnavailable: true } : {}),
+      dataLength: chunk.byteLength,
+      requestId: trace.requestId,
+      source: trace.source,
+      timestampMs: this.timestamp(),
+      type: 'dataReceived'
+    })
+  }
+
+  private failTrace(trace: DiagnosticsTrace, code: string, cancelled = code === 'network.cancelled') {
+    if (trace.terminal) return
+    trace.terminal = true
+    this.emit({
+      cancelled,
+      code,
+      requestId: trace.requestId,
+      source: trace.source,
+      timestampMs: this.timestamp(),
+      type: 'loadingFailed'
+    })
+  }
+
+  private finishTrace(trace: DiagnosticsTrace, totalBytes: number) {
+    if (trace.terminal) return
+    trace.terminal = true
+    this.emit({
+      requestId: trace.requestId,
+      source: trace.source,
+      timestampMs: this.timestamp(),
+      totalBytes,
+      type: 'loadingFinished'
+    })
+  }
+
+  private timestamp() {
+    try {
+      const value = this.options.diagnosticsNow?.() ?? Date.now()
+      return Number.isFinite(value) && value >= 0 ? value : 0
+    } catch {
+      return 0
+    }
   }
 }
 
