@@ -1,6 +1,6 @@
 # JavaScript test maintenance
 
-Read [`docs/testing-strategy.md`](../docs/testing-strategy.md) before adding or moving a test.
+Read [`.oo/rules/testing-strategy.md`](../.oo/rules/testing-strategy.md) before adding or moving a test.
 
 - `js-runtime-kernel/<component>/` tests the TypeScript/JavaScript Event Loop, Module Loader, Native Bridge and Runtime Composer. It is not the V8/Javet/native-host layer.
 - `js-api/<component>/` tests only public Node/Web semantics against declared ports. Fetch and FS tests do not inspect native DNS, sockets, filesystem handles, JSB or Android implementation state.

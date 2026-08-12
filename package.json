@@ -138,6 +138,7 @@
     "holonomy": "node tools/holonomy.mjs",
     "service": "node tools/service/entry.mjs",
     "build": "node --input-type=module --eval \"import { rmSync } from 'node:fs'; rmSync('dist', { force: true, recursive: true })\" && tsc -p tsconfig.build.json",
+    "docs:check": "node __tests__/verify-docs-layout.mjs && node --test __tests__/verify-docs-layout.test.mjs",
     "format": "dprint fmt",
     "format:check": "dprint check",
     "lint": "eslint .",

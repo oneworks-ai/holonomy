@@ -21,5 +21,5 @@
 
 - `README.md` and `README.zh-Hans.md` are concise public entry points: a theme-aware `<picture>`, language switch, project name, one-line positioning, short introduction, quick start, and license.
 - Runtime contracts, adapter ownership, module maps, security invariants, and verification details belong in `AGENTS.md` or the nearest `.oo/rules/` document.
-- Longer public usage guides belong in `docs/` when they exist. Do not turn either root README into an architecture specification or platform bring-up log.
+- Longer public usage guides belong in `.oo/docs/`, with Simplified Chinese at the root locale and an equivalent English tree under `.oo/docs/en/`. Do not turn either root README into an architecture specification or platform bring-up log.
 - Keep the English and Simplified Chinese README structures equivalent, and keep their language links at the top.
