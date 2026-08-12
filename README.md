@@ -33,11 +33,10 @@ pnpm test
 
 ## Documentation
 
-- [CLI and JavaScript usage](./tools/README.md)
-- [Service operations and managed processes](./tools/service/README.md)
-- [Android host documentation](./adapters/android/network-host/README.md) · [Session host](./adapters/android/session-host/README.md)
-- [Runtime execution and conformance](./docs/execution-and-conformance.md) · [Testing strategy](./docs/testing-strategy.md)
-- [Managed V8 DevTools](./tools/README.md)
+- [Documentation](./.oo/docs/en/index.md)
+- [Getting started](./.oo/docs/en/getting-started/index.md)
+- [Guides](./.oo/docs/en/guides/index.md)
+- [Support matrix](./.oo/docs/en/capabilities/support-matrix.md)
 
 ## License
 

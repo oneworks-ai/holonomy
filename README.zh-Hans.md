@@ -33,11 +33,10 @@ pnpm test
 
 ## 文档
 
-- [CLI 与 JavaScript 用法](./tools/README.zh-Hans.md)
-- [Service 操作与受管进程](./tools/service/README.zh-Hans.md)
-- [Android 宿主文档](./adapters/android/network-host/README.zh-Hans.md) · [Session 宿主](./adapters/android/session-host/README.zh-Hans.md)
-- [Runtime 执行与 conformance](./docs/execution-and-conformance.md) · [测试策略](./docs/testing-strategy.zh-Hans.md)
-- [受管 V8 DevTools](./tools/README.zh-Hans.md)
+- [文档首页](./.oo/docs/index.md)
+- [快速开始](./.oo/docs/getting-started/index.md)
+- [使用指南](./.oo/docs/guides/index.md)
+- [支持矩阵](./.oo/docs/capabilities/support-matrix.md)
 
 ## 许可证
 

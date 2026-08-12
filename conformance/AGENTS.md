@@ -1,6 +1,6 @@
 # Conformance maintenance
 
-`conformance/` owns developer-visible CLI end-to-end verification. Read [the testing strategy](../docs/testing-strategy.md) before adding or moving a case.
+`conformance/` owns developer-visible CLI end-to-end verification. Read [the testing strategy](../.oo/rules/testing-strategy.md) before adding or moving a case. Public usage and evidence categories live in [the Conformance guide](../.oo/docs/testing/conformance.md).
 
 - Every case must run through the public `holonomy run` or `holonomy test` workflow and prove the complete CLI → Adapter → JavaScript API → Runtime path.
 - Assert only developer-visible stdout/stderr, exit status, reports, public values or external fixture effects. Do not inspect private Runtime or Adapter state.
