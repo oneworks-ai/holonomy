@@ -1,0 +1,447 @@
+{
+  "$defs": {
+    "decision": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "allow"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "deny"
+            },
+            "reasonCode": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9._:-]+$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "reasonCode"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "request": {
+      "additionalProperties": false,
+      "properties": {
+        "callsite": {
+          "additionalProperties": false,
+          "properties": {
+            "column": {
+              "maximum": 10000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "line": {
+              "maximum": 10000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "moduleUrl": {
+              "maxLength": 4096,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "moduleUrl"
+          ],
+          "type": "object"
+        },
+        "codeKind": {
+          "enum": [
+            "module",
+            "strings",
+            "wasm"
+          ]
+        },
+        "entryDetail": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "debuggerSetScriptSource",
+                "dynamicImport",
+                "inspectorCallFunction",
+                "inspectorCompile",
+                "inspectorEvaluate",
+                "inspectorRunScript"
+              ]
+            },
+            "source": {
+              "enum": [
+                "inspector",
+                "loader",
+                "trustedWrapper"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "source"
+          ],
+          "type": "object"
+        },
+        "metadataSupport": {
+          "additionalProperties": false,
+          "properties": {
+            "callsite": {
+              "enum": [
+                "exact",
+                "unavailable"
+              ]
+            },
+            "entryDetail": {
+              "enum": [
+                "exact",
+                "unavailable"
+              ]
+            },
+            "origin": {
+              "enum": [
+                "exact",
+                "unavailable"
+              ]
+            },
+            "source": {
+              "enum": [
+                "available",
+                "unavailable"
+              ]
+            }
+          },
+          "required": [
+            "callsite",
+            "entryDetail",
+            "origin",
+            "source"
+          ],
+          "type": "object"
+        },
+        "operation": {
+          "enum": [
+            "runtime.code.generate.strings",
+            "runtime.code.generate.wasm",
+            "runtime.module.import"
+          ]
+        },
+        "origin": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "requestId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9._:-]+$",
+          "type": "string"
+        },
+        "runtime": {
+          "additionalProperties": false,
+          "properties": {
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "policyDigest": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "processId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9._:-]+$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "generation",
+            "policyDigest",
+            "processId"
+          ],
+          "type": "object"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "sourceBytes": {
+          "maximum": 16777216,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sourceSha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "codeKind",
+        "metadataSupport",
+        "operation",
+        "requestId",
+        "runtime",
+        "schemaVersion"
+      ],
+      "type": "object",
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "codeKind": {
+                  "const": "strings"
+                },
+                "operation": {
+                  "const": "runtime.code.generate.strings"
+                }
+              },
+              "required": [
+                "codeKind",
+                "operation"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "codeKind": {
+                  "const": "wasm"
+                },
+                "operation": {
+                  "const": "runtime.code.generate.wasm"
+                }
+              },
+              "required": [
+                "codeKind",
+                "operation"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "codeKind": {
+                  "const": "module"
+                },
+                "operation": {
+                  "const": "runtime.module.import"
+                }
+              },
+              "required": [
+                "codeKind",
+                "operation"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        {
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "sourceBytes": {}
+                  },
+                  "required": [
+                    "sourceBytes"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "sourceSha256": {}
+                  },
+                  "required": [
+                    "sourceSha256"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "metadataSupport": {
+                "properties": {
+                  "source": {
+                    "const": "available"
+                  }
+                },
+                "required": [
+                  "source"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "metadataSupport"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "sourceBytes": {},
+              "sourceSha256": {}
+            },
+            "required": [
+              "sourceBytes",
+              "sourceSha256"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "origin": {}
+                  },
+                  "required": [
+                    "origin"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "metadataSupport": {
+                "properties": {
+                  "origin": {
+                    "const": "exact"
+                  }
+                },
+                "required": [
+                  "origin"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "metadataSupport"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "origin": {}
+            },
+            "required": [
+              "origin"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "entryDetail": {}
+                  },
+                  "required": [
+                    "entryDetail"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "metadataSupport": {
+                "properties": {
+                  "entryDetail": {
+                    "const": "exact"
+                  }
+                },
+                "required": [
+                  "entryDetail"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "metadataSupport"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "entryDetail": {}
+            },
+            "required": [
+              "entryDetail"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "callsite": {}
+                  },
+                  "required": [
+                    "callsite"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "metadataSupport": {
+                "properties": {
+                  "callsite": {
+                    "const": "exact"
+                  }
+                },
+                "required": [
+                  "callsite"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "metadataSupport"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "callsite": {}
+            },
+            "required": [
+              "callsite"
+            ],
+            "type": "object"
+          }
+        }
+      ]
+    }
+  },
+  "$id": "https://oneworks.ai/holonomy/contracts/engine-gate-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

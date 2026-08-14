@@ -128,7 +128,10 @@ class RuntimeCompositionInstrumentationTest {
             )
             assertEquals("user/module", externalModule.getString("joined"))
             assertEquals(
-                listOf("fixture+device://phone/modules/entry.mjs"),
+                listOf(
+                    "holonomy:///runtime/bootstrap.mjs",
+                    "fixture+device://phone/modules/entry.mjs",
+                ),
                 externalReferrers,
             )
             assertRuntimeFailsWithCode(

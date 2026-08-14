@@ -9,6 +9,7 @@ type PreparedNetworkOptions = Omit<WebNetworkRuntimeOptions, 'bridge'>
 export const prepareRuntimeNetworkOptions = (input: unknown, principal: string): PreparedNetworkOptions => {
   const item = snapshotRecord(input, [
     'authority',
+    'capability',
     'constructors',
     'diagnostics',
     'diagnosticsBodyLimitBytes',
@@ -18,6 +19,17 @@ export const prepareRuntimeNetworkOptions = (input: unknown, principal: string):
   if (item.principal !== principal) throw runtimeComposerError('runtime_composer.principal_mismatch')
   const constructors = snapshotOptionalRecord(item.constructors, ['AbortController', 'AbortSignal'])
   const diagnostics = snapshotOptionalRecord(item.diagnostics, ['emit'])
+  const capability = snapshotOptionalRecord(item.capability, [
+    'authorizeRedirect',
+    'authorizeRequest',
+    'authorizeResponse',
+    'cloneResponse',
+    'releaseResponse'
+  ])
+  if (
+    capability !== undefined &&
+    Object.values(capability).some(value => typeof value !== 'function')
+  ) throw runtimeComposerError('runtime_composer.invalid_options')
   if (diagnostics !== undefined && typeof diagnostics.emit !== 'function') {
     throw runtimeComposerError('runtime_composer.invalid_options')
   }
@@ -32,6 +44,7 @@ export const prepareRuntimeNetworkOptions = (input: unknown, principal: string):
   ) throw runtimeComposerError('runtime_composer.invalid_options')
   return {
     authority: snapshotNetworkAuthority(item.authority) as never,
+    ...(capability === undefined ? {} : { capability: capability as never }),
     ...(constructors === undefined ? {} : { constructors: constructors as never }),
     ...(diagnostics === undefined ? {} : { diagnostics: diagnostics as never }),
     ...(item.diagnosticsBodyLimitBytes === undefined

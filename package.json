@@ -1,5 +1,5 @@
 {
-  "name": "@oneworks/holonomy",
+  "name": "holonomy",
   "type": "module",
   "version": "1.0.0-rc.3",
   "private": true,
@@ -59,6 +59,13 @@
       "types": "./dist/child-process/index.d.ts",
       "default": "./dist/child-process/index.js"
     },
+    "./capability-runtime": {
+      "__oneworks__": {
+        "default": "./src/capability-runtime/index.ts"
+      },
+      "types": "./dist/capability-runtime/index.d.ts",
+      "default": "./dist/capability-runtime/index.js"
+    },
     "./http-server": {
       "__oneworks__": {
         "default": "./src/http-server/index.ts"
@@ -97,6 +104,11 @@
     "holonomy": "./tools/holonomy.mjs"
   },
   "files": [
+    "!**/AGENTS.md",
+    "!tools/capability-contract-*.mjs",
+    "!tools/capability-operation-contract-artifacts.mjs",
+    "!tools/generate-capability-contracts.mjs",
+    "!tools/probe-node-engine-capabilities.mjs",
     "!tools/service/vitest.config.mjs",
     ".oo/skills/*/SKILL.md",
     ".oo/skills/*/references/*.md",
@@ -125,7 +137,9 @@
     "adapters/node/README*.md",
     "adapters/node/src",
     "dist",
-    "src",
+    "src/**/*.ts",
+    "src/capability-runtime/machine/android-engine-hook-capability-v1.json",
+    "src/capability-runtime/machine/device-contract-v1.vectors.json",
     "tools/*.d.mts",
     "tools/*.mjs",
     "tools/README*.md",
@@ -138,10 +152,13 @@
     "holonomy": "node tools/holonomy.mjs",
     "service": "node tools/service/entry.mjs",
     "build": "node --input-type=module --eval \"import { rmSync } from 'node:fs'; rmSync('dist', { force: true, recursive: true })\" && tsc -p tsconfig.build.json",
+    "contracts:check": "pnpm run build && node tools/generate-capability-contracts.mjs --check && vitest run --config vitest.config.ts __tests__/js-runtime-kernel/capability-runtime/machine-artifacts.spec.ts",
+    "contracts:generate": "pnpm run build && node tools/generate-capability-contracts.mjs",
     "docs:check": "node __tests__/verify-docs-layout.mjs && node --test __tests__/verify-docs-layout.test.mjs",
     "format": "dprint fmt",
     "format:check": "dprint check",
     "lint": "eslint .",
+    "rfc:check": "node __tests__/verify-rfc-contract.mjs && vitest run --config __tests__/vitest.rfc.config.mjs",
     "test": "pnpm run test:topology && vitest run --config vitest.config.ts",
     "test:cli": "pnpm run test:topology && vitest run --config vitest.config.ts __tests__/cli",
     "test:adapter:android:device": "pnpm run android:device-test",
@@ -158,10 +175,12 @@
   },
   "dependencies": {
     "acorn": "^8.18.0",
-    "ajv": "^8.20.0"
+    "ajv": "^8.20.0",
+    "cordis": "4.0.0-rc.8"
   },
   "optionalDependencies": {
-    "electron": "43.3.0"
+    "electron": "43.3.0",
+    "v86": "0.5.432"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.0.0",

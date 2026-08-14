@@ -5,6 +5,8 @@
 Start with the [support matrix](./support-matrix.md), then use the focused references:
 
 - [Node compatibility modules](./node-compatibility.md)
+- [Secure capability kernel](../concepts/capability-runtime.md)
+- [Controlled process capability](./process.md)
 - [Known limitations](./known-limitations.md)
 - [SandboxPolicy](../reference/sandbox-policy.md)
 - [Network Rule Schema](../reference/network-rule-schema.md)

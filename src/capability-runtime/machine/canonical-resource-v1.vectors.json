@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "vectors": {
+    "filesystem": {
+      "pathSegments": [
+        "src",
+        "main.js"
+      ],
+      "rootId": "workspace",
+      "virtualUrl": "holo-fs://workspace/src/main.js",
+      "display": {
+        "label": "main.js"
+      },
+      "kind": "filesystem",
+      "schemaVersion": 1,
+      "semanticId": "holo-fs:workspace/src/main.js",
+      "semanticResourceDigest": "0627ef29cdc5949ec12b0f0e620e03fa261088c328abe16826c32d35d85e8975"
+    },
+    "invocation": {
+      "generation": 7,
+      "invocationBindingDigest": "3f640d6e99d4064eabc116a09ae678c24c39df7da2b4668a3dfe7fefdaf94250",
+      "requestId": "request-vector",
+      "semanticResourceDigest": "0627ef29cdc5949ec12b0f0e620e03fa261088c328abe16826c32d35d85e8975"
+    },
+    "program": {
+      "argvDigest": "0875511bac65efdd70c35ba87c855a15c35d53598dbe6af1e8422b8eea244a9c",
+      "display": {
+        "label": "git status"
+      },
+      "environmentNamesDigest": "d6b25a30132e2c1cdb156d5aa16e104f6e830db9027966b29378fbd53ac15208",
+      "environmentScope": "processTree",
+      "executableId": "git",
+      "invocation": "program",
+      "kind": "processExecutable",
+      "schemaVersion": 1,
+      "semanticId": "process-executable:git:dfe7a417e829dbc1",
+      "semanticResourceDigest": "dfe7a417e829dbc141a7067567f1557b05608108674abf73ebcdeab4e6077ab5",
+      "stdioDigest": "a6ec52d1eb6f71240979029acdf6f87e5b138c167d4d16d18038b6985e777a97"
+    },
+    "shell": {
+      "commandDigest": "dc6cb321af2f34f05df688133b11bcc7afb029bb16b1aebfb03239b3fe888286",
+      "display": {
+        "label": "git status"
+      },
+      "environmentNamesDigest": "d6b25a30132e2c1cdb156d5aa16e104f6e830db9027966b29378fbd53ac15208",
+      "environmentScope": "runtime",
+      "invocation": "shell",
+      "kind": "processExecutable",
+      "schemaVersion": 1,
+      "semanticId": "process-executable:shell:03075d7dda74faee",
+      "semanticResourceDigest": "03075d7dda74faee20975c2fd2887c04396b2a178a379a3eb81045a505c604da",
+      "shellExecutableId": "shell",
+      "stdioDigest": "a6ec52d1eb6f71240979029acdf6f87e5b138c167d4d16d18038b6985e777a97"
+    },
+    "systemField": {
+      "display": {
+        "label": "Architecture"
+      },
+      "field": "os.arch",
+      "kind": "systemField",
+      "schemaVersion": 1,
+      "semanticId": "system-field:os.arch",
+      "semanticResourceDigest": "305d1f9e77bcd392c041c27e16ea21ffb9fde161b55c92c8428b1c4739b47568"
+    }
+  }
+}

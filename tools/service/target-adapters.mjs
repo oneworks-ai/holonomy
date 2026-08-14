@@ -2,6 +2,7 @@ import { serviceError } from './errors.mjs'
 
 const METHODS = Object.freeze([
   'applyNetworkRules',
+  'applyRuntimePlugins',
   'close',
   'closeInspector',
   'exposeFixture',

@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- Process transaction admissions stay colocated to preserve transition ownership. */
+
 import { PROCESS_TERMINAL_STATES } from './constants.mjs'
 import { serviceError } from './errors.mjs'
 import { admitLaunchSnapshot } from './launch-admission.mjs'
@@ -23,8 +25,21 @@ export const admitProcessStart = async (context, input, idempotencyKey) => {
   const isolation = requireEnum(value.isolation, ['isolatedProcess', 'runtime'], 'Runtime isolation')
   const target = requireEnum(value.target, ['android', 'node'], 'Runtime target')
   const launch = admitLaunchSnapshot(value.launch, { entryUrl, target })
+  const runtimePlugins = value.runtimePlugins == null ? undefined : cloneJson(value.runtimePlugins)
   const sandbox = compileSandboxPolicy(value.sandboxPolicy)
   const fixture = value.fixture == null ? undefined : cloneJson(requireRecord(value.fixture, 'Fixture descriptor'))
+  const capabilityRuntime = value.capabilityRuntime == null
+    ? undefined
+    : context.capabilityRuntime?.admit(value.capabilityRuntime, {
+      fixture,
+      inspectorMode,
+      launch,
+      sandboxPolicy: sandbox.policy,
+      target
+    })
+  if (value.capabilityRuntime != null && capabilityRuntime == null) {
+    throw serviceError('service.unsupported', 'Capability Runtime admission is unavailable')
+  }
   if (
     fixture != null &&
     (sandbox.policy.network.access !== 'restricted' || !sandbox.policy.network.allowPrivateNetwork ||
@@ -36,6 +51,7 @@ export const admitProcessStart = async (context, input, idempotencyKey) => {
     ? undefined
     : assertSandboxNetworkRuleSet(sandbox.policy, admitNetworkRuleSet(value.initialNetworkRuleSet))
   const admittedInput = {
+    ...(capabilityRuntime == null ? {} : { capabilityRuntime }),
     deviceId,
     entryUrl,
     ...(fixture == null ? {} : { fixture }),
@@ -43,6 +59,7 @@ export const admitProcessStart = async (context, input, idempotencyKey) => {
     inspectorMode,
     isolation,
     launch,
+    ...(runtimePlugins == null ? {} : { runtimePlugins }),
     sandboxPolicy: sandbox.policy,
     sandboxPolicyDigest: sandbox.digest,
     sandboxPolicyRequested: sandbox.policy,
@@ -85,6 +102,7 @@ function createProcessStart(draft, input, now) {
     ...input,
     generation: 1,
     id,
+    pluginGraphRevision: input.runtimePlugins?.length > 0 ? 1 : 0,
     revision: 1,
     ...(input.fixture == null ? { sandboxPolicyFinalizedGeneration: 1 } : {}),
     sessionId: newResourceId('session'),

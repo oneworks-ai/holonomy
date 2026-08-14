@@ -69,7 +69,7 @@ describe('runtime composer V4 public and bare boundaries', () => {
       readFileSync(new URL('../../../dist/streams/errors.d.ts', import.meta.url), 'utf8')
     ].join('\n')
 
-    expect(packageJson.name).toBe('@oneworks/holonomy')
+    expect(packageJson.name).toBe('holonomy')
     expect(packageJson.license).toBe('MIT')
     expect(holonomy.FS_VIRTUAL_SCHEME).toBe('holonomy-fs')
     expect(typeof holonomy.createHolonomyRuntime).toBe('function')

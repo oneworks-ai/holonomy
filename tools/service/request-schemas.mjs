@@ -1,7 +1,10 @@
 import Ajv2020 from 'ajv/dist/2020.js'
 
 import { NETWORK_RULE_SET_SCHEMA, createNetworkRuleSetSchema } from '../../adapters/node/src/network-rule-schema.mjs'
+// eslint-disable-next-line antfu/no-import-dist
+import { RUNTIME_CONTEXT_ENVELOPE_V1_SCHEMA, SANDBOX_POLICY_V2_SCHEMA } from '../../dist/capability-runtime/index.js'
 import { serviceError } from './errors.mjs'
+import { RUNTIME_PLUGIN_BUNDLES_SCHEMA } from './runtime-plugin-schema.mjs'
 import { SANDBOX_POLICY_SCHEMA } from './sandbox-policy-schema.mjs'
 
 export const SERVICE_REQUEST_DIALECT = 'https://json-schema.org/draft/2020-12/schema'
@@ -11,6 +14,34 @@ const expectedGeneration = {
   minimum: 1,
   type: 'integer'
 }
+
+const { $id: _capabilityPolicyId, $schema: _capabilityPolicyDialect, ...capabilitySandboxPolicy } =
+  SANDBOX_POLICY_V2_SCHEMA
+
+export const CAPABILITY_RUNTIME_START_SCHEMA = Object.freeze({
+  additionalProperties: false,
+  description: 'Atomic Capability Runtime configuration selected before Runtime entry',
+  properties: {
+    context: RUNTIME_CONTEXT_ENVELOPE_V1_SCHEMA,
+    initialMiddlewareId: {
+      maxLength: 160,
+      minLength: 1,
+      pattern: '^[\\w:.-]+$',
+      type: 'string'
+    },
+    processProfileId: {
+      description: 'Logical id from the private Host Process profile manifest; native paths are never accepted here',
+      maxLength: 128,
+      minLength: 1,
+      pattern: '^[A-Za-z0-9][\\w.-]{0,127}$',
+      type: 'string'
+    },
+    sandboxPolicy: capabilitySandboxPolicy,
+    schemaVersion: { const: 1 }
+  },
+  required: ['context', 'initialMiddlewareId', 'sandboxPolicy', 'schemaVersion'],
+  type: 'object'
+})
 
 export const SERVICE_REQUEST_SCHEMAS = {
   ExpectedGenerationRequest: {
@@ -47,6 +78,7 @@ export const SERVICE_REQUEST_SCHEMAS = {
     $schema: SERVICE_REQUEST_DIALECT,
     additionalProperties: false,
     properties: {
+      capabilityRuntime: CAPABILITY_RUNTIME_START_SCHEMA,
       deviceId: { pattern: '^[\\w:.-]{1,160}$', type: 'string' },
       entryUrl: { maxLength: 4_096, minLength: 1, type: 'string' },
       fixture: {
@@ -92,10 +124,21 @@ export const SERVICE_REQUEST_SCHEMAS = {
         required: ['entryUrl', 'moduleRootUrl', 'modules', 'schemaVersion', 'target'],
         type: 'object'
       },
+      runtimePlugins: RUNTIME_PLUGIN_BUNDLES_SCHEMA,
       sandboxPolicy: SANDBOX_POLICY_SCHEMA,
       target: { enum: ['android', 'node'] }
     },
     required: ['deviceId', 'entryUrl', 'inspectorMode', 'isolation', 'launch', 'target'],
+    type: 'object'
+  },
+  RuntimePluginsReplaceRequest: {
+    $schema: SERVICE_REQUEST_DIALECT,
+    additionalProperties: false,
+    properties: {
+      expectedGeneration,
+      runtimePlugins: RUNTIME_PLUGIN_BUNDLES_SCHEMA
+    },
+    required: ['expectedGeneration', 'runtimePlugins'],
     type: 'object'
   },
   ServiceShutdownRequest: {

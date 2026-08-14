@@ -1,5 +1,6 @@
-export const createAndroidRuntimeSpec = (process, socketName, initialNetworkRuleSet) => ({
+export const createAndroidRuntimeSpec = (process, socketName, initialNetworkRuleSet, capabilityRuntime) => ({
   argv: process.launch.argv ?? [],
+  ...(capabilityRuntime == null ? {} : { capabilityRuntime }),
   entryUrl: process.entryUrl,
   env: process.launch.env ?? {},
   initialControls: initialNetworkRuleSet == null
@@ -10,5 +11,6 @@ export const createAndroidRuntimeSpec = (process, socketName, initialNetworkRule
   }),
   isolation: process.isolation === 'isolatedProcess' ? 'isolatedProcess' : 'runtime',
   modules: process.launch.modules ?? [],
+  ...(process.runtimePlugins == null ? {} : { runtimePlugins: process.runtimePlugins }),
   sandboxPolicy: process.sandboxPolicy
 })

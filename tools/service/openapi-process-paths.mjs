@@ -132,6 +132,15 @@ export const OPENAPI_PROCESS_PATHS = {
       tags: ['Network rules']
     })
   },
+  '/v1/processes/{processId}/runtime-plugins': {
+    put: secured({
+      operationId: 'replaceRuntimePlugins',
+      parameters: [idParameter('processId', 'Runtime process id'), ...mutationHeaders, revisionHeader],
+      requestBody: actionBodyReference('RuntimePluginsReplaceRequest'),
+      responses: { 202: response('Runtime plugin graph admitted', reference('ProcessAdmission')) },
+      tags: ['Processes']
+    })
+  },
   '/v1/processes/{processId}:restart': {
     post: processAction('restart', 'restartProcess')
   },

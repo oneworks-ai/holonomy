@@ -16,6 +16,7 @@ import ai.oneworks.holonomy.host.RuntimeNativeEventSink
 import ai.oneworks.holonomy.host.RuntimeNativeHost
 import ai.oneworks.holonomy.host.RuntimeNativeResourceEventSink
 import ai.oneworks.holonomy.host.RuntimeThreadGuard
+import ai.oneworks.holonomy.host.RuntimeTrustedBackend
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -85,6 +86,17 @@ class RuntimeNativeHostGenerationTest {
         val source = RuntimeNativeHostGenerationSource.restartable { nativeHost }
 
         assertSame(nativeHost, source.create())
+        assertThrows(IllegalStateException::class.java) { source.create() }
+    }
+
+    @Test
+    fun `restartable trusted Backend factory rejects an already issued identity`() {
+        val backend = object : RuntimeTrustedBackend {
+            override fun start(host: ai.oneworks.holonomy.host.RuntimeTrustedBackendHost) = Unit
+        }
+        val source = RuntimeTrustedBackendGenerationSource.restartable { backend }
+
+        assertSame(backend, source.create())
         assertThrows(IllegalStateException::class.java) { source.create() }
     }
 

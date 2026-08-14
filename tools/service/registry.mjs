@@ -1,3 +1,4 @@
+import { admitRuntimePluginUpdate, completeRuntimePluginUpdate } from './capability-runtime-plugin-registry.mjs'
 import { DEFAULT_EVENT_RETENTION_MS } from './constants.mjs'
 import { refreshDevices } from './device-registry.mjs'
 import { admitInspector, completeInspectorOpen, updateInspector } from './inspector-registry.mjs'
@@ -16,6 +17,7 @@ export class ControlRegistry {
 
   constructor(store, options = {}) {
     this.#context = {
+      capabilityRuntime: options.capabilityRuntime,
       now: options.now ?? Date.now,
       retentionMs: options.retentionMs ?? DEFAULT_EVENT_RETENTION_MS,
       store
@@ -60,6 +62,21 @@ export class ControlRegistry {
 
   async updateProcessCleanupPending(id, expectedGeneration, pending) {
     return await updateProcessCleanupPending(this.#context, id, expectedGeneration, pending)
+  }
+
+  async admitRuntimePluginUpdate(processId, expectedGeneration, input, expectedRevision, idempotencyKey) {
+    return await admitRuntimePluginUpdate(
+      this.#context,
+      processId,
+      expectedGeneration,
+      input,
+      expectedRevision,
+      idempotencyKey
+    )
+  }
+
+  async completeRuntimePluginUpdate(process, operation, succeeded) {
+    return await completeRuntimePluginUpdate(this.#context, process, operation, succeeded)
   }
 
   async removeProcess(id, expectedGeneration) {

@@ -1,20 +1,27 @@
+/* eslint-disable max-lines -- one Host bridge owns the callbacks installed into a Runtime generation. */
+
 import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import vm from 'node:vm'
 
+import { NodeCapabilityRuntimeHostV1 } from './capability-host.mjs'
 import { createNodeNetworkPort } from './node-network-transport.mjs'
 import { createRuntimeConfiguration } from './runtime-configuration.mjs'
 import { createNativeEventValue, installRuntimeHostBridge } from './runtime-context.mjs'
+import { NodeRuntimePluginHostV1 } from './runtime-plugin-host.mjs'
+import { cancelRuntimeTimer } from './runtime-timers.mjs'
 
 export class NodeRuntimeHostController {
   #disposeGuest
+  #capabilityRuntime
   #emitLog
   #emitNetwork
   #eventLoopWakeup
   #graph
   #nativePort
   #nextTimerId = 1
+  #plugins
   #ruleUpdater
   #runtimeContext
   #session
@@ -23,18 +30,23 @@ export class NodeRuntimeHostController {
   #turn
   #userModules
 
-  constructor({ emitLog, emitNetwork, graph, runtimeContext, session }) {
+  constructor({ emitLog, emitNetwork, generation, graph, runtimeContext, session }) {
     this.#emitLog = emitLog
     this.#emitNetwork = emitNetwork
     this.#graph = graph
     this.#runtimeContext = runtimeContext
     this.#session = session
+    this.#plugins = new NodeRuntimePluginHostV1(graph, session)
+    this.#capabilityRuntime = session.capabilityRuntime == null
+      ? undefined
+      : new NodeCapabilityRuntimeHostV1({ generation, session: session.capabilityRuntime })
     this.#userModules = new Map(session.userModules.map(module => [module.url, module.source]))
     this.#nativePort = createNodeNetworkPort(session.sandboxPlan, this.#emitNetwork)
     installRuntimeHostBridge(runtimeContext, this.#operations())
   }
 
   async dispose() {
+    await this.#capabilityRuntime?.close()
     clearTimeout(this.#eventLoopWakeup)
     for (const timer of this.#timers.values()) {
       if (timer.interval) clearInterval(timer.handle)
@@ -50,6 +62,12 @@ export class NodeRuntimeHostController {
     return this.#invoke(this.#ruleUpdater, [JSON.stringify(rules)])
   }
 
+  async updatePlugins(runtimePlugins, expectedRevision, revision) {
+    return await this.#plugins.update(runtimePlugins, expectedRevision, revision, (callback, args) => (
+      this.#invoke(callback, args)
+    ))
+  }
+
   #configuration() {
     return createRuntimeConfiguration(this.#session)
   }
@@ -62,8 +80,21 @@ export class NodeRuntimeHostController {
 
   #operations() {
     return Object.freeze({
+      capabilityConfiguration: () => this.#capabilityRuntime?.configuration() ?? null,
+      capabilityInvoke: (json, callback) => {
+        if (this.#capabilityRuntime == null || typeof callback !== 'function') return null
+        this.#capabilityRuntime.invoke(json, terminal => this.#invoke(callback, [terminal]))
+        return true
+      },
+      capabilityInvokeImmediate: json => this.#capabilityRuntime?.invokeImmediate(json) ?? null,
+      capabilityInvokeSync: json => this.#capabilityRuntime?.invokeSync(json) ?? null,
+      capabilityReleaseResource: bindingId => this.#capabilityRuntime?.releaseResource(bindingId) ?? false,
+      capabilitySubscribeResource: (bindingId, callback) => {
+        if (this.#capabilityRuntime == null || typeof callback !== 'function') return null
+        return this.#capabilityRuntime.subscribeResource(bindingId, event => this.#invoke(callback, [event]))
+      },
       cancelNative: callToken => this.#nativePort?.cancel(callToken),
-      cancelTimer: timerId => this.#cancelTimer(timerId),
+      cancelTimer: timerId => cancelRuntimeTimer(this.#timers, timerId),
       closeNativeResource: (owner, provider) => this.#nativePort?.closeResource(owner, provider),
       configuration: () => this.#configuration(),
       disposeNative: () => this.#nativePort?.dispose(),
@@ -105,6 +136,9 @@ export class NodeRuntimeHostController {
       registerDispose: callback => {
         this.#disposeGuest = callback
         return true
+      },
+      registerPluginUpdater: callback => {
+        return this.#plugins.register(callback)
       },
       registerRuleUpdater: callback => {
         this.#ruleUpdater = callback
@@ -174,13 +208,5 @@ export class NodeRuntimeHostController {
       digest.update(chunk)
     }
     return digest.digest('hex')
-  }
-
-  #cancelTimer(timerId) {
-    const timer = this.#timers.get(timerId)
-    if (timer == null) return
-    this.#timers.delete(timerId)
-    if (timer.interval) clearInterval(timer.handle)
-    else clearTimeout(timer.handle)
   }
 }

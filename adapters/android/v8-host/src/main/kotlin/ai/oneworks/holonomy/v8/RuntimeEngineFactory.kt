@@ -4,14 +4,15 @@ import android.content.res.AssetManager
 import android.os.Build
 import ai.oneworks.holonomy.host.DedicatedThreadRuntimeEngine
 import ai.oneworks.holonomy.host.RuntimeCapabilities
+import ai.oneworks.holonomy.host.RuntimeCapabilityHost
 import ai.oneworks.holonomy.host.RuntimeEngine
 import ai.oneworks.holonomy.host.RuntimeImplementationStage
 import ai.oneworks.holonomy.host.RuntimeMicrotaskMode
 import ai.oneworks.holonomy.host.RuntimeModuleResolver
 import ai.oneworks.holonomy.host.RuntimeNativeHost
 import ai.oneworks.holonomy.host.RuntimeProcessHost
+import ai.oneworks.holonomy.host.RuntimeTrustedBackend
 import ai.oneworks.holonomy.host.SilentRuntimeProcessHost
-import java.lang.ref.WeakReference
 
 object RuntimeEngineFactory {
     /** A native-host instance is owned by the first runtime generation only. */
@@ -26,6 +27,8 @@ object RuntimeEngineFactory {
         inspectorOptions: AdbInspectorOptions? = null,
         moduleResolver: RuntimeModuleResolver? = null,
         processHost: RuntimeProcessHost = SilentRuntimeProcessHost,
+        capabilityHost: RuntimeCapabilityHost? = null,
+        trustedBackend: RuntimeTrustedBackend? = null,
     ): RuntimeEngine = OneGenerationRuntimeEngine(
         createEngine(
             assets = assets,
@@ -34,6 +37,8 @@ object RuntimeEngineFactory {
             inspectorOptions = inspectorOptions,
             moduleResolver = moduleResolver,
             processHost = processHost,
+            capabilityHostSource = capabilityHost?.let(RuntimeCapabilityHostGenerationSource::oneGeneration),
+            trustedBackendSource = trustedBackend?.let(RuntimeTrustedBackendGenerationSource::oneGeneration),
         ),
     )
 
@@ -45,6 +50,8 @@ object RuntimeEngineFactory {
         inspectorOptions: AdbInspectorOptions? = null,
         moduleResolver: RuntimeModuleResolver? = null,
         processHost: RuntimeProcessHost = SilentRuntimeProcessHost,
+        capabilityHostFactory: (() -> RuntimeCapabilityHost)? = null,
+        trustedBackendFactory: (() -> RuntimeTrustedBackend)? = null,
     ): RuntimeEngine = createEngine(
         assets = assets,
         nativeHostSource = RuntimeNativeHostGenerationSource.restartable(nativeHostFactory),
@@ -52,6 +59,8 @@ object RuntimeEngineFactory {
         inspectorOptions = inspectorOptions,
         moduleResolver = moduleResolver,
         processHost = processHost,
+        capabilityHostSource = capabilityHostFactory?.let(RuntimeCapabilityHostGenerationSource::restartable),
+        trustedBackendSource = trustedBackendFactory?.let(RuntimeTrustedBackendGenerationSource::restartable),
     )
 
     private fun createEngine(
@@ -61,6 +70,8 @@ object RuntimeEngineFactory {
         inspectorOptions: AdbInspectorOptions?,
         moduleResolver: RuntimeModuleResolver?,
         processHost: RuntimeProcessHost,
+        capabilityHostSource: RuntimeCapabilityHostGenerationSource?,
+        trustedBackendSource: RuntimeTrustedBackendGenerationSource?,
     ): RuntimeEngine = DedicatedThreadRuntimeEngine(
         JavetRuntimeAdapterFactory(
             assets = assets,
@@ -69,6 +80,8 @@ object RuntimeEngineFactory {
             inspectorOptions = inspectorOptions,
             moduleResolver = moduleResolver,
             processHost = processHost,
+            capabilityHostSource = capabilityHostSource,
+            trustedBackendSource = trustedBackendSource,
             runtimeArchitecture = resolveRuntimeArchitecture(Build.SUPPORTED_ABIS),
         ),
     )
@@ -87,6 +100,8 @@ internal class JavetRuntimeAdapterFactory(
     private val inspectorOptions: AdbInspectorOptions?,
     private val moduleResolver: RuntimeModuleResolver?,
     private val processHost: RuntimeProcessHost,
+    private val capabilityHostSource: RuntimeCapabilityHostGenerationSource?,
+    private val trustedBackendSource: RuntimeTrustedBackendGenerationSource?,
     private val runtimeArchitecture: String,
 ) : ai.oneworks.holonomy.host.RuntimeAdapterFactory {
     override val capabilities = RuntimeCapabilities(
@@ -106,45 +121,12 @@ internal class JavetRuntimeAdapterFactory(
         inspectorOptions = inspectorOptions,
         moduleResolver = moduleResolver,
         processHost = processHost,
+        capabilityHost = capabilityHostSource?.create(),
+        trustedBackend = trustedBackendSource?.create(),
         nativeHost = nativeHostSource.create(),
         runtimeArchitecture = runtimeArchitecture,
         threadGuard = threadGuard,
     )
-}
-
-internal class RuntimeNativeHostGenerationSource private constructor(
-    private val factory: () -> RuntimeNativeHost,
-    private val restartable: Boolean,
-) {
-    private val issuedHosts = mutableListOf<WeakReference<RuntimeNativeHost>>()
-    private var generationClaimed = false
-
-    @Synchronized
-    fun create(): RuntimeNativeHost {
-        check(restartable || !generationClaimed) {
-            "A RuntimeNativeHost instance cannot be reused by a restarted runtime"
-        }
-        val nativeHost = factory()
-        issuedHosts.removeAll { reference -> reference.get() == null }
-        check(issuedHosts.none { reference -> reference.get() === nativeHost }) {
-            "RuntimeNativeHost factory must return a fresh instance for each generation"
-        }
-        generationClaimed = true
-        issuedHosts += WeakReference(nativeHost)
-        return nativeHost
-    }
-
-    companion object {
-        fun oneGeneration(nativeHost: RuntimeNativeHost) = RuntimeNativeHostGenerationSource(
-            factory = { nativeHost },
-            restartable = false,
-        )
-
-        fun restartable(factory: () -> RuntimeNativeHost) = RuntimeNativeHostGenerationSource(
-            factory = factory,
-            restartable = true,
-        )
-    }
 }
 
 internal fun resolveRuntimeArchitecture(supportedAbis: Array<String>): String = when (supportedAbis.firstOrNull()) {

@@ -4,6 +4,8 @@ import android.content.res.AssetManager
 import android.os.SystemClock
 import ai.oneworks.holonomy.host.RuntimeAdapter
 import ai.oneworks.holonomy.host.RuntimeAdapterHost
+import ai.oneworks.holonomy.host.RuntimeCapabilityHost
+import ai.oneworks.holonomy.host.RuntimeCapabilityResourceEventSink
 import ai.oneworks.holonomy.host.RuntimeEngineErrorCode
 import ai.oneworks.holonomy.host.RuntimeEngineException
 import ai.oneworks.holonomy.host.RuntimeEvaluation
@@ -17,6 +19,7 @@ import ai.oneworks.holonomy.host.RuntimeNativeResourceEventSink
 import ai.oneworks.holonomy.host.RuntimeOutputStream
 import ai.oneworks.holonomy.host.RuntimeProcessHost
 import ai.oneworks.holonomy.host.RuntimeThreadGuard
+import ai.oneworks.holonomy.host.RuntimeTrustedBackend
 import com.caoccao.javet.annotations.V8Function
 import com.caoccao.javet.enums.V8AwaitMode
 import com.caoccao.javet.enums.V8ValueType
@@ -47,6 +50,8 @@ internal class JavetRuntimeAdapter(
     private val inspectorOptions: AdbInspectorOptions?,
     private val moduleResolver: RuntimeModuleResolver?,
     private val nativeHost: RuntimeNativeHost,
+    private val capabilityHost: RuntimeCapabilityHost?,
+    private val trustedBackend: RuntimeTrustedBackend?,
     private val processHost: RuntimeProcessHost,
     private val runtimeArchitecture: String,
     private val threadGuard: RuntimeThreadGuard,
@@ -98,6 +103,9 @@ internal class JavetRuntimeAdapter(
     private var started = false
     private var turnDriver: V8ValueFunction? = null
     private var timerDriver: V8ValueFunction? = null
+    private var trustedBackendBridge: JavetTrustedBackendBridge? = null
+    private val capabilitySubscriptions = mutableMapOf<String, CapabilitySubscription>()
+    private var nextCapabilitySubscriptionId = 1L
 
     init {
         threadGuard.checkAccess()
@@ -110,42 +118,82 @@ internal class JavetRuntimeAdapter(
     override fun start() {
         threadGuard.checkAccess()
         if (started) return
-        if (inspectorOptions?.waitForDebugger == true) {
-            requireNotNull(inspector).waitForDebugger()
+        try {
+            if (inspectorOptions?.waitForDebugger == true) {
+                requireNotNull(inspector).waitForDebugger()
+            }
+            val bootstrap = assetResolver.resolve(
+                "holonomy:///$bootstrapAssetPath",
+                null,
+            )
+            executeSourceModule(bootstrap.resourceUrl, bootstrap.source)
+            checkpointRequested = true
+            drainMicrotasks()
+            val runtimeReady = runtime.globalObject.get<V8ValueFunction>(READY_DRIVER_GLOBAL)
+                ?: throw RuntimeEngineException(
+                    RuntimeEngineErrorCode.INTERNAL,
+                    "The runtime readiness driver was not installed",
+                )
+            val readiness: V8Value = runtimeReady.call(runtime.globalObject, *emptyArray<Any>())
+            try {
+                awaitRuntimeReadiness(readiness)
+            } finally {
+                readiness.close()
+                runtimeReady.close()
+            }
+            runtime.globalObject.delete(READY_DRIVER_GLOBAL)
+            turnDriver = runtime.globalObject.get<V8ValueFunction>(TURN_DRIVER_GLOBAL)
+                ?: throw RuntimeEngineException(
+                    RuntimeEngineErrorCode.INTERNAL,
+                    "The runtime turn driver was not installed",
+                )
+            runtime.globalObject.delete(TURN_DRIVER_GLOBAL)
+            timerDriver = runtime.globalObject.get<V8ValueFunction>(TIMER_DRIVER_GLOBAL)
+                ?: throw RuntimeEngineException(
+                    RuntimeEngineErrorCode.INTERNAL,
+                    "The runtime timer driver was not installed",
+                )
+            runtime.globalObject.delete(TIMER_DRIVER_GLOBAL)
+            nativeDriver = runtime.globalObject.get<V8ValueFunction>(NATIVE_DRIVER_GLOBAL)
+                ?: throw RuntimeEngineException(
+                    RuntimeEngineErrorCode.INTERNAL,
+                    "The runtime native event driver was not installed",
+                )
+            runtime.globalObject.delete(NATIVE_DRIVER_GLOBAL)
+            controlDriver = runtime.globalObject.get<V8ValueFunction>(CONTROL_DRIVER_GLOBAL)
+                ?: throw RuntimeEngineException(
+                    RuntimeEngineErrorCode.INTERNAL,
+                    "The runtime control driver was not installed",
+                )
+            runtime.globalObject.delete(CONTROL_DRIVER_GLOBAL)
+            if (trustedBackend != null) {
+                val trustedDriver = runtime.globalObject.get<V8ValueFunction>(TRUSTED_BACKEND_DRIVER_GLOBAL)
+                    ?: throw RuntimeEngineException(
+                        RuntimeEngineErrorCode.INTERNAL,
+                        "The trusted Backend driver was not installed",
+                    )
+                trustedBackendBridge = JavetTrustedBackendBridge(
+                    runtime = runtime,
+                    driver = trustedDriver,
+                    runtimeHost = host,
+                    driveRuntime = {
+                        checkpointRequested = true
+                        runHostTurn()
+                    },
+                ).also(trustedBackend::start)
+            }
+            runtime.globalObject.delete(TRUSTED_BACKEND_DRIVER_GLOBAL)
+            runtime.globalObject.delete(HOST_GLOBAL)
+            checkpointRequested = true
+            drainMicrotasks()
+            started = true
+        } catch (error: Throwable) {
+            runCatching { trustedBackendBridge?.close() }
+            trustedBackendBridge = null
+            runCatching { trustedBackend?.close() }
+            processHost.write(RuntimeOutputStream.STDERR, "Android Runtime start failed: bootstrap_runtime\n")
+            throw error
         }
-        val bootstrap = assetResolver.resolve(
-            "holonomy:///$bootstrapAssetPath",
-            null,
-        )
-        executeSourceModule(bootstrap.resourceUrl, bootstrap.source)
-        turnDriver = runtime.globalObject.get<V8ValueFunction>(TURN_DRIVER_GLOBAL)
-            ?: throw RuntimeEngineException(
-                RuntimeEngineErrorCode.INTERNAL,
-                "The runtime turn driver was not installed",
-            )
-        runtime.globalObject.delete(TURN_DRIVER_GLOBAL)
-        timerDriver = runtime.globalObject.get<V8ValueFunction>(TIMER_DRIVER_GLOBAL)
-            ?: throw RuntimeEngineException(
-                RuntimeEngineErrorCode.INTERNAL,
-                "The runtime timer driver was not installed",
-            )
-        runtime.globalObject.delete(TIMER_DRIVER_GLOBAL)
-        nativeDriver = runtime.globalObject.get<V8ValueFunction>(NATIVE_DRIVER_GLOBAL)
-            ?: throw RuntimeEngineException(
-                RuntimeEngineErrorCode.INTERNAL,
-                "The runtime native event driver was not installed",
-            )
-        runtime.globalObject.delete(NATIVE_DRIVER_GLOBAL)
-        controlDriver = runtime.globalObject.get<V8ValueFunction>(CONTROL_DRIVER_GLOBAL)
-            ?: throw RuntimeEngineException(
-                RuntimeEngineErrorCode.INTERNAL,
-                "The runtime control driver was not installed",
-            )
-        runtime.globalObject.delete(CONTROL_DRIVER_GLOBAL)
-        runtime.globalObject.delete(HOST_GLOBAL)
-        checkpointRequested = true
-        drainMicrotasks()
-        started = true
     }
 
     override fun evaluate(source: String): RuntimeEvaluation {
@@ -158,7 +206,11 @@ internal class JavetRuntimeAdapter(
     override fun executeModule(module: RuntimeModuleSource) {
         threadGuard.checkAccess()
         validateExternalModule(module, allowInternal = false)
-        executeSourceModule(module.resourceUrl, module.source)
+        if (capabilityHost == null) {
+            executeSourceModule(module.resourceUrl, module.source)
+        } else {
+            executeCapabilitySourceModule(module.resourceUrl, module.source)
+        }
         checkpointRequested = true
         drainMicrotasks()
     }
@@ -182,7 +234,11 @@ internal class JavetRuntimeAdapter(
         threadGuard.checkAccess()
         closed.set(true)
         diagnosticsExecutor.shutdownNow()
+        runCatching { trustedBackendBridge?.close() }
+        trustedBackendBridge = null
+        runCatching { trustedBackend?.close() }
         closeNativeHost()
+        runCatching { capabilityHost?.close() }
         runCatching { inspectorServer?.close() }
         runCatching { inspector?.close() }
         runCatching { turnDriver?.close() }
@@ -193,6 +249,11 @@ internal class JavetRuntimeAdapter(
         nativeDriver = null
         runCatching { controlDriver?.close() }
         controlDriver = null
+        capabilitySubscriptions.values.forEach { subscription ->
+            runCatching { subscription.native.close() }
+            runCatching { subscription.callback.close() }
+        }
+        capabilitySubscriptions.clear()
         runCatching { syntheticModuleRegistry?.close() }
         syntheticModuleRegistry = null
         runCatching { hostObject.unbind(callbacks) }
@@ -213,7 +274,7 @@ internal class JavetRuntimeAdapter(
                 ): IV8Module? {
                     threadGuard.checkAccess()
                     val referrerUrl = runCatching { v8ModuleReferrer.resourceName }.getOrNull()
-                    if (hasScheme(resourceName, NODE_SCHEME)) {
+                    if (hasScheme(resourceName, NODE_SCHEME) || hasScheme(resourceName, HOLO_SCHEME)) {
                         return resolveSyntheticModule(v8Runtime, resourceName)
                     }
                     val module = resolveSourceModule(resourceName, referrerUrl) ?: return null
@@ -241,22 +302,56 @@ internal class JavetRuntimeAdapter(
     private fun executeSourceModule(resourceUrl: String, source: String) {
         moduleResolutionFailure = null
         try {
-            val module = runtime.getExecutor(sourceWithImportMeta(resourceUrl, source))
-                .setModule(true)
-                .setResourceName(resourceUrl)
-                .compileV8Module()
-            moduleCache[resourceUrl] = module
-            val evaluation = module.execute<V8Value>(true)
-            if (evaluation is V8ValuePromise) {
-                observeModuleEvaluation(evaluation)
-            } else {
-                runCatching { evaluation?.close() }
-            }
+            evaluateModule(compileSourceModule(resourceUrl, source), instantiate = true)
             moduleResolutionFailure?.let { throw it }
         } catch (error: Throwable) {
             throw moduleResolutionFailure ?: error
         } finally {
             moduleResolutionFailure = null
+        }
+    }
+
+    private fun executeCapabilitySourceModule(resourceUrl: String, source: String) {
+        moduleResolutionFailure = null
+        var stage = "compile"
+        try {
+            val module = compileSourceModule(resourceUrl, source)
+            stage = "instantiate"
+            if (!module.instantiate()) {
+                throw RuntimeEngineException(
+                    RuntimeEngineErrorCode.MODULE_RESOLUTION_FAILED,
+                    "The capability module graph could not be instantiated",
+                )
+            }
+            moduleResolutionFailure?.let { throw it }
+            runtime.allowEval(false)
+            runtime.globalObject.delete("WebAssembly")
+            stage = "evaluate"
+            evaluateModule(module, instantiate = false)
+        } catch (error: Throwable) {
+            processHost.write(
+                RuntimeOutputStream.STDERR,
+                "Android Runtime start failed: capability_entry_$stage\n",
+            )
+            throw moduleResolutionFailure ?: error
+        } finally {
+            moduleResolutionFailure = null
+        }
+    }
+
+    private fun compileSourceModule(resourceUrl: String, source: String): IV8Module =
+        runtime.getExecutor(sourceWithImportMeta(resourceUrl, source))
+            .setModule(true)
+            .setResourceName(resourceUrl)
+            .compileV8Module()
+            .also { moduleCache[resourceUrl] = it }
+
+    private fun evaluateModule(module: IV8Module, instantiate: Boolean) {
+        val evaluation = if (instantiate) module.execute<V8Value>(true) else module.evaluate<V8Value>(false)
+        if (evaluation is V8ValuePromise) {
+            observeModuleEvaluation(evaluation)
+        } else {
+            runCatching { evaluation?.close() }
         }
     }
 
@@ -294,6 +389,8 @@ internal class JavetRuntimeAdapter(
     private fun resolveSourceModule(resourceName: String, referrerUrl: String?): RuntimeModuleSource? {
         val resourceIsInternal = hasScheme(resourceName, INTERNAL_SCHEME)
         val referrerIsInternal = referrerUrl != null && hasScheme(referrerUrl, INTERNAL_SCHEME)
+        val resourceIsPlugin = hasScheme(resourceName, PLUGIN_SCHEME)
+        val referrerIsPlugin = referrerUrl != null && hasScheme(referrerUrl, PLUGIN_SCHEME)
         if (resourceIsInternal && !referrerIsInternal) {
             moduleResolutionFailure = RuntimeEngineException(
                 RuntimeEngineErrorCode.MODULE_RESOLUTION_FAILED,
@@ -301,15 +398,26 @@ internal class JavetRuntimeAdapter(
             )
             return null
         }
-        val internalRequest = referrerIsInternal
+        if (resourceIsPlugin && !referrerIsInternal && !referrerIsPlugin) {
+            moduleResolutionFailure = RuntimeEngineException(
+                RuntimeEngineErrorCode.MODULE_RESOLUTION_FAILED,
+                "Guest modules cannot import Runtime plugin assets",
+            )
+            return null
+        }
+        val vendorRequest = resourceName == "cordis" && (referrerIsInternal || referrerIsPlugin) ||
+            resourceName == "cosmokit" && referrerIsInternal
+        val internalRequest = referrerIsInternal && !resourceIsPlugin || vendorRequest
         val module = try {
             if (internalRequest) {
                 assetResolver.resolve(resourceName, referrerUrl)
             } else {
-                moduleResolver?.resolve(resourceName, referrerUrl) ?: throw RuntimeEngineException(
-                    RuntimeEngineErrorCode.MODULE_NOT_FOUND,
-                    "The requested guest module was not found",
-                )
+                moduleResolver?.resolve(resourceName, referrerUrl)
+                    ?: emptyRuntimePluginManifest(resourceName, referrerIsInternal)
+                    ?: throw RuntimeEngineException(
+                        RuntimeEngineErrorCode.MODULE_NOT_FOUND,
+                        "The requested guest module was not found",
+                    )
             }
         } catch (error: RuntimeEngineException) {
             moduleResolutionFailure = error
@@ -370,6 +478,7 @@ internal class JavetRuntimeAdapter(
             resourceUri?.isAbsolute != true ||
             scheme.isNullOrBlank() ||
             scheme.equals(NODE_SCHEME, ignoreCase = true) ||
+            scheme.equals(HOLO_SCHEME, ignoreCase = true) ||
             (!allowInternal && scheme.equals(INTERNAL_SCHEME, ignoreCase = true))
         ) {
             throw RuntimeEngineException(
@@ -505,9 +614,38 @@ internal class JavetRuntimeAdapter(
         runtime.await(V8AwaitMode.RunTillNoMoreTasks)
     }
 
+    private fun awaitRuntimeReadiness(readiness: V8Value) {
+        if (readiness !is V8ValuePromise) return
+        readiness.markAsHandled()
+        var checkpoints = 0
+        while (readiness.isPending && checkpoints < MAX_BOOTSTRAP_READINESS_CHECKPOINTS) {
+            runtime.await(V8AwaitMode.RunTillNoMoreTasks)
+            checkpoints += 1
+        }
+        if (readiness.isRejected) {
+            throw RuntimeEngineException(
+                RuntimeEngineErrorCode.INTERNAL,
+                "The runtime bootstrap readiness promise was rejected",
+            )
+        }
+        if (readiness.isPending) {
+            throw RuntimeEngineException(
+                RuntimeEngineErrorCode.INTERNAL,
+                "The runtime bootstrap readiness promise did not settle",
+            )
+        }
+    }
+
     private fun closeNativeHost() {
         if (nativeHostClosed.compareAndSet(false, true)) runCatching { nativeHost.close() }
     }
+
+    private fun emptyRuntimePluginManifest(resourceName: String, referrerIsInternal: Boolean): RuntimeModuleSource? =
+        if (referrerIsInternal && resourceName == RUNTIME_PLUGIN_MANIFEST_URL) {
+            RuntimeModuleSource(RUNTIME_PLUGIN_MANIFEST_URL, EMPTY_RUNTIME_PLUGIN_MANIFEST_SOURCE)
+        } else {
+            null
+        }
 
     private fun evaluationEnvelopeScript(source: String): String =
         """
@@ -549,6 +687,68 @@ internal class JavetRuntimeAdapter(
         fun architecture(): String = runtimeArchitecture
 
         @V8Function
+        fun capabilityConfiguration(): String? = capabilityHost?.let { capability ->
+            runCatching { capability.configurationJson() }
+                .mapCatching { value ->
+                    require(value.toByteArray(Charsets.UTF_8).size <= MAX_CAPABILITY_JSON_BYTES)
+                    JSONObject(value)
+                    value
+                }
+                .getOrNull()
+        }
+
+        @V8Function
+        fun capabilityInvokeSync(requestJson: String): String {
+            require(requestJson.toByteArray(Charsets.UTF_8).size <= MAX_CAPABILITY_JSON_BYTES)
+            JSONObject(requestJson)
+            val value = capabilityHost?.invokeSync(requestJson) ?: CAPABILITY_UNAVAILABLE_TERMINAL
+            require(value.toByteArray(Charsets.UTF_8).size <= MAX_CAPABILITY_JSON_BYTES)
+            JSONObject(value)
+            return value
+        }
+
+        @V8Function
+        fun capabilityReleaseResource(bindingId: String): Boolean {
+            require(CAPABILITY_BINDING_ID.matches(bindingId))
+            capabilityHost?.releaseResource(bindingId)
+            return capabilityHost != null
+        }
+
+        @V8Function
+        fun capabilitySubscribeResource(bindingId: String, callback: V8ValueFunction): String? {
+            require(CAPABILITY_BINDING_ID.matches(bindingId))
+            val capability = capabilityHost ?: return null
+            val persistent: V8ValueFunction = callback.toClone(true)
+            val id = "capability-subscription-${nextCapabilitySubscriptionId++}"
+            val native = capability.subscribeResource(
+                bindingId,
+                RuntimeCapabilityResourceEventSink { eventJson ->
+                    if (eventJson.toByteArray(Charsets.UTF_8).size > MAX_CAPABILITY_JSON_BYTES) return@RuntimeCapabilityResourceEventSink
+                    host.requestRuntimeTask {
+                        if (closed.get() || !capabilitySubscriptions.containsKey(id)) return@requestRuntimeTask
+                        runCatching { JSONObject(eventJson) }.onSuccess {
+                            persistent.callVoid(runtime.globalObject, eventJson)
+                            checkpointRequested = true
+                        }
+                    }
+                },
+            ) ?: run {
+                persistent.close()
+                return null
+            }
+            capabilitySubscriptions[id] = CapabilitySubscription(persistent, native)
+            return id
+        }
+
+        @V8Function
+        fun capabilityUnsubscribeResource(subscriptionId: String): Boolean {
+            val subscription = capabilitySubscriptions.remove(subscriptionId) ?: return false
+            runCatching { subscription.native.close() }
+            runCatching { subscription.callback.close() }
+            return true
+        }
+
+        @V8Function
         fun processConfiguration(): String = JSONObject().apply {
             put("argv", processHost.configuration.argv)
             put("cwd", processHost.configuration.cwd)
@@ -556,6 +756,9 @@ internal class JavetRuntimeAdapter(
             put("execPath", processHost.configuration.execPath)
             put("pid", processHost.configuration.pid)
         }.toString()
+
+        @V8Function
+        fun runtimePlugins(): String = processHost.configuration.runtimePluginsJson
 
         @V8Function
         fun nativeConfiguration(): String = runCatching { nativeHost.configurationJson() }
@@ -734,8 +937,16 @@ internal class JavetRuntimeAdapter(
     }
 
     private companion object {
+        private val CAPABILITY_BINDING_ID = Regex("[A-Za-z0-9][A-Za-z0-9._:-]{0,159}")
         private const val HOST_GLOBAL = "__oneworksAndroidHost"
         private const val INTERNAL_SCHEME = "holonomy"
+        private const val PLUGIN_SCHEME = "holo-plugins"
+        private const val RUNTIME_PLUGIN_MANIFEST_URL = "holo-plugins:///manifest.mjs"
+        private const val EMPTY_RUNTIME_PLUGIN_MANIFEST_SOURCE =
+            "export const runtimePluginNamespaces=Object.freeze({});"
+        private const val HOLO_SCHEME = "holo"
+        private const val MAX_CAPABILITY_JSON_BYTES = 1024 * 1024
+        private const val MAX_BOOTSTRAP_READINESS_CHECKPOINTS = 1024
         private const val MAX_NATIVE_BINARY_BYTES = 8 * 1024 * 1024L
         private const val MAX_NATIVE_BINARY_HANDLES = 16
         private const val MAX_NATIVE_BODY_CHUNKS = 4096
@@ -749,9 +960,14 @@ internal class JavetRuntimeAdapter(
         private const val TIMER_DRIVER_GLOBAL = "__oneworksAndroidTimer"
         private const val NATIVE_DRIVER_GLOBAL = "__oneworksAndroidNative"
         private const val CONTROL_DRIVER_GLOBAL = "__oneworksHolonomyControl"
+        private const val TRUSTED_BACKEND_DRIVER_GLOBAL = "__oneworksAndroidTrustedBackend"
+        private const val READY_DRIVER_GLOBAL = "__oneworksAndroidReady"
         private const val MAX_NETWORK_DIAGNOSTIC_BYTES = 512 * 1024
         private const val MAX_PENDING_NETWORK_DIAGNOSTICS = 256
         private const val NODE_SCHEME = "node"
+        private const val CAPABILITY_UNAVAILABLE_TERMINAL =
+            "{\"ok\":false,\"error\":{\"name\":\"Error\",\"code\":\"holo.capability_unsupported\"," +
+                "\"message\":\"Capability unavailable\",\"retryable\":false}}"
         private val NATIVE_CALL_TOKEN = Regex("^[A-Za-z0-9:._-]{1,128}$")
         private val NATIVE_HANDLE = Regex("^[A-Za-z0-9:._-]{1,128}$")
         private val NATIVE_PROVIDER_TOKEN = Regex("^[A-Za-z0-9:._-]{1,128}$")
@@ -772,4 +988,9 @@ internal class JavetRuntimeAdapter(
             }
         }
     }
+
+    private data class CapabilitySubscription(
+        val callback: V8ValueFunction,
+        val native: AutoCloseable,
+    )
 }

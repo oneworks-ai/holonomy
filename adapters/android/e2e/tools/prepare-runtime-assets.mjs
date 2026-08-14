@@ -1,10 +1,13 @@
-import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
-import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
 
 import { parse } from 'acorn'
+import { generateCapabilityKernelFixture } from './generate-capability-kernel-fixture.mjs'
+import { generateProcessBackendProbe } from './generate-process-backend-probe.mjs'
+import { verifyGeneratedRuntimeAssets } from './verify-generated-runtime-assets.mjs'
 
 const [compiledRoot, sourceRoot, bootstrapRoot, fixtureRoot, acornPath, outputRoot] = process.argv.slice(2)
 if ([compiledRoot, sourceRoot, bootstrapRoot, fixtureRoot, acornPath, outputRoot].some(value => value == null)) {
@@ -12,9 +15,20 @@ if ([compiledRoot, sourceRoot, bootstrapRoot, fixtureRoot, acornPath, outputRoot
 }
 
 const fixtures = new Set(['managed-plugin.mjs'])
+const hostResolvedBootstrapModules = new Set(['holo-plugins:///manifest.mjs'])
+const optionalV86ProbeAssets = new Map([
+  ['libv86.mjs', 'runtime/process-backends/v86/libv86.mjs'],
+  ['v86.wasm', 'runtime/process-backends/v86/v86.wasm'],
+  ['seabios.bin', 'runtime/process-backends/v86/seabios.bin'],
+  ['kernel.bin', 'runtime/process-backends/v86/kernel.bin'],
+  ['supervisor.cpio', 'runtime/process-backends/v86/supervisor.cpio']
+])
 const assets = new Map()
 const typescriptSources = new Map()
 const repositoryRoot = dirname(sourceRoot)
+const require = createRequire(import.meta.url)
+const cordisPath = require.resolve('cordis')
+const cosmokitPath = resolve(dirname(createRequire(cordisPath).resolve('cosmokit/package.json')), 'lib/index.mjs')
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
 const normalizedRelative = (root, target) => relative(root, target).split(sep).join('/')
@@ -60,6 +74,19 @@ const recordAsset = (sourceFile, assetPath, kind, guestReadable = false) => {
   return true
 }
 
+const recordGeneratedAsset = ({ bytes, path: assetPath, source }, kind) => {
+  if (assets.has(assetPath)) throw new Error(`Duplicate generated Runtime asset: ${assetPath}`)
+  assets.set(assetPath, {
+    guestReadable: false,
+    kind,
+    path: assetPath,
+    sha256: sha256(bytes),
+    source
+  })
+  mkdirSync(dirname(resolve(outputRoot, assetPath)), { recursive: true })
+  writeFileSync(resolve(outputRoot, assetPath), bytes)
+}
+
 const visitCompiled = (file) => {
   const relativePath = assertWithin(compiledRoot, file)
   if (!relativePath.endsWith('.js')) throw new Error(`Non-JavaScript runtime dependency: ${relativePath}`)
@@ -69,7 +96,7 @@ const visitCompiled = (file) => {
   const sourceBytes = readFileSync(sourceFile)
   typescriptSources.set(`src/${normalizedRelative(sourceRoot, sourceFile)}`, sha256(sourceBytes))
   for (const specifier of dependencies(readFileSync(file, 'utf8'), file)) {
-    if (specifier === 'acorn') continue
+    if (specifier === 'acorn' || specifier === 'cordis') continue
     if (!specifier.startsWith('.')) throw new Error(`Unreviewed bare runtime dependency: ${specifier}`)
     visitCompiled(resolve(dirname(file), specifier))
   }
@@ -83,75 +110,68 @@ const visitBootstrap = (file) => {
       visitCompiled(resolve(compiledRoot, specifier.slice('./modules/'.length)))
     } else if (specifier.startsWith('.')) {
       visitBootstrap(resolve(dirname(file), specifier))
+    } else if (hostResolvedBootstrapModules.has(specifier)) {
+      continue
     } else {
       throw new Error(`Unreviewed bootstrap dependency: ${specifier}`)
     }
   }
 }
 
-const listFiles = root =>
-  readdirSync(root, { withFileTypes: true }).flatMap(entry => {
-    const target = resolve(root, entry.name)
-    return entry.isDirectory() ? listFiles(target) : [target]
-  })
-
-const verifyOutput = manifest => {
-  const expected = new Set([...manifest.assets.map(asset => asset.path), 'runtime/asset-manifest.json'])
-  const actual = new Set(listFiles(outputRoot).map(file => normalizedRelative(outputRoot, file)))
-  if (expected.size !== actual.size || [...expected].some(file => !actual.has(file))) {
-    throw new Error('Generated runtime assets contain a stale, missing, or extra file')
+const main = async () => {
+  rmSync(outputRoot, { force: true, recursive: true })
+  mkdirSync(outputRoot, { recursive: true })
+  visitBootstrap(resolve(bootstrapRoot, 'bootstrap.mjs'))
+  recordAsset(
+    resolve(dirname(bootstrapRoot), 'backendProbe/v86-probe-shim.mjs'),
+    'runtime/process-backends/v86/probe-shim.mjs',
+    'backend-probe'
+  )
+  recordAsset(
+    resolve(dirname(bootstrapRoot), 'backendProbe/v86-fuse-probe.mjs'),
+    'runtime/process-backends/v86/fuse-probe.mjs',
+    'backend-probe'
+  )
+  recordAsset(
+    resolve(dirname(bootstrapRoot), 'backendProbe/v86-probe.mjs'),
+    'runtime/process-backends/v86/probe.mjs',
+    'backend-probe'
+  )
+  recordAsset(
+    resolve(dirname(bootstrapRoot), 'backendProbe/v86-trusted-backend-probe.mjs'),
+    'runtime/process-backends/v86/trusted-backend-probe.mjs',
+    'backend-probe'
+  )
+  recordAsset(acornPath, 'runtime/vendor/acorn.mjs', 'vendor')
+  recordAsset(cordisPath, 'runtime/vendor/cordis.mjs', 'vendor')
+  recordAsset(cosmokitPath, 'runtime/vendor/cosmokit.mjs', 'vendor')
+  for (const fixture of fixtures) {
+    recordAsset(resolve(fixtureRoot, fixture), `runtime/fixtures/${fixture}`, 'fixture', true)
   }
-  for (const asset of manifest.assets) {
-    if (sha256(readFileSync(resolve(outputRoot, asset.path))) !== asset.sha256) {
-      throw new Error(`Generated runtime asset digest mismatch: ${asset.path}`)
+  recordGeneratedAsset(generateProcessBackendProbe(), 'backend-probe')
+  const v86ProbeRoot = process.env.HOLO_V86_PROBE_ASSET_ROOT
+  if (v86ProbeRoot != null && v86ProbeRoot !== '') {
+    for (const [fileName, assetPath] of optionalV86ProbeAssets) {
+      recordGeneratedAsset({
+        bytes: readFileSync(resolve(v86ProbeRoot, fileName)),
+        path: assetPath,
+        source: `external:v86-probe/${fileName}`
+      }, 'backend-probe')
     }
   }
+  recordGeneratedAsset(await generateCapabilityKernelFixture(), 'contract-fixture')
+
+  const manifest = {
+    assets: [...assets.values()].sort((left, right) => left.path.localeCompare(right.path)),
+    schemaVersion: 2,
+    typescriptSources: [...typescriptSources].sort(([left], [right]) => left.localeCompare(right))
+      .map(([path, digest]) => ({ path, sha256: digest }))
+  }
+  writeFileSync(
+    resolve(outputRoot, 'runtime/asset-manifest.json'),
+    `${JSON.stringify(manifest, null, 2)}\n`
+  )
+  verifyGeneratedRuntimeAssets(manifest, outputRoot)
 }
 
-rmSync(outputRoot, { force: true, recursive: true })
-mkdirSync(outputRoot, { recursive: true })
-visitBootstrap(resolve(bootstrapRoot, 'bootstrap.mjs'))
-recordAsset(acornPath, 'runtime/vendor/acorn.mjs', 'vendor')
-for (const fixture of fixtures) {
-  recordAsset(resolve(fixtureRoot, fixture), `runtime/fixtures/${fixture}`, 'fixture', true)
-}
-
-const manifest = {
-  assets: [...assets.values()].sort((left, right) => left.path.localeCompare(right.path)),
-  schemaVersion: 2,
-  typescriptSources: [...typescriptSources].sort(([left], [right]) => left.localeCompare(right))
-    .map(([path, digest]) => ({ path, sha256: digest }))
-}
-writeFileSync(
-  resolve(outputRoot, 'runtime/asset-manifest.json'),
-  `${JSON.stringify(manifest, null, 2)}\n`
-)
-verifyOutput(manifest)
-
-const stalePath = resolve(outputRoot, 'runtime/stale-regression.tmp')
-writeFileSync(stalePath, 'stale')
-let rejectedExtra = false
-try {
-  verifyOutput(manifest)
-} catch {
-  rejectedExtra = true
-}
-rmSync(stalePath)
-if (!rejectedExtra) throw new Error('Extra asset regression was not rejected')
-
-const digestTarget = resolve(outputRoot, manifest.assets[0].path)
-const original = readFileSync(digestTarget)
-writeFileSync(digestTarget, Buffer.concat([original, Buffer.from('stale')]))
-let rejectedStale = false
-try {
-  verifyOutput(manifest)
-} catch {
-  rejectedStale = true
-}
-writeFileSync(digestTarget, original)
-if (!rejectedStale) throw new Error('Stale asset regression was not rejected')
-verifyOutput(manifest)
-
-if (statSync(resolve(outputRoot, 'runtime/asset-manifest.json')).size === 0) {
-  throw new Error('Generated runtime asset manifest is empty')
-}
+void main()

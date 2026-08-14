@@ -1,23 +1,18 @@
+/* eslint-disable max-lines -- supervisor lifecycle and its exact IPC request fencing stay co-located. */
+
 import { fork } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 
+import { verifyInstalledV86ProcessProfileV1 } from './capability-process-v86-installation.mjs'
+import { normalizeNodeRuntimePluginUpdateV1 } from './capability-runtime-plugins.mjs'
 import { createParentCommand, readChildEvent } from './protocol.mjs'
 import { prepareHolonomyNodeSession } from './runtime-assets.mjs'
 import { normalizeNetworkRules, normalizeNodeRuntimeSession } from './session-validation.mjs'
+import { wireNodeRuntimeSessionV1 } from './supervisor-session.mjs'
 
 const CHILD_URL = new URL('./child-runtime.mjs', import.meta.url)
 
 const adapterError = code => Object.assign(new Error(`Node adapter ${code}`), { code })
-const wireSession = session => {
-  const output = {
-    ...session,
-    runtimeModules: session.runtimeModules.map(({ source, url }) => ({ source, url })),
-    userModules: session.userModules.map(({ source, url }) => ({ source, url }))
-  }
-  if (session.sandboxPolicy.network.access === 'none') delete output.networkRules
-  return output
-}
-
 export class NodeRuntimeSupervisor extends EventEmitter {
   #child
   #generation = 0
@@ -45,8 +40,17 @@ export class NodeRuntimeSupervisor extends EventEmitter {
   async start(input) {
     if (this.#child != null || !['idle', 'stopped'].includes(this.#state)) throw adapterError('invalid_state')
     const replayableSession = normalizeNodeRuntimeSession(input)
-    const session = normalizeNodeRuntimeSession(await prepareHolonomyNodeSession(wireSession(replayableSession)))
-    this.#session = Object.freeze(wireSession(replayableSession))
+    const session = normalizeNodeRuntimeSession(
+      await prepareHolonomyNodeSession(wireNodeRuntimeSessionV1(replayableSession))
+    )
+    const installation = session.capabilityRuntime?.providerConfiguration.processBackendInstallation
+    if (installation != null) {
+      await verifyInstalledV86ProcessProfileV1(
+        session.capabilityRuntime.providerConfiguration.processProfile,
+        installation
+      )
+    }
+    this.#session = Object.freeze(wireNodeRuntimeSessionV1(replayableSession))
     this.#generation += 1
     this.#rulesRevision = 0
     this.#setState('starting')
@@ -63,7 +67,7 @@ export class NodeRuntimeSupervisor extends EventEmitter {
     this.#child = child
     this.#bindChild(child, this.#generation)
     try {
-      const value = await this.#request('start', wireSession(session))
+      const value = await this.#request('start', wireNodeRuntimeSessionV1(session))
       this.#setState(value?.state === 'waiting_for_debugger' ? 'waiting_for_debugger' : 'running')
       return value
     } catch (error) {
@@ -91,6 +95,18 @@ export class NodeRuntimeSupervisor extends EventEmitter {
     const normalized = normalizeNetworkRules(rules)
     const value = await this.#request('rules', { revision, rules: normalized })
     this.#rulesRevision = revision
+    return value
+  }
+
+  async setRuntimePlugins(runtimePlugins, expectedRevision, revision = expectedRevision + 1) {
+    if (this.#state !== 'running') throw adapterError('invalid_state')
+    const normalized = normalizeNodeRuntimePluginUpdateV1(runtimePlugins)
+    const value = await this.#request('plugins', { expectedRevision, revision, runtimePlugins: normalized })
+    this.#session = Object.freeze({
+      ...this.#session,
+      pluginGraphRevision: revision,
+      runtimePlugins: normalized
+    })
     return value
   }
 

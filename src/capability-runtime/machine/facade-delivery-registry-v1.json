@@ -1,0 +1,280 @@
+{
+  "CallbackResultDeliveryV1": {
+    "callback": {
+      "errorFirst": true,
+      "failure": {
+        "kind": "errorOnly"
+      },
+      "success": {
+        "kind": "result",
+        "resultSchemaId": "$operation.resultSchemaId"
+      }
+    },
+    "invocationModes": [
+      "callback"
+    ],
+    "kind": "invocation"
+  },
+  "CallbackVoidDeliveryV1": {
+    "callback": {
+      "errorFirst": true,
+      "failure": {
+        "kind": "errorOnly"
+      },
+      "success": {
+        "kind": "void"
+      }
+    },
+    "invocationModes": [
+      "callback"
+    ],
+    "kind": "invocation"
+  },
+  "DeviceSubscriptionDeliveryV1": {
+    "immediateResultSchemaId": "DeviceSubscriptionV1",
+    "resourceEvents": {
+      "eventSchemaId": "HoloDeviceEventV1",
+      "terminalEvent": "closed"
+    },
+    "invocationModes": [
+      "promise"
+    ],
+    "kind": "invocation"
+  },
+  "FsMkdirCallbackDeliveryV1": {
+    "callback": {
+      "errorFirst": true,
+      "failure": {
+        "kind": "errorOnly"
+      },
+      "success": {
+        "kind": "variants",
+        "variants": [
+          {
+            "delivery": {
+              "kind": "void"
+            },
+            "whenArgumentsSchemaId": "FsMkdirNonRecursiveArgsV1"
+          },
+          {
+            "delivery": {
+              "kind": "result",
+              "resultSchemaId": "FsMkdirRecursiveResultV1"
+            },
+            "whenArgumentsSchemaId": "FsMkdirRecursiveArgsV1"
+          }
+        ]
+      }
+    },
+    "invocationModes": [
+      "callback"
+    ],
+    "kind": "invocation"
+  },
+  "FsReadCallbackDeliveryV1": {
+    "callback": {
+      "errorFirst": true,
+      "failure": {
+        "kind": "errorOnly"
+      },
+      "success": {
+        "kind": "variants",
+        "variants": [
+          {
+            "delivery": {
+              "kind": "result",
+              "resultSchemaId": "RuntimeBufferV1"
+            },
+            "whenArgumentsSchemaId": "FsReadFileAsyncBufferArgsV1"
+          },
+          {
+            "delivery": {
+              "kind": "result",
+              "resultSchemaId": "string"
+            },
+            "whenArgumentsSchemaId": "FsReadFileAsyncStringArgsV1"
+          }
+        ]
+      }
+    },
+    "invocationModes": [
+      "callback"
+    ],
+    "kind": "invocation"
+  },
+  "FsReaddirCallbackDeliveryV1": {
+    "callback": {
+      "errorFirst": true,
+      "failure": {
+        "kind": "errorOnly"
+      },
+      "success": {
+        "kind": "variants",
+        "variants": [
+          {
+            "delivery": {
+              "kind": "result",
+              "resultSchemaId": "FsReaddirNamesResultV1"
+            },
+            "whenArgumentsSchemaId": "FsReaddirNamesArgsV1"
+          },
+          {
+            "delivery": {
+              "kind": "result",
+              "resultSchemaId": "FsReaddirDirentsResultV1"
+            },
+            "whenArgumentsSchemaId": "FsReaddirDirentsArgsV1"
+          }
+        ]
+      }
+    },
+    "invocationModes": [
+      "callback"
+    ],
+    "kind": "invocation"
+  },
+  "FsWatchIteratorDeliveryV1": {
+    "immediateResultSchemaId": "FsWatchIteratorV1",
+    "resourceEvents": {
+      "eventSchemaId": "VirtualFsWatcherDeliveryV1",
+      "terminalEvent": "close"
+    },
+    "invocationModes": [
+      "sync"
+    ],
+    "kind": "invocation"
+  },
+  "FsWatcherDeliveryV1": {
+    "immediateResultSchemaId": "FsWatcherV1",
+    "resourceEvents": {
+      "eventSchemaId": "VirtualFsWatcherDeliveryV1",
+      "terminalEvent": "close"
+    },
+    "invocationModes": [
+      "sync"
+    ],
+    "kind": "invocation"
+  },
+  "ProcessEventDeliveryV1": {
+    "eventSchemaId": "ChildProcessEventV1",
+    "kind": "resourceEvents",
+    "terminalEvent": "close"
+  },
+  "ProcessExecDeliveryV1": {
+    "callback": {
+      "errorFirst": true,
+      "failure": {
+        "kind": "errorAndTuple",
+        "tupleSchemaId": "ProcessExecSuccessTupleV1"
+      },
+      "success": {
+        "kind": "tuple",
+        "tupleSchemaId": "ProcessExecSuccessTupleV1"
+      }
+    },
+    "immediateResultSchemaId": "ChildProcessFacadeV1",
+    "invocationModes": [
+      "callback"
+    ],
+    "kind": "invocation"
+  },
+  "ProcessReadableEventDeliveryV1": {
+    "eventSchemaId": "ChildProcessReadableEventV1",
+    "kind": "resourceEvents",
+    "terminalEvent": "close"
+  },
+  "ProcessStdinDeliveryV1": {
+    "callback": {
+      "errorFirst": true,
+      "failure": {
+        "kind": "errorOnly"
+      },
+      "success": {
+        "kind": "void"
+      }
+    },
+    "immediateResultSchemaId": "boolean",
+    "resourceEvents": {
+      "eventSchemaId": "ChildProcessStdinEventV1",
+      "terminalEvent": "close"
+    },
+    "invocationModes": [
+      "callback"
+    ],
+    "kind": "invocation"
+  },
+  "ProcessStdinEndDeliveryV1": {
+    "callback": {
+      "errorFirst": true,
+      "failure": {
+        "kind": "errorOnly"
+      },
+      "success": {
+        "kind": "void"
+      }
+    },
+    "immediateResultSchemaId": "ChildProcessStdinFacadeV1",
+    "resourceEvents": {
+      "eventSchemaId": "ChildProcessStdinEventV1",
+      "terminalEvent": "close"
+    },
+    "invocationModes": [
+      "callback"
+    ],
+    "kind": "invocation"
+  },
+  "ProcessSyncDeliveryV1": {
+    "invocationModes": [
+      "sync"
+    ],
+    "kind": "invocation"
+  },
+  "PromiseResultDeliveryV1": {
+    "invocationModes": [
+      "promise"
+    ],
+    "kind": "invocation"
+  },
+  "PromiseVariantDeliveryV1": {
+    "invocationModes": [
+      "promise"
+    ],
+    "kind": "invocation"
+  },
+  "PromiseVoidDeliveryV1": {
+    "invocationModes": [
+      "promise"
+    ],
+    "kind": "invocation"
+  },
+  "SyncNeverDeliveryV1": {
+    "invocationModes": [
+      "sync"
+    ],
+    "kind": "invocation"
+  },
+  "SyncResultDeliveryV1": {
+    "invocationModes": [
+      "sync"
+    ],
+    "kind": "invocation"
+  },
+  "SyncVariantDeliveryV1": {
+    "invocationModes": [
+      "sync"
+    ],
+    "kind": "invocation"
+  },
+  "SyncVoidDeliveryV1": {
+    "invocationModes": [
+      "sync"
+    ],
+    "kind": "invocation"
+  },
+  "SystemSyncDeliveryV1": {
+    "invocationModes": [
+      "sync"
+    ],
+    "kind": "invocation"
+  }
+}

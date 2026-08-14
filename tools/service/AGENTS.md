@@ -17,6 +17,9 @@ client; they must not fall back to direct ADB or host runtime execution.
 - `android-emulator-*.mjs`: daemon-owned AVD identity, start/stop/restart, and crash recovery.
 - `mutation-coordinator.mjs`: durable idempotency for direct side-effecting mutations.
 - `*-target-adapter.mjs`: Node and Android execution adapters.
+- `capability-process-backends.mjs`, `capability-process-profiles.mjs`, and `capability-runtime-admission.mjs`: read the owner-only Host
+  Backend installation and Process profile manifests, then admit only an installed Backend whose descriptor matches the target;
+  no Backend path or configuration enters public DTOs.
 - `inspector-proxy.mjs`, `cdp-*.mjs`: process-scoped external CDP proxy.
 
 The CDP Network projection emits base and ExtraInfo events from the same redacted Fetch diagnostic,

@@ -40,6 +40,7 @@ export interface HolonomyRuntimeOptions {
     readonly rootUrl: string
     readonly readModule: import('../module-loader/index.js').HostModuleLoaderPort['readModule']
   }
+  readonly moduleOverrides?: Readonly<Record<string, RuntimeSyntheticModuleBinding>>
 }
 
 export interface RuntimeModuleLoader {

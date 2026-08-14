@@ -1,0 +1,83 @@
+{
+  "artifact": {
+    "artifactKind": "npm",
+    "artifactVersion": "0.5.432",
+    "integritySha256": "de9379ee1ccc118903558faed9ff577a66d486c5551b9e5ef359f0d388c40ebb",
+    "license": "BSD-2-Clause",
+    "sourceRevision": "f3d4472a9c934b9ad78a311f5849ba711a296d23"
+  },
+  "backendId": "experimental.v86-v1",
+  "host": {
+    "architecture": "arm64",
+    "engine": "node-v8",
+    "engineVersion": "12.4.254.21-node.39",
+    "platform": "darwin",
+    "runtimeVersion": "22.22.2"
+  },
+  "metrics": {
+    "bootDurationMs": 1541,
+    "peakRssBytes": 659193856,
+    "workloadDurationMs": 442
+  },
+  "observations": [
+    {
+      "capability": "installation",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "boot",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "workload",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "stdio",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "exit",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "filesystem",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "network",
+      "provenance": "upstreamContract",
+      "reasonCode": "host_network_bridge_not_connected",
+      "status": "notRun"
+    },
+    {
+      "capability": "processTree",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "runtime",
+      "provenance": "upstreamContract",
+      "reasonCode": "runtime_scope_real_probe_not_run",
+      "status": "notRun"
+    },
+    {
+      "capability": "snapshots",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "androidPackaging",
+      "provenance": "upstreamContract",
+      "reasonCode": "android_evidence_is_separate",
+      "status": "notRun"
+    }
+  ],
+  "schemaVersion": 1
+}

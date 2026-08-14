@@ -26,6 +26,7 @@ Core options:
   --detach                  Return a managed process id without waiting
   --openapi auto|URL        Use the local service or an explicit remote service
   --openapi-token-file FILE Read a remote service token without exposing it in argv
+  --capability-runtime FILE Apply an atomic Capability Runtime launch configuration
   --sandbox FILE            Apply a per-process fail-closed sandbox policy
   --network-rules FILE      Atomically install initial declarative network rules
   --inspect[=PORT]          Enable the V8 Inspector

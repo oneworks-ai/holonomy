@@ -7,6 +7,7 @@ import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
 const directory = mkdtempSync(join(tmpdir(), 'holonomy-package-layout-'))
+const MEBIBYTE = 1024 * 1024
 
 try {
   const output = execFileSync('npm', ['pack', '--json', '--pack-destination', directory], {
@@ -34,8 +35,11 @@ try {
     assert.ok(!file.endsWith('/AGENTS.md') && file !== 'AGENTS.md', `Package contains internal guidance: ${file}`)
     assert.ok(!file.endsWith('/vitest.config.mjs'), `Package contains test configuration: ${file}`)
   }
-  assert.ok(result.size < 1_000_000, `Package tarball exceeds 1 MiB: ${result.size}`)
-  assert.ok(result.unpackedSize < 4_000_000, `Unpacked package exceeds 4 MiB: ${result.unpackedSize}`)
+  assert.ok(result.size < MEBIBYTE, `Package tarball exceeds 1 MiB: ${result.size}`)
+  assert.ok(
+    result.unpackedSize < 4.75 * MEBIBYTE,
+    `Unpacked package exceeds the 4.75 MiB Capability Runtime and plugin budget: ${result.unpackedSize}`
+  )
   const packageJson = JSON.parse(readFileSync('package.json', 'utf8'))
   assert.equal(packageJson.bin.holonomy, './tools/holonomy.mjs')
   execFileSync('tar', ['-xzf', join(directory, result.filename), '-C', directory])
@@ -43,7 +47,7 @@ try {
   const packageRoot = join(nodeModules, '@oneworks', 'holonomy')
   mkdirSync(join(nodeModules, '@oneworks'), { recursive: true })
   renameSync(join(directory, 'package'), packageRoot)
-  for (const dependency of ['acorn', 'ajv', 'electron']) {
+  for (const dependency of ['acorn', 'ajv', 'cordis', 'electron']) {
     symlinkSync(resolve('node_modules', dependency), join(nodeModules, dependency))
   }
   const help = execFileSync(process.execPath, [join(packageRoot, 'tools/holonomy.mjs'), '--help'], {

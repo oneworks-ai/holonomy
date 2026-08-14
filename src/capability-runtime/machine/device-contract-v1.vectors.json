@@ -1,0 +1,411 @@
+{
+  "schemaVersion": 1,
+  "vectors": {
+    "androidProvider": {
+      "operations": [
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.connectivity.cellular.state.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.connectivity.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.connectivity.wifi.identity.read",
+          "permissionModel": "hostAndPlatform",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.connectivity.wifi.state.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.display.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [
+            "connectivity",
+            "display",
+            "lifecycle",
+            "power"
+          ],
+          "maxPrecision": "standard",
+          "operation": "device.events.subscribe",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.form-factor.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.input.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.lifecycle.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.media.capabilities.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.power.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.security.capabilities.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.sensor.capabilities.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.summary.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.thermal.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        }
+      ],
+      "providerVersion": "1.0.0",
+      "schemaVersion": 1,
+      "target": "android"
+    },
+    "desktopProvider": {
+      "operations": [
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.connectivity.cellular.state.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.connectivity.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.connectivity.wifi.identity.read",
+          "permissionModel": "hostAndPlatform",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.connectivity.wifi.state.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.display.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [
+            "display",
+            "lifecycle"
+          ],
+          "maxPrecision": "standard",
+          "operation": "device.events.subscribe",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.form-factor.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.input.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.lifecycle.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.media.capabilities.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.power.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.security.capabilities.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.sensor.capabilities.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.summary.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "exact",
+          "operation": "device.thermal.read",
+          "permissionModel": "host",
+          "supportLevel": "optional"
+        }
+      ],
+      "providerVersion": "1.0.0",
+      "schemaVersion": 1,
+      "target": "desktop"
+    },
+    "nodeProvider": {
+      "operations": [
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.connectivity.cellular.state.read",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.connectivity.read",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.connectivity.wifi.identity.read",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.connectivity.wifi.state.read",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.display.read",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.events.subscribe",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.form-factor.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.input.read",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.lifecycle.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.media.capabilities.read",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.power.read",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.security.capabilities.read",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.sensor.capabilities.read",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "standard",
+          "operation": "device.summary.read",
+          "permissionModel": "host",
+          "supportLevel": "required"
+        },
+        {
+          "eventKinds": [],
+          "maxPrecision": "none",
+          "operation": "device.thermal.read",
+          "permissionModel": "none",
+          "supportLevel": "unsupported"
+        }
+      ],
+      "providerVersion": "1.0.0",
+      "schemaVersion": 1,
+      "target": "node"
+    },
+    "tierOneSummary": {
+      "display": {
+        "observedAt": 100,
+        "revision": 1,
+        "status": "available",
+        "precision": "standard",
+        "value": {
+          "hdr": "unknown",
+          "heightCssPx": 800,
+          "orientation": "portrait",
+          "scale": 2,
+          "wideColor": "unknown",
+          "widthCssPx": 400
+        }
+      },
+      "formFactor": {
+        "observedAt": 100,
+        "revision": 1,
+        "status": "available",
+        "precision": "standard",
+        "value": "phone"
+      },
+      "input": {
+        "observedAt": 100,
+        "revision": 1,
+        "status": "available",
+        "precision": "standard",
+        "value": {
+          "hover": false,
+          "keyboard": false,
+          "maxTouchPoints": 5,
+          "mouse": false,
+          "pointer": "coarse",
+          "touch": true
+        }
+      },
+      "lifecycle": {
+        "observedAt": 100,
+        "revision": 1,
+        "status": "available",
+        "precision": "standard",
+        "value": {
+          "interactive": true,
+          "memoryPressure": "normal",
+          "visibility": "foreground"
+        }
+      },
+      "power": {
+        "observedAt": 100,
+        "revision": 1,
+        "status": "available",
+        "precision": "standard",
+        "value": {
+          "charging": true,
+          "hasBattery": true,
+          "levelPercent": 80,
+          "lowPowerMode": false,
+          "source": "usb"
+        }
+      },
+      "schemaVersion": 1
+    }
+  }
+}

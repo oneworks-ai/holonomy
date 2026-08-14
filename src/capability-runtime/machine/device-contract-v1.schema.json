@@ -1,0 +1,5160 @@
+{
+  "$defs": {
+    "events": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "connectivity"
+            },
+            "observedAt": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "number"
+            },
+            "phase": {
+              "enum": [
+                "change",
+                "snapshot"
+              ]
+            },
+            "reading": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "standard"
+                      ]
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "const": "available"
+                    },
+                    "value": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "captivePortal": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "metered": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "online": {
+                          "type": "boolean"
+                        },
+                        "quality": {
+                          "enum": [
+                            "excellent",
+                            "fair",
+                            "good",
+                            "offline",
+                            "poor",
+                            "unknown"
+                          ]
+                        },
+                        "roaming": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "transports": {
+                          "items": {
+                            "enum": [
+                              "bluetooth",
+                              "cellular",
+                              "ethernet",
+                              "other",
+                              "vpn",
+                              "wifi"
+                            ]
+                          },
+                          "maxItems": 6,
+                          "minItems": 0,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "validated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "captivePortal",
+                        "metered",
+                        "online",
+                        "quality",
+                        "roaming",
+                        "transports",
+                        "validated"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "const": "redacted"
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "const": "redacted"
+                    },
+                    "value": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "captivePortal": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "metered": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "online": {
+                          "type": "boolean"
+                        },
+                        "quality": {
+                          "enum": [
+                            "excellent",
+                            "fair",
+                            "good",
+                            "offline",
+                            "poor",
+                            "unknown"
+                          ]
+                        },
+                        "roaming": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "transports": {
+                          "items": {
+                            "enum": [
+                              "bluetooth",
+                              "cellular",
+                              "ethernet",
+                              "other",
+                              "vpn",
+                              "wifi"
+                            ]
+                          },
+                          "maxItems": 6,
+                          "minItems": 0,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "validated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "captivePortal",
+                        "metered",
+                        "online",
+                        "quality",
+                        "roaming",
+                        "transports",
+                        "validated"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "const": "none"
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "enum": [
+                        "permissionDenied",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "observedAt",
+            "phase",
+            "reading",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "display"
+            },
+            "observedAt": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "number"
+            },
+            "phase": {
+              "enum": [
+                "change",
+                "snapshot"
+              ]
+            },
+            "reading": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "standard"
+                      ]
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "const": "available"
+                    },
+                    "value": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "hdr": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "heightCssPx": {
+                          "maximum": 1000000,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "orientation": {
+                          "enum": [
+                            "landscape",
+                            "portrait",
+                            "unknown"
+                          ]
+                        },
+                        "refreshRateHz": {
+                          "maximum": 1000,
+                          "minimum": 1,
+                          "type": "number"
+                        },
+                        "scale": {
+                          "maximum": 16,
+                          "minimum": 0.25,
+                          "type": "number"
+                        },
+                        "wideColor": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "widthCssPx": {
+                          "maximum": 1000000,
+                          "minimum": 1,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "hdr",
+                        "heightCssPx",
+                        "orientation",
+                        "scale",
+                        "wideColor",
+                        "widthCssPx"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "const": "redacted"
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "const": "redacted"
+                    },
+                    "value": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "hdr": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "heightCssPx": {
+                          "maximum": 1000000,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "orientation": {
+                          "enum": [
+                            "landscape",
+                            "portrait",
+                            "unknown"
+                          ]
+                        },
+                        "refreshRateHz": {
+                          "maximum": 1000,
+                          "minimum": 1,
+                          "type": "number"
+                        },
+                        "scale": {
+                          "maximum": 16,
+                          "minimum": 0.25,
+                          "type": "number"
+                        },
+                        "wideColor": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "widthCssPx": {
+                          "maximum": 1000000,
+                          "minimum": 1,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "hdr",
+                        "heightCssPx",
+                        "orientation",
+                        "scale",
+                        "wideColor",
+                        "widthCssPx"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "const": "none"
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "enum": [
+                        "permissionDenied",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "observedAt",
+            "phase",
+            "reading",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "lifecycle"
+            },
+            "observedAt": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "number"
+            },
+            "phase": {
+              "enum": [
+                "change",
+                "snapshot"
+              ]
+            },
+            "reading": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "standard"
+                      ]
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "const": "available"
+                    },
+                    "value": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "interactive": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "memoryPressure": {
+                          "enum": [
+                            "critical",
+                            "moderate",
+                            "normal",
+                            "unknown"
+                          ]
+                        },
+                        "visibility": {
+                          "enum": [
+                            "background",
+                            "foreground",
+                            "unknown"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "interactive",
+                        "memoryPressure",
+                        "visibility"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "const": "redacted"
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "const": "redacted"
+                    },
+                    "value": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "interactive": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "memoryPressure": {
+                          "enum": [
+                            "critical",
+                            "moderate",
+                            "normal",
+                            "unknown"
+                          ]
+                        },
+                        "visibility": {
+                          "enum": [
+                            "background",
+                            "foreground",
+                            "unknown"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "interactive",
+                        "memoryPressure",
+                        "visibility"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "const": "none"
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "enum": [
+                        "permissionDenied",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "observedAt",
+            "phase",
+            "reading",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "power"
+            },
+            "observedAt": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "number"
+            },
+            "phase": {
+              "enum": [
+                "change",
+                "snapshot"
+              ]
+            },
+            "reading": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "standard"
+                      ]
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "const": "available"
+                    },
+                    "value": {
+                      "allOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "charging": {
+                              "enum": [
+                                false,
+                                true,
+                                "unknown"
+                              ]
+                            },
+                            "hasBattery": {
+                              "type": "boolean"
+                            },
+                            "levelPercent": {
+                              "maximum": 100,
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "lowPowerMode": {
+                              "enum": [
+                                false,
+                                true,
+                                "unknown"
+                              ]
+                            },
+                            "source": {
+                              "enum": [
+                                "ac",
+                                "battery",
+                                "unknown",
+                                "usb",
+                                "wireless"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "charging",
+                            "hasBattery",
+                            "lowPowerMode",
+                            "source"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "if": {
+                            "properties": {
+                              "hasBattery": {
+                                "const": false
+                              }
+                            },
+                            "required": [
+                              "hasBattery"
+                            ],
+                            "type": "object"
+                          },
+                          "then": {
+                            "not": {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "levelPercent"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "properties": {
+                                    "charging": {
+                                      "enum": [
+                                        true,
+                                        "unknown"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "charging"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "properties": {
+                                    "source": {
+                                      "const": "battery"
+                                    }
+                                  },
+                                  "required": [
+                                    "source"
+                                  ],
+                                  "type": "object"
+                                }
+                              ]
+                            },
+                            "type": "object"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "const": "redacted"
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "const": "redacted"
+                    },
+                    "value": {
+                      "allOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "charging": {
+                              "enum": [
+                                false,
+                                true,
+                                "unknown"
+                              ]
+                            },
+                            "hasBattery": {
+                              "type": "boolean"
+                            },
+                            "levelPercent": {
+                              "maximum": 100,
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "lowPowerMode": {
+                              "enum": [
+                                false,
+                                true,
+                                "unknown"
+                              ]
+                            },
+                            "source": {
+                              "enum": [
+                                "ac",
+                                "battery",
+                                "unknown",
+                                "usb",
+                                "wireless"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "charging",
+                            "hasBattery",
+                            "lowPowerMode",
+                            "source"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "if": {
+                            "properties": {
+                              "hasBattery": {
+                                "const": false
+                              }
+                            },
+                            "required": [
+                              "hasBattery"
+                            ],
+                            "type": "object"
+                          },
+                          "then": {
+                            "not": {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "levelPercent"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "properties": {
+                                    "charging": {
+                                      "enum": [
+                                        true,
+                                        "unknown"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "charging"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "properties": {
+                                    "source": {
+                                      "const": "battery"
+                                    }
+                                  },
+                                  "required": [
+                                    "source"
+                                  ],
+                                  "type": "object"
+                                }
+                              ]
+                            },
+                            "type": "object"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "const": "none"
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "enum": [
+                        "permissionDenied",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "observedAt",
+            "phase",
+            "reading",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "thermal"
+            },
+            "observedAt": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "number"
+            },
+            "phase": {
+              "enum": [
+                "change",
+                "snapshot"
+              ]
+            },
+            "reading": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "standard"
+                      ]
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "const": "available"
+                    },
+                    "value": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "state": {
+                          "enum": [
+                            "critical",
+                            "fair",
+                            "nominal",
+                            "serious",
+                            "unknown"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "const": "redacted"
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "const": "redacted"
+                    },
+                    "value": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "state": {
+                          "enum": [
+                            "critical",
+                            "fair",
+                            "nominal",
+                            "serious",
+                            "unknown"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "observedAt": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "precision": {
+                      "const": "none"
+                    },
+                    "revision": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "status": {
+                      "enum": [
+                        "permissionDenied",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "observedAt",
+                    "precision",
+                    "revision",
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "observedAt",
+            "phase",
+            "reading",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "dropped": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "kind": {
+              "const": "overflow"
+            },
+            "observedAt": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "number"
+            },
+            "requiredRevisions": {
+              "additionalProperties": false,
+              "maxProperties": 5,
+              "minProperties": 1,
+              "properties": {
+                "connectivity": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "display": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "lifecycle": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "power": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "thermal": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "resyncRequired": {
+              "const": true
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "dropped",
+            "kind",
+            "observedAt",
+            "requiredRevisions",
+            "resyncRequired",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "providerDescriptor": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "operations": {
+              "items": false,
+              "maxItems": 15,
+              "minItems": 15,
+              "prefixItems": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.connectivity.cellular.state.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.connectivity.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.connectivity.wifi.identity.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.connectivity.wifi.identity.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.connectivity.wifi.state.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.display.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "items": false,
+                      "maxItems": 4,
+                      "minItems": 4,
+                      "prefixItems": [
+                        {
+                          "const": "connectivity"
+                        },
+                        {
+                          "const": "display"
+                        },
+                        {
+                          "const": "lifecycle"
+                        },
+                        {
+                          "const": "power"
+                        }
+                      ],
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.events.subscribe"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.form-factor.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.input.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.lifecycle.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.media.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.media.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.power.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.security.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.security.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.sensor.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.sensor.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.summary.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.thermal.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.thermal.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            "providerVersion": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "target": {
+              "const": "android"
+            }
+          },
+          "required": [
+            "operations",
+            "providerVersion",
+            "schemaVersion",
+            "target"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "operations": {
+              "items": false,
+              "maxItems": 15,
+              "minItems": 15,
+              "prefixItems": [
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.connectivity.cellular.state.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.connectivity.cellular.state.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.connectivity.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.connectivity.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.connectivity.wifi.identity.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.connectivity.wifi.identity.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.connectivity.wifi.state.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.connectivity.wifi.state.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.display.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "items": false,
+                      "maxItems": 2,
+                      "minItems": 2,
+                      "prefixItems": [
+                        {
+                          "const": "display"
+                        },
+                        {
+                          "const": "lifecycle"
+                        }
+                      ],
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.events.subscribe"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.form-factor.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.input.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.lifecycle.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.media.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.media.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.power.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.power.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.security.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.security.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.sensor.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.sensor.capabilities.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.summary.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "enum": [
+                            "coarse",
+                            "exact",
+                            "redacted",
+                            "standard"
+                          ]
+                        },
+                        "operation": {
+                          "const": "device.thermal.read"
+                        },
+                        "permissionModel": {
+                          "enum": [
+                            "host",
+                            "hostAndPlatform",
+                            "none",
+                            "platform"
+                          ]
+                        },
+                        "supportLevel": {
+                          "const": "optional"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "eventKinds": {
+                          "maxItems": 0,
+                          "type": "array"
+                        },
+                        "maxPrecision": {
+                          "const": "none"
+                        },
+                        "operation": {
+                          "const": "device.thermal.read"
+                        },
+                        "permissionModel": {
+                          "const": "none"
+                        },
+                        "supportLevel": {
+                          "const": "unsupported"
+                        }
+                      },
+                      "required": [
+                        "eventKinds",
+                        "maxPrecision",
+                        "operation",
+                        "permissionModel",
+                        "supportLevel"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            "providerVersion": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "target": {
+              "const": "desktop"
+            }
+          },
+          "required": [
+            "operations",
+            "providerVersion",
+            "schemaVersion",
+            "target"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "operations": {
+              "items": false,
+              "maxItems": 15,
+              "minItems": 15,
+              "prefixItems": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.connectivity.cellular.state.read"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.connectivity.read"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.connectivity.wifi.identity.read"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.connectivity.wifi.state.read"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.display.read"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.events.subscribe"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.form-factor.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.input.read"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.lifecycle.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.media.capabilities.read"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.power.read"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.security.capabilities.read"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.sensor.capabilities.read"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "enum": [
+                        "coarse",
+                        "exact",
+                        "redacted",
+                        "standard"
+                      ]
+                    },
+                    "operation": {
+                      "const": "device.summary.read"
+                    },
+                    "permissionModel": {
+                      "enum": [
+                        "host",
+                        "hostAndPlatform",
+                        "none",
+                        "platform"
+                      ]
+                    },
+                    "supportLevel": {
+                      "const": "required"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "eventKinds": {
+                      "maxItems": 0,
+                      "type": "array"
+                    },
+                    "maxPrecision": {
+                      "const": "none"
+                    },
+                    "operation": {
+                      "const": "device.thermal.read"
+                    },
+                    "permissionModel": {
+                      "const": "none"
+                    },
+                    "supportLevel": {
+                      "const": "unsupported"
+                    }
+                  },
+                  "required": [
+                    "eventKinds",
+                    "maxPrecision",
+                    "operation",
+                    "permissionModel",
+                    "supportLevel"
+                  ],
+                  "type": "object"
+                }
+              ],
+              "type": "array"
+            },
+            "providerVersion": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "target": {
+              "const": "node"
+            }
+          },
+          "required": [
+            "operations",
+            "providerVersion",
+            "schemaVersion",
+            "target"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "summary": {
+      "additionalProperties": false,
+      "properties": {
+        "display": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "const": "available"
+                },
+                "value": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "hdr": {
+                      "enum": [
+                        false,
+                        true,
+                        "unknown"
+                      ]
+                    },
+                    "heightCssPx": {
+                      "maximum": 1000000,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "orientation": {
+                      "enum": [
+                        "landscape",
+                        "portrait",
+                        "unknown"
+                      ]
+                    },
+                    "refreshRateHz": {
+                      "maximum": 1000,
+                      "minimum": 1,
+                      "type": "number"
+                    },
+                    "scale": {
+                      "maximum": 16,
+                      "minimum": 0.25,
+                      "type": "number"
+                    },
+                    "wideColor": {
+                      "enum": [
+                        false,
+                        true,
+                        "unknown"
+                      ]
+                    },
+                    "widthCssPx": {
+                      "maximum": 1000000,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "hdr",
+                    "heightCssPx",
+                    "orientation",
+                    "scale",
+                    "wideColor",
+                    "widthCssPx"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "const": "redacted"
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "const": "redacted"
+                },
+                "value": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "hdr": {
+                      "enum": [
+                        false,
+                        true,
+                        "unknown"
+                      ]
+                    },
+                    "heightCssPx": {
+                      "maximum": 1000000,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "orientation": {
+                      "enum": [
+                        "landscape",
+                        "portrait",
+                        "unknown"
+                      ]
+                    },
+                    "refreshRateHz": {
+                      "maximum": 1000,
+                      "minimum": 1,
+                      "type": "number"
+                    },
+                    "scale": {
+                      "maximum": 16,
+                      "minimum": 0.25,
+                      "type": "number"
+                    },
+                    "wideColor": {
+                      "enum": [
+                        false,
+                        true,
+                        "unknown"
+                      ]
+                    },
+                    "widthCssPx": {
+                      "maximum": 1000000,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "hdr",
+                    "heightCssPx",
+                    "orientation",
+                    "scale",
+                    "wideColor",
+                    "widthCssPx"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "const": "none"
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "enum": [
+                    "permissionDenied",
+                    "unavailable",
+                    "unsupported"
+                  ]
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "formFactor": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "const": "available"
+                },
+                "value": {
+                  "enum": [
+                    "automotive",
+                    "desktop",
+                    "phone",
+                    "server",
+                    "tablet",
+                    "tv",
+                    "unknown",
+                    "wearable"
+                  ]
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "const": "redacted"
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "const": "redacted"
+                },
+                "value": {
+                  "enum": [
+                    "automotive",
+                    "desktop",
+                    "phone",
+                    "server",
+                    "tablet",
+                    "tv",
+                    "unknown",
+                    "wearable"
+                  ]
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "const": "none"
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "enum": [
+                    "permissionDenied",
+                    "unavailable",
+                    "unsupported"
+                  ]
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "input": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "const": "available"
+                },
+                "value": {
+                  "allOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "hover": {
+                          "type": "boolean"
+                        },
+                        "keyboard": {
+                          "type": "boolean"
+                        },
+                        "maxTouchPoints": {
+                          "maximum": 64,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "mouse": {
+                          "type": "boolean"
+                        },
+                        "pointer": {
+                          "enum": [
+                            "coarse",
+                            "fine",
+                            "none"
+                          ]
+                        },
+                        "touch": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "hover",
+                        "keyboard",
+                        "maxTouchPoints",
+                        "mouse",
+                        "pointer",
+                        "touch"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "touch": {
+                            "const": true
+                          }
+                        },
+                        "required": [
+                          "touch"
+                        ],
+                        "type": "object"
+                      },
+                      "then": {
+                        "properties": {
+                          "maxTouchPoints": {
+                            "maximum": 64,
+                            "minimum": 1,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "else": {
+                        "properties": {
+                          "maxTouchPoints": {
+                            "const": 0
+                          }
+                        },
+                        "type": "object"
+                      }
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "const": "redacted"
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "const": "redacted"
+                },
+                "value": {
+                  "allOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "hover": {
+                          "type": "boolean"
+                        },
+                        "keyboard": {
+                          "type": "boolean"
+                        },
+                        "maxTouchPoints": {
+                          "maximum": 64,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "mouse": {
+                          "type": "boolean"
+                        },
+                        "pointer": {
+                          "enum": [
+                            "coarse",
+                            "fine",
+                            "none"
+                          ]
+                        },
+                        "touch": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "hover",
+                        "keyboard",
+                        "maxTouchPoints",
+                        "mouse",
+                        "pointer",
+                        "touch"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "touch": {
+                            "const": true
+                          }
+                        },
+                        "required": [
+                          "touch"
+                        ],
+                        "type": "object"
+                      },
+                      "then": {
+                        "properties": {
+                          "maxTouchPoints": {
+                            "maximum": 64,
+                            "minimum": 1,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "else": {
+                        "properties": {
+                          "maxTouchPoints": {
+                            "const": 0
+                          }
+                        },
+                        "type": "object"
+                      }
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "const": "none"
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "enum": [
+                    "permissionDenied",
+                    "unavailable",
+                    "unsupported"
+                  ]
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "lifecycle": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "const": "available"
+                },
+                "value": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "interactive": {
+                      "enum": [
+                        false,
+                        true,
+                        "unknown"
+                      ]
+                    },
+                    "memoryPressure": {
+                      "enum": [
+                        "critical",
+                        "moderate",
+                        "normal",
+                        "unknown"
+                      ]
+                    },
+                    "visibility": {
+                      "enum": [
+                        "background",
+                        "foreground",
+                        "unknown"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "interactive",
+                    "memoryPressure",
+                    "visibility"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "const": "redacted"
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "const": "redacted"
+                },
+                "value": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "interactive": {
+                      "enum": [
+                        false,
+                        true,
+                        "unknown"
+                      ]
+                    },
+                    "memoryPressure": {
+                      "enum": [
+                        "critical",
+                        "moderate",
+                        "normal",
+                        "unknown"
+                      ]
+                    },
+                    "visibility": {
+                      "enum": [
+                        "background",
+                        "foreground",
+                        "unknown"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "interactive",
+                    "memoryPressure",
+                    "visibility"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "const": "none"
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "enum": [
+                    "permissionDenied",
+                    "unavailable",
+                    "unsupported"
+                  ]
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "power": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "const": "available"
+                },
+                "value": {
+                  "allOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "charging": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "hasBattery": {
+                          "type": "boolean"
+                        },
+                        "levelPercent": {
+                          "maximum": 100,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "lowPowerMode": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "source": {
+                          "enum": [
+                            "ac",
+                            "battery",
+                            "unknown",
+                            "usb",
+                            "wireless"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "charging",
+                        "hasBattery",
+                        "lowPowerMode",
+                        "source"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "hasBattery": {
+                            "const": false
+                          }
+                        },
+                        "required": [
+                          "hasBattery"
+                        ],
+                        "type": "object"
+                      },
+                      "then": {
+                        "not": {
+                          "anyOf": [
+                            {
+                              "required": [
+                                "levelPercent"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "properties": {
+                                "charging": {
+                                  "enum": [
+                                    true,
+                                    "unknown"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "charging"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "properties": {
+                                "source": {
+                                  "const": "battery"
+                                }
+                              },
+                              "required": [
+                                "source"
+                              ],
+                              "type": "object"
+                            }
+                          ]
+                        },
+                        "type": "object"
+                      }
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "const": "redacted"
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "const": "redacted"
+                },
+                "value": {
+                  "allOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "charging": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "hasBattery": {
+                          "type": "boolean"
+                        },
+                        "levelPercent": {
+                          "maximum": 100,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "lowPowerMode": {
+                          "enum": [
+                            false,
+                            true,
+                            "unknown"
+                          ]
+                        },
+                        "source": {
+                          "enum": [
+                            "ac",
+                            "battery",
+                            "unknown",
+                            "usb",
+                            "wireless"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "charging",
+                        "hasBattery",
+                        "lowPowerMode",
+                        "source"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "hasBattery": {
+                            "const": false
+                          }
+                        },
+                        "required": [
+                          "hasBattery"
+                        ],
+                        "type": "object"
+                      },
+                      "then": {
+                        "not": {
+                          "anyOf": [
+                            {
+                              "required": [
+                                "levelPercent"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "properties": {
+                                "charging": {
+                                  "enum": [
+                                    true,
+                                    "unknown"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "charging"
+                              ],
+                              "type": "object"
+                            },
+                            {
+                              "properties": {
+                                "source": {
+                                  "const": "battery"
+                                }
+                              },
+                              "required": [
+                                "source"
+                              ],
+                              "type": "object"
+                            }
+                          ]
+                        },
+                        "type": "object"
+                      }
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "observedAt": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "precision": {
+                  "const": "none"
+                },
+                "revision": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "status": {
+                  "enum": [
+                    "permissionDenied",
+                    "unavailable",
+                    "unsupported"
+                  ]
+                }
+              },
+              "required": [
+                "observedAt",
+                "precision",
+                "revision",
+                "status"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "const": 1
+        }
+      },
+      "required": [
+        "display",
+        "formFactor",
+        "input",
+        "lifecycle",
+        "power",
+        "schemaVersion"
+      ],
+      "type": "object"
+    },
+    "values": {
+      "additionalProperties": false,
+      "properties": {
+        "device.connectivity.cellular.state.read": {
+          "allOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "connected": {
+                  "type": "boolean"
+                },
+                "radio": {
+                  "enum": [
+                    "2g",
+                    "3g",
+                    "4g",
+                    "5g",
+                    "other",
+                    "unknown"
+                  ]
+                },
+                "signalPercent": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "connected",
+                "radio"
+              ],
+              "type": "object"
+            },
+            {
+              "if": {
+                "properties": {
+                  "connected": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "connected"
+                ],
+                "type": "object"
+              },
+              "then": {
+                "not": {
+                  "required": [
+                    "signalPercent"
+                  ]
+                },
+                "properties": {
+                  "radio": {
+                    "const": "unknown"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          ]
+        },
+        "device.connectivity.read": {
+          "additionalProperties": false,
+          "properties": {
+            "captivePortal": {
+              "enum": [
+                false,
+                true,
+                "unknown"
+              ]
+            },
+            "metered": {
+              "enum": [
+                false,
+                true,
+                "unknown"
+              ]
+            },
+            "online": {
+              "type": "boolean"
+            },
+            "quality": {
+              "enum": [
+                "excellent",
+                "fair",
+                "good",
+                "offline",
+                "poor",
+                "unknown"
+              ]
+            },
+            "roaming": {
+              "enum": [
+                false,
+                true,
+                "unknown"
+              ]
+            },
+            "transports": {
+              "items": {
+                "enum": [
+                  "bluetooth",
+                  "cellular",
+                  "ethernet",
+                  "other",
+                  "vpn",
+                  "wifi"
+                ]
+              },
+              "maxItems": 6,
+              "minItems": 0,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "validated": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "captivePortal",
+            "metered",
+            "online",
+            "quality",
+            "roaming",
+            "transports",
+            "validated"
+          ],
+          "type": "object"
+        },
+        "device.connectivity.wifi.identity.read": {
+          "anyOf": [
+            {
+              "properties": {
+                "bssid": {}
+              },
+              "required": [
+                "bssid"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "ssid": {}
+              },
+              "required": [
+                "ssid"
+              ],
+              "type": "object"
+            }
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bssid": {
+              "pattern": "^(?:[0-9a-f]{2}:){5}[0-9a-f]{2}$",
+              "type": "string"
+            },
+            "ssid": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "object"
+        },
+        "device.connectivity.wifi.state.read": {
+          "allOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "connected": {
+                  "type": "boolean"
+                },
+                "signalPercent": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "connected"
+              ],
+              "type": "object"
+            },
+            {
+              "if": {
+                "properties": {
+                  "connected": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "connected"
+                ],
+                "type": "object"
+              },
+              "then": {
+                "not": {
+                  "required": [
+                    "signalPercent"
+                  ]
+                },
+                "type": "object"
+              }
+            }
+          ]
+        },
+        "device.display.read": {
+          "additionalProperties": false,
+          "properties": {
+            "hdr": {
+              "enum": [
+                false,
+                true,
+                "unknown"
+              ]
+            },
+            "heightCssPx": {
+              "maximum": 1000000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "orientation": {
+              "enum": [
+                "landscape",
+                "portrait",
+                "unknown"
+              ]
+            },
+            "refreshRateHz": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "number"
+            },
+            "scale": {
+              "maximum": 16,
+              "minimum": 0.25,
+              "type": "number"
+            },
+            "wideColor": {
+              "enum": [
+                false,
+                true,
+                "unknown"
+              ]
+            },
+            "widthCssPx": {
+              "maximum": 1000000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "hdr",
+            "heightCssPx",
+            "orientation",
+            "scale",
+            "wideColor",
+            "widthCssPx"
+          ],
+          "type": "object"
+        },
+        "device.form-factor.read": {
+          "enum": [
+            "automotive",
+            "desktop",
+            "phone",
+            "server",
+            "tablet",
+            "tv",
+            "unknown",
+            "wearable"
+          ]
+        },
+        "device.input.read": {
+          "allOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "hover": {
+                  "type": "boolean"
+                },
+                "keyboard": {
+                  "type": "boolean"
+                },
+                "maxTouchPoints": {
+                  "maximum": 64,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "mouse": {
+                  "type": "boolean"
+                },
+                "pointer": {
+                  "enum": [
+                    "coarse",
+                    "fine",
+                    "none"
+                  ]
+                },
+                "touch": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "hover",
+                "keyboard",
+                "maxTouchPoints",
+                "mouse",
+                "pointer",
+                "touch"
+              ],
+              "type": "object"
+            },
+            {
+              "if": {
+                "properties": {
+                  "touch": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "touch"
+                ],
+                "type": "object"
+              },
+              "then": {
+                "properties": {
+                  "maxTouchPoints": {
+                    "maximum": 64,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "else": {
+                "properties": {
+                  "maxTouchPoints": {
+                    "const": 0
+                  }
+                },
+                "type": "object"
+              }
+            }
+          ]
+        },
+        "device.lifecycle.read": {
+          "additionalProperties": false,
+          "properties": {
+            "interactive": {
+              "enum": [
+                false,
+                true,
+                "unknown"
+              ]
+            },
+            "memoryPressure": {
+              "enum": [
+                "critical",
+                "moderate",
+                "normal",
+                "unknown"
+              ]
+            },
+            "visibility": {
+              "enum": [
+                "background",
+                "foreground",
+                "unknown"
+              ]
+            }
+          },
+          "required": [
+            "interactive",
+            "memoryPressure",
+            "visibility"
+          ],
+          "type": "object"
+        },
+        "device.media.capabilities.read": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "type": "boolean"
+            },
+            "microphone": {
+              "type": "boolean"
+            },
+            "speaker": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "camera",
+            "microphone",
+            "speaker"
+          ],
+          "type": "object"
+        },
+        "device.power.read": {
+          "allOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "charging": {
+                  "enum": [
+                    false,
+                    true,
+                    "unknown"
+                  ]
+                },
+                "hasBattery": {
+                  "type": "boolean"
+                },
+                "levelPercent": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "lowPowerMode": {
+                  "enum": [
+                    false,
+                    true,
+                    "unknown"
+                  ]
+                },
+                "source": {
+                  "enum": [
+                    "ac",
+                    "battery",
+                    "unknown",
+                    "usb",
+                    "wireless"
+                  ]
+                }
+              },
+              "required": [
+                "charging",
+                "hasBattery",
+                "lowPowerMode",
+                "source"
+              ],
+              "type": "object"
+            },
+            {
+              "if": {
+                "properties": {
+                  "hasBattery": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "hasBattery"
+                ],
+                "type": "object"
+              },
+              "then": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "levelPercent"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "charging": {
+                          "enum": [
+                            true,
+                            "unknown"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "charging"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "source": {
+                          "const": "battery"
+                        }
+                      },
+                      "required": [
+                        "source"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                "type": "object"
+              }
+            }
+          ]
+        },
+        "device.security.capabilities.read": {
+          "additionalProperties": false,
+          "properties": {
+            "biometric": {
+              "enum": [
+                false,
+                true,
+                "unknown"
+              ]
+            },
+            "deviceLock": {
+              "enum": [
+                false,
+                true,
+                "unknown"
+              ]
+            },
+            "hardwareBackedKeys": {
+              "enum": [
+                false,
+                true,
+                "unknown"
+              ]
+            },
+            "secureStorage": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "biometric",
+            "deviceLock",
+            "hardwareBackedKeys",
+            "secureStorage"
+          ],
+          "type": "object"
+        },
+        "device.sensor.capabilities.read": {
+          "additionalProperties": false,
+          "properties": {
+            "available": {
+              "items": {
+                "enum": [
+                  "accelerometer",
+                  "barometer",
+                  "gyroscope",
+                  "light",
+                  "magnetometer",
+                  "proximity"
+                ]
+              },
+              "maxItems": 6,
+              "minItems": 0,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "available"
+          ],
+          "type": "object"
+        },
+        "device.thermal.read": {
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "enum": [
+                "critical",
+                "fair",
+                "nominal",
+                "serious",
+                "unknown"
+              ]
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "device.connectivity.cellular.state.read",
+        "device.connectivity.read",
+        "device.connectivity.wifi.identity.read",
+        "device.connectivity.wifi.state.read",
+        "device.display.read",
+        "device.form-factor.read",
+        "device.input.read",
+        "device.lifecycle.read",
+        "device.media.capabilities.read",
+        "device.power.read",
+        "device.security.capabilities.read",
+        "device.sensor.capabilities.read",
+        "device.thermal.read"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://oneworks.ai/holonomy/contracts/device-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

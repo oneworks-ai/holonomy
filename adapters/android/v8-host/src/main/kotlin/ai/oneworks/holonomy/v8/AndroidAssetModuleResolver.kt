@@ -126,6 +126,8 @@ internal class AndroidAssetModuleResolver(
         val resolved = try {
             when {
                 specifier == "acorn" -> URI(ACORN_RESOURCE_URL)
+                specifier == "cordis" -> URI(CORDIS_RESOURCE_URL)
+                specifier == "cosmokit" -> URI(COSMOKIT_RESOURCE_URL)
                 URI(specifier).isAbsolute -> URI(specifier)
                 referrerUrl != null -> URI(referrerUrl).resolve(specifier)
                 else -> throw IllegalArgumentException("missing referrer")
@@ -197,6 +199,8 @@ internal class AndroidAssetModuleResolver(
     private companion object {
         private const val INTERNAL_SCHEME = "holonomy"
         private const val ACORN_RESOURCE_URL = "holonomy:///runtime/vendor/acorn.mjs"
+        private const val CORDIS_RESOURCE_URL = "holonomy:///runtime/vendor/cordis.mjs"
+        private const val COSMOKIT_RESOURCE_URL = "holonomy:///runtime/vendor/cosmokit.mjs"
         private const val BUFFER_BYTES = 8 * 1024
         private const val MANIFEST_ASSET_PATH = "runtime/asset-manifest.json"
         private const val MANIFEST_SCHEMA_VERSION = 2

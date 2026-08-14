@@ -1,24 +1,22 @@
 import { Buffer } from 'node:buffer'
 
-import { copyJsonValue, freezeJsonValue } from './json-value.mjs'
+import { readNodeRuntimePluginsV1 } from './capability-runtime-plugins.mjs'
+import { assertNodeCapabilityNetworkIntersection } from './capability-session-network.mjs'
+import { createNodeModuleLaunchV1, normalizeNodeCapabilityRuntimeSession } from './capability-session.mjs'
+import { copyJsonValue } from './json-value.mjs'
 import { normalizeModuleGraphRoot } from './module-root-validation.mjs'
 import { NetworkRuleContractError, normalizeNetworkRuleSet } from './network-rule-contract.mjs'
 import { normalizeNodeSandboxSession } from './sandbox-session.mjs'
 import { readArgv, readEnv } from './session-process-input.mjs'
+import { readSyntheticModules } from './synthetic-module-validation.mjs'
 
 const MAX_MODULES = 512
 const MAX_MODULE_BYTES = 8 * 1024 * 1024
 const MAX_MODULE_GRAPH_BYTES = 48 * 1024 * 1024
-const MAX_SYNTHETIC_EXPORTS = 256
-const MAX_SYNTHETIC_MODULES = 64
-const MAX_SYNTHETIC_REGISTRY_BYTES = 8 * 1024 * 1024
 const MAX_URL_BYTES = 4 * 1024
-const EXPORT_NAME = /^[$A-Z_a-z][$\w]*$/u
-
 const invalid = message => {
   throw new TypeError(message)
 }
-
 const requireExactKeys = (value, keys, label) => {
   if (Object.keys(value).some(key => !keys.includes(key))) invalid(`Invalid Node Runtime ${label}`)
 }
@@ -33,7 +31,11 @@ const validateModuleUrl = (value, kind) => {
   }
   if (url.href !== value || url.hash !== '') invalid('Node Runtime module URL must be canonical')
   const internal = url.protocol === 'holonomy:' && url.host === '' && url.pathname.startsWith('/runtime/')
-  if ((kind === 'runtime') !== internal || (kind === 'user' && ['holonomy:', 'node:'].includes(url.protocol))) {
+  const plugin = url.protocol === 'holo-plugins:' && url.host === '' && url.pathname.startsWith('/')
+  if (
+    (kind === 'runtime' && !internal) || (kind === 'plugin' && !plugin) ||
+    (kind === 'user' && (internal || plugin || url.protocol === 'node:'))
+  ) {
     invalid(`Invalid Node Runtime ${kind} module URL`)
   }
 }
@@ -61,36 +63,6 @@ const readModules = (items, kind, state) => {
   return Object.freeze(output)
 }
 
-const readSyntheticModules = value => {
-  if (value == null) return Object.freeze(Object.create(null))
-  if (typeof value !== 'object' || Array.isArray(value)) invalid('Invalid Node Runtime synthetic registry')
-  const output = Object.create(null)
-  const specifiers = Object.keys(value)
-  if (specifiers.length > MAX_SYNTHETIC_MODULES) invalid('Node Runtime synthetic registry exceeds the limit')
-  let bytes = 0
-  for (const specifier of specifiers) {
-    if (!/^node:[a-z\d][a-z\d_./-]*$/u.test(specifier) || Buffer.byteLength(specifier) > MAX_URL_BYTES) {
-      invalid('Node Runtime synthetic module must use a canonical node: specifier')
-    }
-    const namespace = value[specifier]
-    if (namespace == null || typeof namespace !== 'object' || Array.isArray(namespace)) {
-      invalid('Invalid Node Runtime synthetic namespace')
-    }
-    const names = Object.keys(namespace)
-    if (names.length > MAX_SYNTHETIC_EXPORTS || names.some(name => !EXPORT_NAME.test(name))) {
-      invalid('Invalid Node Runtime synthetic exports')
-    }
-    const copied = Object.create(null)
-    for (const name of names) {
-      copied[name] = freezeJsonValue(copyJsonValue(namespace[name], 'synthetic export'))
-      bytes += Buffer.byteLength(JSON.stringify(copied[name]))
-      if (bytes > MAX_SYNTHETIC_REGISTRY_BYTES) invalid('Node Runtime synthetic registry exceeds the byte limit')
-    }
-    output[specifier] = Object.freeze(copied)
-  }
-  return Object.freeze(output)
-}
-
 export const normalizeNetworkRules = value => {
   try {
     return normalizeNetworkRuleSet(value ?? { mode: 'passthrough', rules: [] })
@@ -109,12 +81,15 @@ export function normalizeNodeRuntimeSession(input) {
     copied,
     [
       'argv',
+      'capabilityRuntime',
       'entryUrl',
       'env',
       'inspector',
       'moduleRootUrl',
       'networkRules',
       'runtimeModules',
+      'pluginGraphRevision',
+      'runtimePlugins',
       'sandboxPlan',
       'sandboxPolicy',
       'syntheticModules',
@@ -126,6 +101,12 @@ export function normalizeNodeRuntimeSession(input) {
   const state = { bytes: 0, count: 0, urls: new Set() }
   const runtimeModules = readModules(copied.runtimeModules ?? [], 'runtime', state)
   const userModules = readModules(copied.userModules ?? [], 'user', state)
+  const runtimePlugins = readNodeRuntimePluginsV1(copied.runtimePlugins, state, validateModuleUrl)
+  const pluginGraphRevision = copied.pluginGraphRevision ?? (runtimePlugins.length === 0 ? 0 : 1)
+  if (
+    !Number.isSafeInteger(pluginGraphRevision) || pluginGraphRevision < 0 ||
+    (runtimePlugins.length > 0 && pluginGraphRevision === 0)
+  ) invalid('Invalid Node Runtime plugin graph revision')
   if (
     typeof copied.entryUrl !== 'string' ||
     ![...runtimeModules, ...userModules].some(module => module.url === copied.entryUrl)
@@ -172,14 +153,23 @@ export function normalizeNodeRuntimeSession(input) {
     sandbox.policy.network.access === 'mockOnly' &&
     (networkRules.mode !== 'failClosed' || networkRules.rules.some(rule => rule.action.type === 'passthrough'))
   ) invalid('Node Runtime mock-only network rules must remain fail closed')
+  const capabilityRuntime = normalizeNodeCapabilityRuntimeSession(
+    copied.capabilityRuntime,
+    createNodeModuleLaunchV1({ moduleRootUrl, userEntryUrl, userModules }),
+    inspector.enabled
+  )
+  assertNodeCapabilityNetworkIntersection(capabilityRuntime, sandbox.policy.network)
   return Object.freeze({
     argv: readArgv(copied.argv, userEntryUrl),
+    ...(capabilityRuntime == null ? {} : { capabilityRuntime }),
     entryUrl: copied.entryUrl,
     env: readEnv(copied.env),
     inspector,
     moduleRootUrl,
     networkRules,
+    pluginGraphRevision,
     runtimeModules,
+    runtimePlugins,
     sandboxPlan: sandbox.plan,
     sandboxPolicy: sandbox.policy,
     syntheticModules: readSyntheticModules(copied.syntheticModules),

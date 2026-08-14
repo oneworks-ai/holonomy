@@ -63,6 +63,32 @@ describe('runtime composer', () => {
     expect(runtime.getSnapshot().nativeBridge.pendingRequests).toBe(0)
   })
 
+  it('installs an admitted host facade in place of an overridable synthetic module', async () => {
+    const arch = () => 'host-projected'
+    const namespace = Object.freeze({ arch, default: Object.freeze({ arch }) })
+    const runtime = await createHolonomyRuntime({
+      authority: { capabilities: [], principal: 'principal' },
+      eventLoop: new RuntimeEventLoop(host()),
+      moduleOverrides: Object.freeze({
+        'holo:device': Object.freeze({
+          descriptor: Object.freeze({ exportNames: Object.freeze(['getFormFactor']) }),
+          namespace: Object.freeze({ getFormFactor: () => 'desktop' })
+        }),
+        'node:os': Object.freeze({
+          descriptor: Object.freeze({ exportNames: Object.freeze(['arch', 'default']) }),
+          namespace
+        })
+      }),
+      nativePort: port(),
+      nodeCore: nodeCore()
+    })
+
+    expect(runtime.syntheticModules['node:os']?.namespace).toBe(namespace)
+    expect(runtime.syntheticModules['holo:device']?.namespace).toMatchObject({ getFormFactor: expect.any(Function) })
+    expect(runtime.syntheticModules['node:os']?.descriptor.exportNames).toEqual(['arch', 'default'])
+    await runtime.dispose()
+  })
+
   it('fails closed for an absent opt-in capability', async () => {
     await expect(
       createHolonomyRuntime({

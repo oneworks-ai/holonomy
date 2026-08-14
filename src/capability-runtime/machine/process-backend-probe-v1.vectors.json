@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "vectors": [
+    {
+      "name": "contract-fixture",
+      "normalized": {
+        "artifact": {
+          "artifactKind": "source",
+          "artifactVersion": "1.0.0",
+          "license": "MIT",
+          "sourceRevision": "fixture"
+        },
+        "backendId": "fixture.experimental-v1",
+        "host": {
+          "architecture": "arm64",
+          "engine": "node-v8",
+          "engineVersion": "fixture",
+          "platform": "darwin",
+          "runtimeVersion": "fixture"
+        },
+        "metrics": {
+          "bootDurationMs": 0
+        },
+        "observations": [
+          {
+            "capability": "installation",
+            "provenance": "behavioralProbe",
+            "status": "passed"
+          },
+          {
+            "capability": "boot",
+            "provenance": "profileStaticUnsupported",
+            "reasonCode": "fixture.not_run",
+            "status": "notRun"
+          },
+          {
+            "capability": "workload",
+            "provenance": "profileStaticUnsupported",
+            "reasonCode": "fixture.not_run",
+            "status": "notRun"
+          },
+          {
+            "capability": "stdio",
+            "provenance": "profileStaticUnsupported",
+            "reasonCode": "fixture.not_run",
+            "status": "notRun"
+          },
+          {
+            "capability": "exit",
+            "provenance": "profileStaticUnsupported",
+            "reasonCode": "fixture.not_run",
+            "status": "notRun"
+          },
+          {
+            "capability": "filesystem",
+            "provenance": "profileStaticUnsupported",
+            "reasonCode": "fixture.not_run",
+            "status": "notRun"
+          },
+          {
+            "capability": "network",
+            "provenance": "profileStaticUnsupported",
+            "reasonCode": "fixture.not_run",
+            "status": "notRun"
+          },
+          {
+            "capability": "processTree",
+            "provenance": "profileStaticUnsupported",
+            "reasonCode": "fixture.not_run",
+            "status": "notRun"
+          },
+          {
+            "capability": "runtime",
+            "provenance": "profileStaticUnsupported",
+            "reasonCode": "fixture.not_run",
+            "status": "notRun"
+          },
+          {
+            "capability": "snapshots",
+            "provenance": "profileStaticUnsupported",
+            "reasonCode": "fixture.not_run",
+            "status": "notRun"
+          },
+          {
+            "capability": "androidPackaging",
+            "provenance": "profileStaticUnsupported",
+            "reasonCode": "fixture.not_run",
+            "status": "notRun"
+          }
+        ],
+        "schemaVersion": 1
+      }
+    }
+  ]
+}

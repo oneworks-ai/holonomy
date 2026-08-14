@@ -9,6 +9,7 @@ tasks.register("testAdapterUnit") {
     description = "Runs Android adapter JVM tests for engine-host and capability-provider modules."
     dependsOn(
         ":host-core:testDebugUnitTest",
+        ":capability-host:testDebugUnitTest",
         ":v8-host:testDebugUnitTest",
         ":network-host:testDebugUnitTest",
         ":session-host:testDebugUnitTest",

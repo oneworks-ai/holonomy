@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- exact HTTP mutation ordering and shared error translation stay co-located. */
+
 import { PROCESS_START_MAX_REQUEST_BYTES } from './constants.mjs'
 import { serviceError } from './errors.mjs'
 import { admitHttpRequest, admitRequestHost, readJsonRequest, sendJson, sendServiceError } from './http-utils.mjs'
@@ -96,6 +98,26 @@ const routeMutation = async (request, response, core, control, mutations, url, m
     return sendJson(response, 200, await core.closeInspector(match[0], expected, key))
   }
   match = matchPath(url.pathname, /^\/v1\/processes\/([^/]+)\/(?:network-rules|network\/rules)$/u)
+  const pluginMatch = matchPath(url.pathname, /^\/v1\/processes\/([^/]+)\/runtime-plugins$/u)
+  if (request.method === 'PUT' && pluginMatch != null) {
+    const body = validateServiceRequest(
+      'RuntimePluginsReplaceRequest',
+      await readJsonRequest(request, PROCESS_START_MAX_REQUEST_BYTES)
+    )
+    const expectedRevision = requireInteger(
+      Number(requireString(request.headers['if-match'], 'If-Match', { max: 64 })),
+      'If-Match',
+      { min: 0 }
+    )
+    const admitted = await core.replaceRuntimePlugins(
+      pluginMatch[0],
+      body.expectedGeneration,
+      body.runtimePlugins,
+      expectedRevision,
+      mutationKey(request)
+    )
+    return sendJson(response, admitted.replayed ? 200 : 202, publicProcessAdmissionDto(admitted))
+  }
   if (request.method === 'PUT' && match != null) {
     const body = validateServiceRequest(
       'NetworkRulesReplaceRequest',

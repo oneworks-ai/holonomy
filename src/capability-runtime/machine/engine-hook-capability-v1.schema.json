@@ -1,0 +1,113 @@
+{
+  "$id": "https://oneworks.ai/holonomy/contracts/engine-hook-capability-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "engine": {
+      "enum": [
+        "android-embedded-v8",
+        "node-vm"
+      ]
+    },
+    "metadata": {
+      "additionalProperties": false,
+      "properties": {
+        "callsite": {
+          "enum": [
+            "exact",
+            "unavailable"
+          ]
+        },
+        "entryDetail": {
+          "enum": [
+            "exact",
+            "unavailable"
+          ]
+        },
+        "origin": {
+          "enum": [
+            "exact",
+            "unavailable"
+          ]
+        },
+        "source": {
+          "enum": [
+            "available",
+            "unavailable"
+          ]
+        }
+      },
+      "required": [
+        "callsite",
+        "entryDetail",
+        "origin",
+        "source"
+      ],
+      "type": "object"
+    },
+    "provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "generationLevel": {
+          "const": "behavioralProbe"
+        },
+        "metadata": {
+          "const": "profileStaticUnsupported"
+        },
+        "perCompilationCallback": {
+          "const": "profileStaticUnsupported"
+        }
+      },
+      "required": [
+        "generationLevel",
+        "metadata",
+        "perCompilationCallback"
+      ],
+      "type": "object"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "strings": {
+      "additionalProperties": false,
+      "properties": {
+        "generationLevelDeny": {
+          "type": "boolean"
+        },
+        "perCompilationCallback": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "generationLevelDeny",
+        "perCompilationCallback"
+      ],
+      "type": "object"
+    },
+    "wasm": {
+      "additionalProperties": false,
+      "properties": {
+        "generationLevelDeny": {
+          "type": "boolean"
+        },
+        "perCompilationCallback": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "generationLevelDeny",
+        "perCompilationCallback"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "engine",
+    "metadata",
+    "provenance",
+    "schemaVersion",
+    "strings",
+    "wasm"
+  ],
+  "type": "object"
+}

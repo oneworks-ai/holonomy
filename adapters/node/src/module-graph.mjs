@@ -2,6 +2,12 @@ import vm from 'node:vm'
 
 import { createContextValue } from './runtime-context.mjs'
 
+const pluginIdentity = (url, bundleSha256) => {
+  const identity = new URL(url)
+  identity.searchParams.set('holo-bundle', bundleSha256)
+  return identity.href
+}
+
 const resolveSpecifier = (specifier, parentUrl) => {
   if (specifier.startsWith('node:')) return specifier
   if (/^[A-Za-z][A-Za-z\d+.-]*:/u.test(specifier)) {
@@ -40,13 +46,48 @@ export class SessionModuleGraph {
     for (const definition of [...session.runtimeModules, ...session.userModules]) {
       this.#definitions.set(definition.url, definition)
     }
+    this.addRuntimePlugins(session.runtimePlugins)
+  }
+
+  addRuntimePlugins(bundles) {
+    for (const bundle of bundles) {
+      for (const file of bundle.files) {
+        this.#definitions.set(
+          pluginIdentity(file.url, bundle.bundleSha256),
+          Object.freeze({
+            bundleSha256: bundle.bundleSha256,
+            instanceId: bundle.instanceId,
+            kind: 'plugin',
+            rootUrl: bundle.rootUrl,
+            source: file.source,
+            url: file.url
+          })
+        )
+      }
+    }
+  }
+
+  retainRuntimePlugins(bundles) {
+    const retained = new Set(
+      bundles.flatMap(bundle => bundle.files.map(file => pluginIdentity(file.url, bundle.bundleSha256)))
+    )
+    for (const [identity, definition] of this.#definitions) {
+      if (definition.kind === 'plugin' && !retained.has(identity)) {
+        this.#definitions.delete(identity)
+        this.#modules.delete(identity)
+      }
+    }
+  }
+
+  async importModule(url) {
+    const module = this.#getModule(url)
+    if (module.status === 'unlinked') await module.link((specifier, importer) => this.#link(specifier, importer))
+    if (module.status === 'linked') await module.evaluate()
+    return module.namespace
   }
 
   async evaluateEntry() {
-    const entry = this.#getModule(this.#entryUrl)
-    await entry.link((specifier, importer) => this.#link(specifier, importer))
-    await entry.evaluate()
-    return entry.namespace
+    return this.importModule(this.#entryUrl)
   }
 
   installSyntheticModules(registry) {
@@ -57,7 +98,7 @@ export class SessionModuleGraph {
       const binding = registry[specifier]
       const names = binding?.descriptor?.exportNames
       const namespace = binding?.namespace
-      const invalidReason = !specifier.startsWith('node:')
+      const invalidReason = !/^(?:holo|node):[a-z\d][a-z\d_./-]*$/u.test(specifier)
         ? 'specifier'
         : !Array.isArray(names)
         ? 'names'
@@ -82,7 +123,7 @@ export class SessionModuleGraph {
   #getModule(url) {
     const existing = this.#modules.get(url)
     if (existing != null) return existing
-    if (url.startsWith('node:')) return this.#getSyntheticModule(url)
+    if (this.#liveSynthetic.has(url) || this.#synthetic[url] != null) return this.#getSyntheticModule(url)
     const definition = this.#definitions.get(url)
     if (definition == null) throw new TypeError(`Node Runtime module is outside the session graph: ${url}`)
     const module = new vm.SourceTextModule(definition.source, {
@@ -121,11 +162,34 @@ export class SessionModuleGraph {
 
   #link(specifier, importer) {
     const importerDefinition = this.#definitions.get(importer.identifier)
-    const targetUrl = specifier === 'acorn' && importerDefinition?.kind === 'runtime'
+    let targetUrl = this.#liveSynthetic.has(specifier) || this.#synthetic[specifier] != null
+      ? specifier
+      : specifier === 'acorn' && importerDefinition?.kind === 'runtime'
       ? 'holonomy:///runtime/vendor/acorn.mjs'
+      : specifier === 'cordis' && ['plugin', 'runtime'].includes(importerDefinition?.kind)
+      ? 'holonomy:///runtime/vendor/cordis.mjs'
+      : specifier === 'cosmokit' && importer.identifier === 'holonomy:///runtime/vendor/cordis.mjs'
+      ? 'holonomy:///runtime/vendor/cosmokit.mjs'
       : resolveSpecifier(specifier, importer.identifier)
+    if (
+      importerDefinition?.kind === 'plugin' && targetUrl.startsWith('holo-plugins:') &&
+      !new URL(targetUrl).searchParams.has('holo-bundle')
+    ) {
+      const publicUrl = resolveSpecifier(specifier, importerDefinition.url)
+      targetUrl = pluginIdentity(publicUrl, importerDefinition.bundleSha256)
+    }
     if (importerDefinition?.kind === 'user' && targetUrl.startsWith('holonomy:')) {
       throw new TypeError('User modules cannot import Node Runtime internals')
+    }
+    if (importerDefinition?.kind === 'user' && targetUrl.startsWith('holo-plugins:')) {
+      throw new TypeError('User modules cannot import Runtime plugin assets')
+    }
+    if (importerDefinition?.kind === 'plugin') {
+      const publicTarget = new URL(targetUrl)
+      publicTarget.search = ''
+      if (targetUrl.startsWith('holo-plugins:') && !publicTarget.href.startsWith(importerDefinition.rootUrl)) {
+        throw new TypeError('Runtime plugins cannot import another plugin instance')
+      }
     }
     return this.#getModule(targetUrl)
   }

@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- the Node adapter record owns one process and all of its live controls. */
+
 import { NodeRuntimeSupervisor } from '../../adapters/node/src/index.mjs'
 
 import { CdpWebSocketTransport } from './cdp-websocket-transport.mjs'
@@ -88,7 +90,7 @@ const closeRecord = async record => {
   record.terminalListeners.clear()
 }
 
-const toNodeSession = (process, initialNetworkRuleSet, sandboxPlan) => ({
+const toNodeSession = (process, initialNetworkRuleSet, sandboxPlan, capabilityRuntime) => ({
   argv: process.launch.argv ?? [],
   entryUrl: process.entryUrl,
   env: process.launch.env ?? {},
@@ -96,8 +98,11 @@ const toNodeSession = (process, initialNetworkRuleSet, sandboxPlan) => ({
     enabled: process.inspectorMode !== 'off',
     waitForDebugger: process.inspectorMode === 'break'
   },
+  ...(capabilityRuntime == null ? {} : { capabilityRuntime }),
   ...(process.launch.moduleRootUrl == null ? {} : { moduleRootUrl: process.launch.moduleRootUrl }),
   ...(initialNetworkRuleSet == null ? {} : { networkRules: initialNetworkRuleSet }),
+  pluginGraphRevision: process.pluginGraphRevision ?? 0,
+  ...(process.runtimePlugins == null ? {} : { runtimePlugins: process.runtimePlugins }),
   runtimeModules: [],
   sandboxPlan,
   sandboxPolicy: process.sandboxPolicy,
@@ -117,6 +122,10 @@ export const createNodeRuntimeAdapter = (options = {}) => {
         { mode: networkRules.mode, rules: networkRules.rules },
         Number(networkRules.ruleRevision)
       )
+    },
+    applyRuntimePlugins: async ({ expectedRevision, process, revision, runtimePlugins }) => {
+      const record = requireRecord(records, process.id)
+      await record.supervisor.setRuntimePlugins(runtimePlugins, expectedRevision, revision)
     },
     close: async () => {
       await Promise.allSettled([...records.values()].map(closeRecord))
@@ -164,13 +173,15 @@ export const createNodeRuntimeAdapter = (options = {}) => {
         cdpTransport.close()
       }
     },
-    startProcess: async ({ initialNetworkRuleSet, process, sandboxPlan }) => {
+    startProcess: async ({ capabilityRuntime, initialNetworkRuleSet, process, sandboxPlan }) => {
       const previous = records.get(process.id)
       if (previous != null) await closeRecord(previous)
       const supervisor = createSupervisor()
       const record = createRecord(supervisor, process)
       records.set(process.id, record)
-      const result = await supervisor.start(toNodeSession(process, initialNetworkRuleSet, sandboxPlan))
+      const result = await supervisor.start(
+        toNodeSession(process, initialNetworkRuleSet, sandboxPlan, capabilityRuntime)
+      )
       record.inspectorUrl = result.inspectorUrl
       return {
         diagnostics: record.diagnostics,

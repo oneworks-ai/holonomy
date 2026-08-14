@@ -5,7 +5,7 @@ export const NODE_ADAPTER_PROTOCOL_VERSION = 1
 export function createParentCommand(type, requestId, generation, value = undefined) {
   if (!Number.isSafeInteger(requestId) || requestId <= 0) throw new TypeError('Invalid Node adapter request ID')
   if (!Number.isSafeInteger(generation) || generation <= 0) throw new TypeError('Invalid Node adapter generation')
-  if (!['resume', 'rules', 'start', 'status', 'stop'].includes(type)) {
+  if (!['plugins', 'resume', 'rules', 'start', 'status', 'stop'].includes(type)) {
     throw new TypeError('Invalid Node adapter command')
   }
   return Object.freeze({

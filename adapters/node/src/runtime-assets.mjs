@@ -11,6 +11,11 @@ const ACORN_FILE = resolve(
   dirname(createRequire(import.meta.url).resolve('acorn/package.json')),
   'dist/acorn.mjs'
 )
+const CORDIS_FILE = createRequire(import.meta.url).resolve('cordis')
+const COSMOKIT_FILE = resolve(
+  dirname(createRequire(CORDIS_FILE).resolve('cosmokit/package.json')),
+  'lib/index.mjs'
+)
 const BOOTSTRAP_FILE = fileURLToPath(new URL('./runtime-bootstrap.source.mjs', import.meta.url))
 const WEB_STANDARDS_FILE = fileURLToPath(new URL('./runtime-web-standards.mjs', import.meta.url))
 let ownedModulesPromise
@@ -81,6 +86,8 @@ const loadOwnedModules = async () => {
       )
     )
   modules.push(await runtimeModule(ACORN_FILE, `${RUNTIME_ROOT_URL}vendor/acorn.mjs`))
+  modules.push(await runtimeModule(CORDIS_FILE, `${RUNTIME_ROOT_URL}vendor/cordis.mjs`))
+  modules.push(await runtimeModule(COSMOKIT_FILE, `${RUNTIME_ROOT_URL}vendor/cosmokit.mjs`))
   modules.push(await runtimeModule(WEB_STANDARDS_FILE, `${RUNTIME_ROOT_URL}runtime-web-standards.mjs`))
   modules.push(await runtimeModule(BOOTSTRAP_FILE, BOOTSTRAP_URL))
   return Object.freeze(modules)

@@ -1,0 +1,27 @@
+{
+  "events": [
+    {
+      "event": "script.compiled",
+      "generation": 3,
+      "observedAt": 4.5,
+      "payload": {
+        "scriptId": "script-1",
+        "sourceBytes": 3,
+        "sourceSha256": "b62178200a200c5d4a55740e2dd68b7cac895dcf96c900a98a2f2f0b29aec9b7"
+      },
+      "schemaVersion": 1,
+      "sequence": 1
+    },
+    {
+      "event": "runtime.terminated",
+      "generation": 3,
+      "observedAt": 8,
+      "payload": {
+        "reason": "completed"
+      },
+      "schemaVersion": 1,
+      "sequence": 2
+    }
+  ],
+  "schemaVersion": 1
+}

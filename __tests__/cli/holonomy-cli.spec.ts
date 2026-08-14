@@ -9,13 +9,19 @@ import { androidNetworkFixtureReverseArgs } from '../../tools/holonomy-android-s
 import { parseHolonomyArgs } from '../../tools/holonomy-cli-options.mjs'
 import { runWrapperSource, testRunnerSource } from '../../tools/holonomy-entry-source.mjs'
 import { readHolonomyDocumentation } from '../../tools/holonomy-help.mjs'
-import { prepareHolonomyLaunchSnapshot, readHolonomySandboxPolicy } from '../../tools/holonomy-launch-snapshot.mjs'
+import {
+  prepareHolonomyLaunchSnapshot,
+  readHolonomyCapabilityRuntime,
+  readHolonomySandboxPolicy
+} from '../../tools/holonomy-launch-snapshot.mjs'
 import { runHolonomyRuntimeCommand } from '../../tools/holonomy-managed-command.mjs'
 import { parseAndRunHolonomyManagementCommand } from '../../tools/holonomy-management-command.mjs'
 import { parseHolonomyManagementArgs } from '../../tools/holonomy-management-options.mjs'
 import { expandHolonomyEntries } from '../../tools/holonomy-module-graph.mjs'
 import { requiresHolonomyNetworkFixture } from '../../tools/holonomy-network-fixture.mjs'
 import { readHolonomyNetworkRules } from '../../tools/holonomy-network-rules-file.mjs'
+import { prepareHolonomyRuntimePlugins } from '../../tools/holonomy-plugin-bundle.mjs'
+import { startHolonomyPluginWatch } from '../../tools/holonomy-plugin-watch.mjs'
 import { HOLONOMY_SESSION_LIMITS, encodeHolonomySession } from '../../tools/holonomy-session-envelope.mjs'
 
 describe('holonomy CLI module graph', () => {
@@ -30,6 +36,8 @@ describe('holonomy CLI module graph', () => {
       'http://127.0.0.1:9123',
       '--openapi-token-file',
       './token',
+      '--capability-runtime',
+      './capability.json',
       '--network-rules',
       './rules.json',
       '--sandbox',
@@ -38,6 +46,7 @@ describe('holonomy CLI module graph', () => {
     ])).toMatchObject({
       options: {
         detach: true,
+        capabilityRuntime: './capability.json',
         networkRules: './rules.json',
         openapi: 'http://127.0.0.1:9123',
         sandbox: './sandbox.json',
@@ -57,9 +66,99 @@ describe('holonomy CLI module graph', () => {
     expect(() => parseHolonomyArgs(['run', '--target', 'node', '--sandbox', ''])).toThrow(
       '--sandbox requires one JSON file'
     )
+    expect(() => parseHolonomyArgs(['run', '--target', 'node', '--capability-runtime', ''])).toThrow(
+      '--capability-runtime requires one JSON file'
+    )
     expect(() => parseHolonomyArgs(['run', '--target', 'android', '--no-build', 'entry.mjs'])).toThrow(
       'Unknown option: --no-build'
     )
+    expect(() => parseHolonomyArgs(['run', '--target', 'android', '--watch', 'entry.mjs'])).toThrow(
+      '--watch is supported by Node/Desktop Runtime only'
+    )
+  })
+
+  it('builds relative Runtime plugins into private canonical holo-plugins Bundles', () => {
+    const temporaryRoot = mkdtempSync(join(tmpdir(), 'holonomy-plugin-'))
+    try {
+      writeFileSync(join(temporaryRoot, 'plugin.mjs'), 'export default () => undefined')
+      writeFileSync(
+        join(temporaryRoot, 'holo.config.json'),
+        JSON.stringify({
+          plugins: [{ config: { enabled: true }, id: 'local', use: './plugin.mjs' }]
+        })
+      )
+      const prepared = prepareHolonomyRuntimePlugins('./holo.config.json', { cwd: temporaryRoot })
+      expect(prepared.bundles).toHaveLength(1)
+      expect(prepared.bundles[0]).toMatchObject({
+        entryUrl: 'holo-plugins:///local/plugin.mjs',
+        instanceId: 'local',
+        rootUrl: 'holo-plugins:///local/',
+        schemaVersion: 1
+      })
+      expect(JSON.stringify(prepared.bundles)).not.toContain(temporaryRoot)
+    } finally {
+      rmSync(temporaryRoot, { force: true, recursive: true })
+    }
+  })
+
+  it('watches config changes with one ordered last-known-good graph revision', async () => {
+    const callbacks: Array<(event: string, filename?: string) => void> = []
+    const diagnostics: string[] = []
+    const replacements: unknown[] = []
+    let prepareCalls = 0
+    let updated!: () => void
+    const updateStarted = new Promise<void>(resolve => updated = resolve)
+    const bundle = (digit: string) => ({
+      bundleSha256: digit.repeat(64),
+      config: {},
+      entryUrl: 'holo-plugins:///plugin/index.mjs' as const,
+      exportName: 'default',
+      files: [],
+      instanceId: 'plugin',
+      rootUrl: 'holo-plugins:///plugin/' as const,
+      schemaVersion: 1 as const
+    })
+    const initial = [bundle('a')]
+    const replacement = [bundle('b')]
+    const watcher = startHolonomyPluginWatch({
+      client: {
+        replaceRuntimePlugins: async (...args: unknown[]) => {
+          replacements.push(args)
+          updated()
+          return { value: { operation: { id: 'operation_plugins' } } }
+        }
+      },
+      configPath: '/workspace/holo.config.json',
+      dependencies: {
+        cancelWatch: () => undefined,
+        prepareRuntimePlugins: () => {
+          prepareCalls += 1
+          if (prepareCalls === 1) return { bundles: replacement }
+          throw new Error('invalid candidate')
+        },
+        scheduleWatch: callback => {
+          callback()
+          return 1
+        },
+        waitForOperation: async () => ({ result: { process: { pluginGraphRevision: 2 } } }),
+        watchDirectory: (_directory, callback) => {
+          callbacks.push(callback)
+          return { close: () => undefined, on: () => undefined }
+        }
+      },
+      io: { stderr: { write: value => diagnostics.push(value) } },
+      pluginRoots: [],
+      process: { generation: 1, id: 'process_plugins', pluginGraphRevision: 1 },
+      runtimePlugins: initial
+    })
+    callbacks[0]!('change', 'holo.config.json')
+    await updateStarted
+    await Promise.resolve()
+    callbacks[0]!('change', 'holo.config.json')
+    await Promise.resolve()
+    await watcher.close()
+    expect(replacements).toHaveLength(1)
+    expect(diagnostics.join('')).toContain('updated to revision 2')
   })
   it('matches globstar entries directly below the selected directory', () => {
     const entries = expandHolonomyEntries(['conformance/specs/**/*.test.mjs'])
@@ -113,11 +212,20 @@ describe('holonomy CLI module graph', () => {
   })
 
   it('compiles a target-neutral immutable launch snapshot before contacting the service', () => {
-    const parsed = parseHolonomyArgs(['run', '--target', 'node', 'conformance/specs/console.test.mjs'])
+    const parsed = parseHolonomyArgs([
+      'run',
+      '--target',
+      'node',
+      '--capability-runtime',
+      'capability.json',
+      'conformance/specs/console.test.mjs'
+    ])
     const snapshot = prepareHolonomyLaunchSnapshot(parsed.command, parsed.options, {
-      randomUUID: () => 'fixed-id'
+      randomUUID: () => 'fixed-id',
+      readCapabilityRuntime: () => ({ processProfileId: 'developer', schemaVersion: 1 })
     })
     expect(snapshot).toMatchObject({
+      capabilityRuntime: { processProfileId: 'developer', schemaVersion: 1 },
       inspectorMode: 'off',
       launch: {
         command: 'run',
@@ -178,6 +286,22 @@ describe('holonomy CLI module graph', () => {
     }
   })
 
+  it('reads an immutable Capability Runtime launch file without following a symlink', () => {
+    const temporaryRoot = mkdtempSync(join(tmpdir(), 'holonomy-capability-runtime-'))
+    try {
+      const configuration = { processProfileId: 'developer', schemaVersion: 1 }
+      writeFileSync(join(temporaryRoot, 'capability.json'), JSON.stringify(configuration))
+      symlinkSync(join(temporaryRoot, 'capability.json'), join(temporaryRoot, 'linked.json'))
+      const read = readHolonomyCapabilityRuntime('./capability.json', { cwd: temporaryRoot })
+      expect(read).toEqual(configuration)
+      expect(Object.isFrozen(read)).toBe(true)
+      expect(() => readHolonomyCapabilityRuntime('./linked.json', { cwd: temporaryRoot }))
+        .toThrow('must not be a symbolic link')
+    } finally {
+      rmSync(temporaryRoot, { force: true, recursive: true })
+    }
+  })
+
   it('parses service, device, emulator and process management commands', () => {
     expect(parseHolonomyManagementArgs(['service', 'start', '--listen', '127.0.0.1', '--port', '0']))
       .toMatchObject({ action: 'start', group: 'service', options: { port: 0 } })
@@ -225,6 +349,7 @@ describe('holonomy CLI module graph', () => {
       createClient: () => client,
       ensureService: async () => ({ running: true }),
       prepareLaunch: () => ({
+        capabilityRuntime: { processProfileId: 'developer', schemaVersion: 1 },
         entryUrl: 'app+local://workspace/main.mjs',
         inspectorMode: 'off',
         isolation: 'runtime',
@@ -234,6 +359,7 @@ describe('holonomy CLI module graph', () => {
     })).resolves.toBe(0)
     expect(calls[0]).toBe('/v1/devices:refresh')
     expect(calls[1]).toContain('"deviceId":"node:local"')
+    expect(calls[1]).toContain('"processProfileId":"developer"')
     expect(JSON.parse(output.join(''))).toEqual({
       generation: 1,
       processId: 'process_1',

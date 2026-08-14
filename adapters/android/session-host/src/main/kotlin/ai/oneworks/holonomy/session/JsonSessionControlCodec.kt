@@ -153,6 +153,8 @@ class JsonSessionControlCodec : SessionControlCodec {
             }
         })
         add("sandboxPolicy", encodeSandboxPolicy(spec.sandboxPolicy))
+        spec.capabilityRuntimeJson?.let { value -> add("capabilityRuntime", JsonParser.parseString(value)) }
+        if (spec.runtimePlugins.isNotEmpty()) add("runtimePlugins", encodeRuntimePluginBundles(spec.runtimePlugins))
     }
 
     private fun decodeRuntimeSpec(json: JsonObject): SessionRuntimeSpec {
@@ -165,6 +167,8 @@ class JsonSessionControlCodec : SessionControlCodec {
             "isolation",
             "initialControls",
             "sandboxPolicy",
+            "capabilityRuntime",
+            "runtimePlugins",
         )
         return SessionRuntimeSpec(
             entryUrl = json.requiredString("entryUrl"),
@@ -193,6 +197,8 @@ class JsonSessionControlCodec : SessionControlCodec {
             }.orEmpty(),
             sandboxPolicy = json.optionalObject("sandboxPolicy")?.let(::decodeSandboxPolicy)
                 ?: SessionSandboxPolicy(),
+            capabilityRuntimeJson = json.optionalObject("capabilityRuntime")?.toString(),
+            runtimePlugins = decodeRuntimePluginBundles(json.optionalArray("runtimePlugins")),
         )
     }
 

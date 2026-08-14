@@ -1,0 +1,358 @@
+{
+  "invalid": [
+    {
+      "code": "runtime.binding_unavailable",
+      "name": "owner-mismatch",
+      "spec": {
+        "configuration": {
+          "context": {
+            "guest": {
+              "displayName": "Runtime example"
+            },
+            "host": {
+              "tenantId": "private-tenant"
+            },
+            "inspector": {
+              "title": "Runtime example"
+            },
+            "schemaVersion": 1
+          },
+          "inspector": {
+            "enabled": false
+          },
+          "launch": {
+            "entryUrl": "app+local://workspace/main.mjs",
+            "moduleCount": 1,
+            "moduleGraphDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+            "moduleRootUrl": "app+local://workspace/",
+            "totalSourceBytes": 32
+          },
+          "sandboxPolicy": {
+            "codeGeneration": {
+              "dynamicImport": {
+                "access": "none"
+              },
+              "strings": {
+                "access": "none"
+              },
+              "wasm": {
+                "access": "none"
+              }
+            },
+            "device": {
+              "defaultAccess": "deny",
+              "maxEventsPerSecond": 1,
+              "maxSubscriptions": 0,
+              "operations": {}
+            },
+            "diagnostics": {
+              "maxObserverCallbackMs": 1,
+              "maxQueuedEvents": 0,
+              "maxSourceReadBytes": 0,
+              "observerEvents": [],
+              "retentionMs": 0,
+              "sourceReader": "none"
+            },
+            "filesystem": {
+              "access": "none"
+            },
+            "inspector": {
+              "callFunctionOn": false,
+              "compileScript": false,
+              "evaluate": false,
+              "runScript": false,
+              "setScriptSource": false
+            },
+            "network": {
+              "access": "none"
+            },
+            "process": {
+              "access": "none"
+            },
+            "schemaVersion": 2,
+            "systemInformation": {
+              "defaultMode": "unavailable",
+              "fields": {}
+            }
+          },
+          "schemaVersion": 1,
+          "systemProjection": {
+            "fields": {},
+            "schemaVersion": 1
+          }
+        },
+        "hostBindings": {
+          "engineGate": {
+            "bindingId": "engine-gate",
+            "ownerId": "host-owner",
+            "version": "1"
+          },
+          "initialMiddlewareSet": {
+            "bindingId": "middleware-set",
+            "ownerId": "host-owner",
+            "version": "1"
+          },
+          "initialObservers": [
+            {
+              "bindingId": "observer-set",
+              "ownerId": "host-owner",
+              "version": "1"
+            }
+          ],
+          "moduleResolver": {
+            "bindingId": "module-resolver",
+            "ownerId": "other-owner",
+            "version": "1"
+          },
+          "providerBindings": [
+            {
+              "module": "host.fs",
+              "ownerId": "host-owner",
+              "providerId": "fs-provider",
+              "providerVersion": "1"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "valid": [
+    {
+      "configurationDigest": "e12078a1d94bb2382b4e66f0bc420b5e8532e4aafa81caaf28ba89983b4eae64",
+      "generation": 1,
+      "hostBindingsDigest": "470ccb6f42be6c5f7ea2c6a655b8120ad824838d98178ff286d0caf26e84a2f1",
+      "name": "initial-admission",
+      "principal": "holo:process-vector:1",
+      "spec": {
+        "configuration": {
+          "context": {
+            "guest": {
+              "displayName": "Runtime example"
+            },
+            "host": {
+              "tenantId": "private-tenant"
+            },
+            "inspector": {
+              "title": "Runtime example"
+            },
+            "schemaVersion": 1
+          },
+          "inspector": {
+            "enabled": false
+          },
+          "launch": {
+            "entryUrl": "app+local://workspace/main.mjs",
+            "moduleCount": 1,
+            "moduleGraphDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+            "moduleRootUrl": "app+local://workspace/",
+            "totalSourceBytes": 32
+          },
+          "sandboxPolicy": {
+            "codeGeneration": {
+              "dynamicImport": {
+                "access": "none"
+              },
+              "strings": {
+                "access": "none"
+              },
+              "wasm": {
+                "access": "none"
+              }
+            },
+            "device": {
+              "defaultAccess": "deny",
+              "maxEventsPerSecond": 1,
+              "maxSubscriptions": 0,
+              "operations": {}
+            },
+            "diagnostics": {
+              "maxObserverCallbackMs": 1,
+              "maxQueuedEvents": 0,
+              "maxSourceReadBytes": 0,
+              "observerEvents": [],
+              "retentionMs": 0,
+              "sourceReader": "none"
+            },
+            "filesystem": {
+              "access": "none"
+            },
+            "inspector": {
+              "callFunctionOn": false,
+              "compileScript": false,
+              "evaluate": false,
+              "runScript": false,
+              "setScriptSource": false
+            },
+            "network": {
+              "access": "none"
+            },
+            "process": {
+              "access": "none"
+            },
+            "schemaVersion": 2,
+            "systemInformation": {
+              "defaultMode": "unavailable",
+              "fields": {}
+            }
+          },
+          "schemaVersion": 1,
+          "systemProjection": {
+            "fields": {},
+            "schemaVersion": 1
+          }
+        },
+        "hostBindings": {
+          "engineGate": {
+            "bindingId": "engine-gate",
+            "ownerId": "host-owner",
+            "version": "1"
+          },
+          "initialMiddlewareSet": {
+            "bindingId": "middleware-set",
+            "ownerId": "host-owner",
+            "version": "1"
+          },
+          "initialObservers": [
+            {
+              "bindingId": "observer-set",
+              "ownerId": "host-owner",
+              "version": "1"
+            }
+          ],
+          "moduleResolver": {
+            "bindingId": "module-resolver",
+            "ownerId": "host-owner",
+            "version": "1"
+          },
+          "providerBindings": [
+            {
+              "module": "host.fs",
+              "ownerId": "host-owner",
+              "providerId": "fs-provider",
+              "providerVersion": "1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configurationDigest": "e12078a1d94bb2382b4e66f0bc420b5e8532e4aafa81caaf28ba89983b4eae64",
+      "generation": 2,
+      "hostBindingsDigest": "470ccb6f42be6c5f7ea2c6a655b8120ad824838d98178ff286d0caf26e84a2f1",
+      "name": "restart-generation",
+      "principal": "holo:process-vector:2",
+      "spec": {
+        "configuration": {
+          "context": {
+            "guest": {
+              "displayName": "Runtime example"
+            },
+            "host": {
+              "tenantId": "private-tenant"
+            },
+            "inspector": {
+              "title": "Runtime example"
+            },
+            "schemaVersion": 1
+          },
+          "inspector": {
+            "enabled": false
+          },
+          "launch": {
+            "entryUrl": "app+local://workspace/main.mjs",
+            "moduleCount": 1,
+            "moduleGraphDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+            "moduleRootUrl": "app+local://workspace/",
+            "totalSourceBytes": 32
+          },
+          "sandboxPolicy": {
+            "codeGeneration": {
+              "dynamicImport": {
+                "access": "none"
+              },
+              "strings": {
+                "access": "none"
+              },
+              "wasm": {
+                "access": "none"
+              }
+            },
+            "device": {
+              "defaultAccess": "deny",
+              "maxEventsPerSecond": 1,
+              "maxSubscriptions": 0,
+              "operations": {}
+            },
+            "diagnostics": {
+              "maxObserverCallbackMs": 1,
+              "maxQueuedEvents": 0,
+              "maxSourceReadBytes": 0,
+              "observerEvents": [],
+              "retentionMs": 0,
+              "sourceReader": "none"
+            },
+            "filesystem": {
+              "access": "none"
+            },
+            "inspector": {
+              "callFunctionOn": false,
+              "compileScript": false,
+              "evaluate": false,
+              "runScript": false,
+              "setScriptSource": false
+            },
+            "network": {
+              "access": "none"
+            },
+            "process": {
+              "access": "none"
+            },
+            "schemaVersion": 2,
+            "systemInformation": {
+              "defaultMode": "unavailable",
+              "fields": {}
+            }
+          },
+          "schemaVersion": 1,
+          "systemProjection": {
+            "fields": {},
+            "schemaVersion": 1
+          }
+        },
+        "hostBindings": {
+          "engineGate": {
+            "bindingId": "engine-gate",
+            "ownerId": "host-owner",
+            "version": "1"
+          },
+          "initialMiddlewareSet": {
+            "bindingId": "middleware-set",
+            "ownerId": "host-owner",
+            "version": "1"
+          },
+          "initialObservers": [
+            {
+              "bindingId": "observer-set",
+              "ownerId": "host-owner",
+              "version": "1"
+            }
+          ],
+          "moduleResolver": {
+            "bindingId": "module-resolver",
+            "ownerId": "host-owner",
+            "version": "1"
+          },
+          "providerBindings": [
+            {
+              "module": "host.fs",
+              "ownerId": "host-owner",
+              "providerId": "fs-provider",
+              "providerVersion": "1"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

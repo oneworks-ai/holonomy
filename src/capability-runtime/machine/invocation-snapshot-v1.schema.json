@@ -1,0 +1,382 @@
+{
+  "$defs": {
+    "argumentNode": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "scalar"
+            },
+            "value": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "items": {
+                "$ref": "#/$defs/argumentNode"
+              },
+              "maxItems": 1024,
+              "type": "array"
+            },
+            "kind": {
+              "const": "array"
+            }
+          },
+          "required": [
+            "items",
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "entries": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "key": {
+                    "maxLength": 16384,
+                    "type": "string"
+                  },
+                  "value": {
+                    "$ref": "#/$defs/argumentNode"
+                  }
+                },
+                "required": [
+                  "key",
+                  "value"
+                ],
+                "type": "object"
+              },
+              "maxItems": 1024,
+              "type": "array"
+            },
+            "kind": {
+              "const": "object"
+            }
+          },
+          "required": [
+            "entries",
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "bindingId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "type": "string"
+            },
+            "byteLength": {
+              "maximum": 268435456,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "kind": {
+              "const": "binary"
+            },
+            "sha256": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "bindingId",
+            "byteLength",
+            "kind",
+            "sha256"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "bindingId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "type": "string"
+            },
+            "bindingType": {
+              "enum": [
+                "abortSignal",
+                "callback",
+                "resource"
+              ]
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "kind": {
+              "const": "binding"
+            }
+          },
+          "required": [
+            "bindingId",
+            "bindingType",
+            "generation",
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "const": "stableError"
+            }
+          },
+          "required": [
+            "code",
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "resultNode": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "scalar"
+            },
+            "value": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "items": {
+                "$ref": "#/$defs/resultNode"
+              },
+              "maxItems": 1024,
+              "type": "array"
+            },
+            "kind": {
+              "const": "array"
+            }
+          },
+          "required": [
+            "items",
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "entries": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "key": {
+                    "maxLength": 16384,
+                    "type": "string"
+                  },
+                  "value": {
+                    "$ref": "#/$defs/resultNode"
+                  }
+                },
+                "required": [
+                  "key",
+                  "value"
+                ],
+                "type": "object"
+              },
+              "maxItems": 1024,
+              "type": "array"
+            },
+            "kind": {
+              "const": "object"
+            }
+          },
+          "required": [
+            "entries",
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "bindingId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "type": "string"
+            },
+            "byteLength": {
+              "maximum": 268435456,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "kind": {
+              "const": "binary"
+            },
+            "sha256": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "bindingId",
+            "byteLength",
+            "kind",
+            "sha256"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "bindingId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "type": "string"
+            },
+            "bindingType": {
+              "enum": [
+                "resource"
+              ]
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "kind": {
+              "const": "binding"
+            }
+          },
+          "required": [
+            "bindingId",
+            "bindingType",
+            "generation",
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "const": "stableError"
+            }
+          },
+          "required": [
+            "code",
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$id": "https://oneworks.ai/holonomy/contracts/invocation-snapshot-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "const": "argument"
+        },
+        "root": {
+          "$ref": "#/$defs/argumentNode"
+        },
+        "schemaVersion": {
+          "const": 1
+        }
+      },
+      "required": [
+        "direction",
+        "root",
+        "schemaVersion"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "const": "result"
+        },
+        "root": {
+          "$ref": "#/$defs/resultNode"
+        },
+        "schemaVersion": {
+          "const": 1
+        }
+      },
+      "required": [
+        "direction",
+        "root",
+        "schemaVersion"
+      ],
+      "type": "object"
+    }
+  ]
+}

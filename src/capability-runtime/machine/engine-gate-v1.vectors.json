@@ -1,0 +1,33 @@
+{
+  "decisions": [
+    {
+      "action": "allow"
+    },
+    {
+      "action": "deny",
+      "reasonCode": "host-denied"
+    }
+  ],
+  "requests": [
+    {
+      "codeKind": "strings",
+      "metadataSupport": {
+        "callsite": "unavailable",
+        "entryDetail": "unavailable",
+        "origin": "unavailable",
+        "source": "available"
+      },
+      "operation": "runtime.code.generate.strings",
+      "requestId": "engine-request-1",
+      "schemaVersion": 1,
+      "runtime": {
+        "generation": 3,
+        "policyDigest": "207eb1796df69161aec6a933aaf6973319e43251a5ff263365d4248764e34483",
+        "processId": "process-1"
+      },
+      "sourceBytes": 3,
+      "sourceSha256": "b62178200a200c5d4a55740e2dd68b7cac895dcf96c900a98a2f2f0b29aec9b7"
+    }
+  ],
+  "schemaVersion": 1
+}

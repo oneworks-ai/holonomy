@@ -11,6 +11,7 @@ export const prepareSandboxedAdapterProcess = async ({ adapter, fixtures, proces
 
 export const startSandboxedAdapterProcess = async ({
   adapter,
+  capabilityRuntime,
   fixtureRuntimeUrl,
   networkRules,
   process,
@@ -24,6 +25,7 @@ export const startSandboxedAdapterProcess = async ({
     target: process.target
   })
   return await adapter.startProcess({
+    capabilityRuntime,
     initialNetworkRuleSet: networkRules == null
       ? undefined
       : { mode: networkRules.mode, rules: networkRules.rules },

@@ -178,7 +178,18 @@ data class SessionRuntimeSpec(
     val isolation: SessionIsolation = SessionIsolation.LOGICAL_RUNTIME,
     val initialControls: List<SessionControlOperation> = emptyList(),
     val sandboxPolicy: SessionSandboxPolicy = SessionSandboxPolicy(),
+    val capabilityRuntimeJson: String? = null,
+    val runtimePlugins: List<SessionRuntimePluginBundle> = emptyList(),
 ) {
+    private val validatedCapabilityRuntime = capabilityRuntimeJson?.let { source ->
+        require(source.toByteArray(Charsets.UTF_8).size <= SessionProtocolLimits.MAX_CAPABILITY_RUNTIME_JSON_BYTES) {
+            "Capability Runtime JSON exceeds the session limit"
+        }
+        runCatching { JsonParser.parseString(source) }
+            .mapCatching { value -> require(value.isJsonObject); Unit }
+            .getOrElse { throw IllegalArgumentException("Invalid Capability Runtime JSON", it) }
+    }
+
     init {
         requireAbsoluteUrl(entryUrl, "entry URL")
         require(modules.isNotEmpty() && modules.size <= SessionProtocolLimits.MAX_MODULES) {
@@ -218,6 +229,14 @@ data class SessionRuntimeSpec(
         require(initialControls.map(SessionControlOperation::operation).toSet().size == initialControls.size) {
             "Duplicate initial runtime control"
         }
+        require(runtimePlugins.size <= SessionProtocolLimits.MAX_RUNTIME_PLUGINS)
+        require(runtimePlugins.map(SessionRuntimePluginBundle::instanceId).toSet().size == runtimePlugins.size)
+        require(
+            modules.sumOf { it.source.toByteArray(Charsets.UTF_8).size.toLong() } +
+                runtimePlugins.sumOf { bundle ->
+                    bundle.files.sumOf { file -> file.source.toByteArray(Charsets.UTF_8).size.toLong() }
+                } <= SessionProtocolLimits.MAX_MODULE_GRAPH_BYTES,
+        ) { "Runtime module and plugin graph exceeds the session limit" }
     }
 }
 
@@ -466,9 +485,12 @@ object SessionProtocolLimits {
     const val MAX_MODULE_GRAPH_BYTES = 48 * 1024 * 1024L
     const val MAX_MODULES = 512
     const val MAX_MODULE_BYTES = 8 * 1024 * 1024
+    const val MAX_PLUGIN_FILES = 512
+    const val MAX_RUNTIME_PLUGINS = 128
     const val MAX_URL_BYTES = 4 * 1024
     const val MAX_REASON_BYTES = 4 * 1024
     const val MAX_CONTROL_JSON_BYTES = 1024 * 1024
+    const val MAX_CAPABILITY_RUNTIME_JSON_BYTES = 1024 * 1024
     const val MAX_INITIAL_CONTROLS = 32
     const val MAX_SANDBOX_ALLOWED_ORIGINS = 64
 }

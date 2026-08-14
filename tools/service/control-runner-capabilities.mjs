@@ -73,6 +73,27 @@ export class RunnerCapabilityActions {
     })
   }
 
+  runtimePlugins(value) {
+    const { operation, process } = value
+    this.#schedule(process.deviceId, operation.id, async signal => {
+      await this.#registry.updateOperation(operation.id, 'running')
+      try {
+        await this.#adapters.target(process.target).applyRuntimePlugins({
+          expectedRevision: process.pluginGraphRevision,
+          process,
+          revision: process.pendingPluginUpdate.pluginGraphRevision,
+          runtimePlugins: process.pendingPluginUpdate.runtimePlugins,
+          signal
+        })
+        const completed = await this.#registry.completeRuntimePluginUpdate(process, operation, true)
+        await this.#registry.updateOperation(operation.id, 'succeeded', { result: { process: completed.process } })
+      } catch (error) {
+        await this.#registry.completeRuntimePluginUpdate(process, operation, false)
+        await this.#registry.updateOperation(operation.id, 'failed', { error: redactAdapterFailure(error) })
+      }
+    })
+  }
+
   removeNetworkRules(value) {
     const { networkRules, operation } = value
     const process = this.#registry.get('processes', networkRules.processId, 'Runtime process')

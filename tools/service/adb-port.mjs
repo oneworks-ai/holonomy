@@ -7,6 +7,7 @@ const unsupported = operation => async () => {
 
 const METHODS = Object.freeze([
   'applyNetworkRules',
+  'applyRuntimePlugins',
   'close',
   'closeInspector',
   'exposeFixture',

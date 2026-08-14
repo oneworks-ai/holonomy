@@ -5,6 +5,8 @@ import { createServer } from 'node:http'
 // eslint-disable-next-line test/no-import-node-test -- This adapter is verified with Node's public test runner.
 import test from 'node:test'
 
+import { runtimePluginBundleDigestV1 } from 'holonomy/runtime'
+
 import { NodeRuntimeSupervisor } from '../src/supervisor.mjs'
 import { sandboxLimits, sandboxSession } from './sandbox-fixture.mjs'
 
@@ -30,6 +32,25 @@ const waitFor = (read, timeoutMs = 5_000) =>
     }
     check()
   })
+
+const pluginBundle = (source, config = {}) => {
+  const url = 'holo-plugins:///fixture/index.mjs'
+  const file = Object.freeze({
+    sha256: createHash('sha256').update(source).digest('hex'),
+    source,
+    url
+  })
+  const bundle = {
+    config,
+    entryUrl: url,
+    exportName: 'default',
+    files: Object.freeze([file]),
+    instanceId: 'fixture',
+    rootUrl: 'holo-plugins:///fixture/',
+    schemaVersion: 1
+  }
+  return Object.freeze({ ...bundle, bundleSha256: runtimePluginBundleDigestV1(bundle) })
+}
 
 const session = (source, origin) => ({
   argv: ['holonomy', '--fixture'],
@@ -89,6 +110,65 @@ test('keeps default network denied and serves mock-only Fetch without a native p
     }]
   })
   await waitFor(() => mockedLogs.find(record => record.text === 'E2E_MOCK_ONLY:mock-only'))
+})
+
+test('installs admitted Cordis plugins before entry and keeps entry side effects at zero on failure', async t => {
+  const supervisor = new NodeRuntimeSupervisor({ requestTimeoutMs: 10_000 })
+  t.after(() => supervisor.stop())
+  const logs = []
+  supervisor.on('log', record => logs.push(record))
+  const base = {
+    entryUrl: 'app://plugins/main.mjs',
+    runtimeModules: [],
+    syntheticModules: {}
+  }
+  await supervisor.start({
+    ...base,
+    runtimePlugins: [pluginBundle(
+      `
+      export default (ctx, config) => {
+        globalThis.pluginReady = config.value
+        ctx.effect(() => () => console.log('PLUGIN_DISPOSED'))
+      }
+    `,
+      { value: 'ready' }
+    )],
+    userModules: [{
+      source: "console.log('PLUGIN_ENTRY:' + globalThis.pluginReady)",
+      url: base.entryUrl
+    }]
+  })
+  await waitFor(() => logs.find(record => record.text === 'PLUGIN_ENTRY:ready'))
+  const replacement = pluginBundle(
+    `
+    export default (ctx, config) => {
+      console.log('PLUGIN_REPLACED:' + config.value)
+      ctx.effect(() => () => console.log('PLUGIN_REPLACEMENT_DISPOSED'))
+    }
+  `,
+    { value: 'v2' }
+  )
+  assert.equal((await supervisor.setRuntimePlugins([replacement], 1, 2)).pluginGraphRevision, 2)
+  await waitFor(() => logs.find(record => record.text === 'PLUGIN_REPLACED:v2'))
+  await assert.rejects(
+    () => supervisor.setRuntimePlugins([pluginBundle('export default 42')], 2, 3),
+    { code: 'invalid_plugins' }
+  )
+  assert.equal((await supervisor.status()).pluginGraphRevision, 2)
+  await supervisor.stop()
+  await waitFor(() => logs.find(record => record.text === 'PLUGIN_REPLACEMENT_DISPOSED'))
+
+  const failing = new NodeRuntimeSupervisor({ requestTimeoutMs: 10_000 })
+  t.after(() => failing.stop())
+  const failingLogs = []
+  failing.on('log', record => failingLogs.push(record))
+  await assert.rejects(() =>
+    failing.start({
+      ...base,
+      runtimePlugins: [pluginBundle('export default 42')],
+      userModules: [{ source: "console.log('PLUGIN_ENTRY_MUST_NOT_RUN')", url: base.entryUrl }]
+    }), { code: 'start_failed.entry_evaluation' })
+  assert.equal(failingLogs.some(record => record.text === 'PLUGIN_ENTRY_MUST_NOT_RUN'), false)
 })
 
 test('runs the shared Runtime with timer, node module, real Fetch, live mock rules, and restart', async t => {

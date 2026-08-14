@@ -1,6 +1,7 @@
 import { createGitAuthority, createGitFacade } from '../git/index.js'
 import { createNodeTestSyntheticModules } from '../node-test/index.js'
 import { createStorageAuthority, createStorageFacade } from '../storage/index.js'
+import { DEFAULT_ABORT_CONSTRUCTORS } from '../web-network/index.js'
 import { snapshotGitAuthorityInput, snapshotStorageAuthorityInput } from './authority-snapshot.js'
 import { composeRuntimeModuleLoader } from './compose-loader.js'
 import { disposeQuietly } from './dispose.js'
@@ -24,6 +25,7 @@ const TOP = [
   'git',
   'httpServer',
   'moduleLoader',
+  'moduleOverrides',
   'nativePort',
   'network',
   'nodeCore',
@@ -103,6 +105,7 @@ export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Prom
       fs,
       git,
       httpServer,
+      moduleOverrides: options.moduleOverrides as never,
       nodeCore: options.nodeCore as never,
       testModules,
       timers: options.timers as never
@@ -110,7 +113,7 @@ export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Prom
     const globals = createRuntimeGlobals(
       crypto,
       network == null
-        ? undefined
+        ? DEFAULT_ABORT_CONSTRUCTORS
         : {
           AbortController: network.AbortController,
           AbortSignal: network.AbortSignal,

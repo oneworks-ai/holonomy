@@ -1,0 +1,815 @@
+{
+  "$defs": {
+    "event": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "correlationId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            },
+            "event": {
+              "const": "script.compiled"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "observedAt": {
+              "maximum": 1.7976931348623157e+308,
+              "minimum": 0,
+              "type": "number"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "origin": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "scriptId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9._:-]+$",
+                  "type": "string"
+                },
+                "sourceBytes": {
+                  "maximum": 16777216,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "sourceSha256": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "scriptId",
+                "sourceBytes",
+                "sourceSha256"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "event",
+            "generation",
+            "observedAt",
+            "payload",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "correlationId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            },
+            "event": {
+              "const": "script.execution-started"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "observedAt": {
+              "maximum": 1.7976931348623157e+308,
+              "minimum": 0,
+              "type": "number"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "executionId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9._:-]+$",
+                  "type": "string"
+                },
+                "scriptId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9._:-]+$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "executionId",
+                "scriptId"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "event",
+            "generation",
+            "observedAt",
+            "payload",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "correlationId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            },
+            "event": {
+              "const": "script.execution-finished"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "observedAt": {
+              "maximum": 1.7976931348623157e+308,
+              "minimum": 0,
+              "type": "number"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "executionId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9._:-]+$",
+                  "type": "string"
+                },
+                "outcome": {
+                  "enum": [
+                    "completed",
+                    "terminated",
+                    "threw"
+                  ]
+                },
+                "scriptId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9._:-]+$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "executionId",
+                "outcome",
+                "scriptId"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "event",
+            "generation",
+            "observedAt",
+            "payload",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "correlationId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            },
+            "event": {
+              "const": "promise.rejected"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "observedAt": {
+              "maximum": 1.7976931348623157e+308,
+              "minimum": 0,
+              "type": "number"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9._:-]+$",
+                  "type": "string"
+                },
+                "scriptId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9._:-]+$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "event",
+            "generation",
+            "observedAt",
+            "payload",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "correlationId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            },
+            "event": {
+              "const": "runtime.exception"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "observedAt": {
+              "maximum": 1.7976931348623157e+308,
+              "minimum": 0,
+              "type": "number"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9._:-]+$",
+                  "type": "string"
+                },
+                "scriptId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9._:-]+$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "event",
+            "generation",
+            "observedAt",
+            "payload",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "correlationId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            },
+            "event": {
+              "const": "runtime.terminated"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "observedAt": {
+              "maximum": 1.7976931348623157e+308,
+              "minimum": 0,
+              "type": "number"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "reason": {
+                  "enum": [
+                    "completed",
+                    "failed",
+                    "lost",
+                    "stopped"
+                  ]
+                }
+              },
+              "required": [
+                "reason"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "event",
+            "generation",
+            "observedAt",
+            "payload",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "correlationId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            },
+            "event": {
+              "const": "memory.pressure"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "observedAt": {
+              "maximum": 1.7976931348623157e+308,
+              "minimum": 0,
+              "type": "number"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "level": {
+                  "enum": [
+                    "critical",
+                    "moderate"
+                  ]
+                }
+              },
+              "required": [
+                "level"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "event",
+            "generation",
+            "observedAt",
+            "payload",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "correlationId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            },
+            "event": {
+              "const": "gc.completed"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "observedAt": {
+              "maximum": 1.7976931348623157e+308,
+              "minimum": 0,
+              "type": "number"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "durationMs": {
+                  "maximum": 120000,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "reclaimedBytes": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "durationMs"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "event",
+            "generation",
+            "observedAt",
+            "payload",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "correlationId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "type": "string"
+            },
+            "event": {
+              "const": "observer.overflow"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "observedAt": {
+              "maximum": 1.7976931348623157e+308,
+              "minimum": 0,
+              "type": "number"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "dropped": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "droppedByEvent": {
+                  "additionalProperties": false,
+                  "maxProperties": 8,
+                  "minProperties": 1,
+                  "properties": {
+                    "gc.completed": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "memory.pressure": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "promise.rejected": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "runtime.exception": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "runtime.terminated": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "script.compiled": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "script.execution-finished": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "script.execution-started": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "firstDroppedSequence": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "lastDroppedSequence": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "dropped",
+                "droppedByEvent",
+                "firstDroppedSequence",
+                "lastDroppedSequence"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "event",
+            "generation",
+            "observedAt",
+            "payload",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "overflow": {
+      "additionalProperties": false,
+      "properties": {
+        "dropped": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "droppedByEvent": {
+          "additionalProperties": false,
+          "maxProperties": 8,
+          "minProperties": 1,
+          "properties": {
+            "gc.completed": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "memory.pressure": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "promise.rejected": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "runtime.exception": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "runtime.terminated": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "script.compiled": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "script.execution-finished": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "script.execution-started": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "firstDroppedSequence": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "lastDroppedSequence": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "dropped",
+        "droppedByEvent",
+        "firstDroppedSequence",
+        "lastDroppedSequence"
+      ],
+      "type": "object"
+    },
+    "platformDescriptor": {
+      "additionalProperties": false,
+      "properties": {
+        "events": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "cost": {
+                "enum": [
+                  "high",
+                  "low"
+                ]
+              },
+              "event": {
+                "enum": [
+                  "gc.completed",
+                  "memory.pressure",
+                  "promise.rejected",
+                  "runtime.exception",
+                  "runtime.terminated",
+                  "script.compiled",
+                  "script.execution-finished",
+                  "script.execution-started"
+                ]
+              },
+              "optIn": {
+                "type": "boolean"
+              },
+              "supportLevel": {
+                "enum": [
+                  "optional",
+                  "required",
+                  "unsupported"
+                ]
+              }
+            },
+            "required": [
+              "cost",
+              "event",
+              "optIn",
+              "supportLevel"
+            ],
+            "type": "object"
+          },
+          "maxItems": 8,
+          "minItems": 8,
+          "type": "array"
+        },
+        "maxObserverCallbackMs": {
+          "maximum": 120000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "maxQueuedEvents": {
+          "maximum": 4096,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "schemaVersion": {
+          "const": 1
+        }
+      },
+      "required": [
+        "events",
+        "maxObserverCallbackMs",
+        "maxQueuedEvents",
+        "schemaVersion"
+      ],
+      "type": "object"
+    },
+    "registration": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptHighCost": {
+          "type": "boolean"
+        },
+        "callbackTimeoutMs": {
+          "maximum": 120000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "events": {
+          "items": {
+            "enum": [
+              "gc.completed",
+              "memory.pressure",
+              "promise.rejected",
+              "runtime.exception",
+              "runtime.terminated",
+              "script.compiled",
+              "script.execution-finished",
+              "script.execution-started"
+            ]
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "maxQueuedEvents": {
+          "maximum": 4096,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "events"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://oneworks.ai/holonomy/contracts/observer-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

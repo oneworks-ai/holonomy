@@ -182,6 +182,70 @@ describe('target adapter contracts', () => {
     await adapter.removeProcess({ process })
   })
 
+  it('forwards one frozen capability Runtime launch through both target adapters', async () => {
+    const capabilityRuntime = {
+      initialMiddleware: { behavior: 'allow' },
+      ownerId: 'service-owner',
+      processId: 'process_test',
+      providerConfiguration: { deviceReadings: {}, filesystemRoots: [], networkProvider: 'host.network' },
+      runtimeCreation: { configuration: {}, hostBindings: {} }
+    }
+    const supervisor = new FakeSupervisor()
+    const nodeProcess = processRecord()
+    const node = createNodeRuntimeAdapter({ createSupervisor: () => supervisor })
+    await node.startProcess({ capabilityRuntime, process: nodeProcess })
+    assert.equal(supervisor.input.capabilityRuntime, capabilityRuntime)
+    await node.removeProcess({ process: nodeProcess })
+
+    const commands = []
+    const androidProcess = processRecord('android')
+    const android = createAndroidRuntimeAdapter({
+      commandPort: {
+        close: async () => undefined,
+        command: async (_serial, command) => {
+          commands.push(command)
+          return { ack: { accepted: true, generation: command.command === 'create' ? 0 : 1 } }
+        },
+        listDevices: async () => [],
+        removeForward: async () => undefined,
+        removeReverse: async () => undefined
+      },
+      emulatorManager: { close: async () => undefined, listEmulators: async () => [] }
+    })
+    await android.startProcess({ capabilityRuntime, process: androidProcess })
+    assert.equal(commands.find(command => command.command === 'create').spec.capabilityRuntime, capabilityRuntime)
+    await android.removeProcess({ process: androidProcess })
+  })
+
+  it('recreates the Android Session so restart adopts the new generation snapshot', async () => {
+    const commands = []
+    const commandPort = {
+      close: async () => undefined,
+      command: async (_serial, command) => {
+        commands.push(command)
+        if (command.command === 'create') return { ack: { accepted: true, generation: 0 } }
+        return { ack: { accepted: true, generation: command.command === 'start' ? 1 : command.expectedGeneration } }
+      },
+      listDevices: async () => [],
+      removeForward: async () => undefined,
+      removeReverse: async () => undefined
+    }
+    const android = createAndroidRuntimeAdapter({
+      commandPort,
+      emulatorManager: { close: async () => undefined, listEmulators: async () => [] }
+    })
+    const first = processRecord('android')
+    await android.startProcess({ capabilityRuntime: { generation: 1 }, process: first })
+    const second = { ...first, generation: 2 }
+    await android.startProcess({ capabilityRuntime: { generation: 2 }, process: second })
+    assert.deepEqual(commands.map(command => command.command), ['create', 'start', 'dispose', 'create', 'start'])
+    assert.deepEqual(
+      commands.filter(command => command.command === 'create').map(command => command.spec.capabilityRuntime),
+      [{ generation: 1 }, { generation: 2 }]
+    )
+    await android.close()
+  })
+
   it('passes monotonic PUT, DELETE, PUT revisions to Node and Android providers', async () => {
     const process = processRecord()
     const supervisor = new FakeSupervisor()
