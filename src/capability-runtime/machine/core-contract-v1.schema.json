@@ -1,0 +1,670 @@
+{
+  "$defs": {
+    "facadeDelivery": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "callback": {
+              "additionalProperties": false,
+              "properties": {
+                "errorFirst": {
+                  "const": true
+                },
+                "failure": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "const": "errorOnly"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "const": "errorAndTuple"
+                        },
+                        "tupleSchemaId": {
+                          "maxLength": 256,
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "tupleSchemaId"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                "success": {
+                  "oneOf": [
+                    {
+                      "oneOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "void"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "result"
+                            },
+                            "resultSchemaId": {
+                              "maxLength": 256,
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "resultSchemaId"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "tuple"
+                            },
+                            "tupleSchemaId": {
+                              "maxLength": 256,
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "tupleSchemaId"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "const": "variants"
+                        },
+                        "variants": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "delivery": {
+                                "oneOf": [
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "kind": {
+                                        "const": "void"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "kind": {
+                                        "const": "result"
+                                      },
+                                      "resultSchemaId": {
+                                        "maxLength": 256,
+                                        "minLength": 1,
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "resultSchemaId"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "kind": {
+                                        "const": "tuple"
+                                      },
+                                      "tupleSchemaId": {
+                                        "maxLength": 256,
+                                        "minLength": 1,
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "tupleSchemaId"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              },
+                              "whenArgumentsSchemaId": {
+                                "maxLength": 256,
+                                "minLength": 1,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "delivery",
+                              "whenArgumentsSchemaId"
+                            ],
+                            "type": "object"
+                          },
+                          "maxItems": 16,
+                          "minItems": 1,
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "variants"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "errorFirst",
+                "failure",
+                "success"
+              ],
+              "type": "object"
+            },
+            "immediateResultSchemaId": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "invocationModes": {
+              "items": {
+                "enum": [
+                  "callback",
+                  "promise",
+                  "sync"
+                ]
+              },
+              "maxItems": 3,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "kind": {
+              "const": "invocation"
+            },
+            "resourceEvents": {
+              "additionalProperties": false,
+              "properties": {
+                "eventSchemaId": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "terminalEvent": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "eventSchemaId",
+                "terminalEvent"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "invocationModes",
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "eventSchemaId": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "const": "resourceEvents"
+            },
+            "terminalEvent": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "eventSchemaId",
+            "kind",
+            "terminalEvent"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "facadeDeliveryRegistry": {
+      "additionalProperties": false,
+      "properties": {
+        "CallbackResultDeliveryV1": {
+          "const": {
+            "callback": {
+              "errorFirst": true,
+              "failure": {
+                "kind": "errorOnly"
+              },
+              "success": {
+                "kind": "result",
+                "resultSchemaId": "$operation.resultSchemaId"
+              }
+            },
+            "invocationModes": [
+              "callback"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "CallbackVoidDeliveryV1": {
+          "const": {
+            "callback": {
+              "errorFirst": true,
+              "failure": {
+                "kind": "errorOnly"
+              },
+              "success": {
+                "kind": "void"
+              }
+            },
+            "invocationModes": [
+              "callback"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "DeviceSubscriptionDeliveryV1": {
+          "const": {
+            "immediateResultSchemaId": "DeviceSubscriptionV1",
+            "resourceEvents": {
+              "eventSchemaId": "HoloDeviceEventV1",
+              "terminalEvent": "closed"
+            },
+            "invocationModes": [
+              "promise"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "FsMkdirCallbackDeliveryV1": {
+          "const": {
+            "callback": {
+              "errorFirst": true,
+              "failure": {
+                "kind": "errorOnly"
+              },
+              "success": {
+                "kind": "variants",
+                "variants": [
+                  {
+                    "delivery": {
+                      "kind": "void"
+                    },
+                    "whenArgumentsSchemaId": "FsMkdirNonRecursiveArgsV1"
+                  },
+                  {
+                    "delivery": {
+                      "kind": "result",
+                      "resultSchemaId": "FsMkdirRecursiveResultV1"
+                    },
+                    "whenArgumentsSchemaId": "FsMkdirRecursiveArgsV1"
+                  }
+                ]
+              }
+            },
+            "invocationModes": [
+              "callback"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "FsReadCallbackDeliveryV1": {
+          "const": {
+            "callback": {
+              "errorFirst": true,
+              "failure": {
+                "kind": "errorOnly"
+              },
+              "success": {
+                "kind": "variants",
+                "variants": [
+                  {
+                    "delivery": {
+                      "kind": "result",
+                      "resultSchemaId": "RuntimeBufferV1"
+                    },
+                    "whenArgumentsSchemaId": "FsReadFileAsyncBufferArgsV1"
+                  },
+                  {
+                    "delivery": {
+                      "kind": "result",
+                      "resultSchemaId": "string"
+                    },
+                    "whenArgumentsSchemaId": "FsReadFileAsyncStringArgsV1"
+                  }
+                ]
+              }
+            },
+            "invocationModes": [
+              "callback"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "FsReaddirCallbackDeliveryV1": {
+          "const": {
+            "callback": {
+              "errorFirst": true,
+              "failure": {
+                "kind": "errorOnly"
+              },
+              "success": {
+                "kind": "variants",
+                "variants": [
+                  {
+                    "delivery": {
+                      "kind": "result",
+                      "resultSchemaId": "FsReaddirNamesResultV1"
+                    },
+                    "whenArgumentsSchemaId": "FsReaddirNamesArgsV1"
+                  },
+                  {
+                    "delivery": {
+                      "kind": "result",
+                      "resultSchemaId": "FsReaddirDirentsResultV1"
+                    },
+                    "whenArgumentsSchemaId": "FsReaddirDirentsArgsV1"
+                  }
+                ]
+              }
+            },
+            "invocationModes": [
+              "callback"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "FsWatchIteratorDeliveryV1": {
+          "const": {
+            "immediateResultSchemaId": "FsWatchIteratorV1",
+            "resourceEvents": {
+              "eventSchemaId": "VirtualFsWatcherDeliveryV1",
+              "terminalEvent": "close"
+            },
+            "invocationModes": [
+              "sync"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "FsWatcherDeliveryV1": {
+          "const": {
+            "immediateResultSchemaId": "FsWatcherV1",
+            "resourceEvents": {
+              "eventSchemaId": "VirtualFsWatcherDeliveryV1",
+              "terminalEvent": "close"
+            },
+            "invocationModes": [
+              "sync"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "ProcessEventDeliveryV1": {
+          "const": {
+            "eventSchemaId": "ChildProcessEventV1",
+            "kind": "resourceEvents",
+            "terminalEvent": "close"
+          }
+        },
+        "ProcessExecDeliveryV1": {
+          "const": {
+            "callback": {
+              "errorFirst": true,
+              "failure": {
+                "kind": "errorAndTuple",
+                "tupleSchemaId": "ProcessExecSuccessTupleV1"
+              },
+              "success": {
+                "kind": "tuple",
+                "tupleSchemaId": "ProcessExecSuccessTupleV1"
+              }
+            },
+            "immediateResultSchemaId": "ChildProcessFacadeV1",
+            "invocationModes": [
+              "callback"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "ProcessReadableEventDeliveryV1": {
+          "const": {
+            "eventSchemaId": "ChildProcessReadableEventV1",
+            "kind": "resourceEvents",
+            "terminalEvent": "close"
+          }
+        },
+        "ProcessStdinDeliveryV1": {
+          "const": {
+            "callback": {
+              "errorFirst": true,
+              "failure": {
+                "kind": "errorOnly"
+              },
+              "success": {
+                "kind": "void"
+              }
+            },
+            "immediateResultSchemaId": "boolean",
+            "resourceEvents": {
+              "eventSchemaId": "ChildProcessStdinEventV1",
+              "terminalEvent": "close"
+            },
+            "invocationModes": [
+              "callback"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "ProcessStdinEndDeliveryV1": {
+          "const": {
+            "callback": {
+              "errorFirst": true,
+              "failure": {
+                "kind": "errorOnly"
+              },
+              "success": {
+                "kind": "void"
+              }
+            },
+            "immediateResultSchemaId": "ChildProcessStdinFacadeV1",
+            "resourceEvents": {
+              "eventSchemaId": "ChildProcessStdinEventV1",
+              "terminalEvent": "close"
+            },
+            "invocationModes": [
+              "callback"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "ProcessSyncDeliveryV1": {
+          "const": {
+            "invocationModes": [
+              "sync"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "PromiseResultDeliveryV1": {
+          "const": {
+            "invocationModes": [
+              "promise"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "PromiseVariantDeliveryV1": {
+          "const": {
+            "invocationModes": [
+              "promise"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "PromiseVoidDeliveryV1": {
+          "const": {
+            "invocationModes": [
+              "promise"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "SyncNeverDeliveryV1": {
+          "const": {
+            "invocationModes": [
+              "sync"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "SyncResultDeliveryV1": {
+          "const": {
+            "invocationModes": [
+              "sync"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "SyncVariantDeliveryV1": {
+          "const": {
+            "invocationModes": [
+              "sync"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "SyncVoidDeliveryV1": {
+          "const": {
+            "invocationModes": [
+              "sync"
+            ],
+            "kind": "invocation"
+          }
+        },
+        "SystemSyncDeliveryV1": {
+          "const": {
+            "invocationModes": [
+              "sync"
+            ],
+            "kind": "invocation"
+          }
+        }
+      },
+      "required": [
+        "CallbackResultDeliveryV1",
+        "CallbackVoidDeliveryV1",
+        "DeviceSubscriptionDeliveryV1",
+        "FsMkdirCallbackDeliveryV1",
+        "FsReadCallbackDeliveryV1",
+        "FsReaddirCallbackDeliveryV1",
+        "FsWatchIteratorDeliveryV1",
+        "FsWatcherDeliveryV1",
+        "ProcessEventDeliveryV1",
+        "ProcessExecDeliveryV1",
+        "ProcessReadableEventDeliveryV1",
+        "ProcessStdinDeliveryV1",
+        "ProcessStdinEndDeliveryV1",
+        "ProcessSyncDeliveryV1",
+        "PromiseResultDeliveryV1",
+        "PromiseVariantDeliveryV1",
+        "PromiseVoidDeliveryV1",
+        "SyncNeverDeliveryV1",
+        "SyncResultDeliveryV1",
+        "SyncVariantDeliveryV1",
+        "SyncVoidDeliveryV1",
+        "SystemSyncDeliveryV1"
+      ],
+      "type": "object"
+    },
+    "operationSchemaOwners": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "owner": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "roles": {
+            "items": {
+              "enum": [
+                "args",
+                "delivery",
+                "event",
+                "resource",
+                "result",
+                "tuple"
+              ]
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "schema": {},
+          "schemaId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner",
+          "roles",
+          "schema",
+          "schemaId"
+        ],
+        "type": "object"
+      },
+      "maxItems": 139,
+      "minItems": 139,
+      "type": "array"
+    }
+  },
+  "$id": "https://oneworks.ai/holonomy/contracts/core-contract-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

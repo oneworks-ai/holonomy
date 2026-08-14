@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "vectors": [
+    {
+      "available": [
+        {
+          "constraints": {
+            "limits": {
+              "maxDirectoryEntries": 100,
+              "maxOpenHandles": 10,
+              "maxReadBytes": 1000,
+              "maxWatchers": 2,
+              "maxWriteBytes": 1000
+            },
+            "roots": [
+              {
+                "pathPrefixSegments": [],
+                "rights": [
+                  "read",
+                  "write"
+                ],
+                "rootId": "workspace"
+              }
+            ]
+          },
+          "name": "host.fs",
+          "version": 1
+        },
+        {
+          "constraints": {
+            "allowPrivateNetwork": false,
+            "inspectRequestBodyBytes": 0,
+            "limits": {
+              "maxChunkBytes": 1024,
+              "maxConcurrentConnections": 4,
+              "maxHeaderBytes": 4096,
+              "maxHeaders": 32,
+              "maxRedirects": 4,
+              "maxRequestBodyBytes": 4096,
+              "maxResponseBodyBytes": 8192,
+              "maxUrlBytes": 2048,
+              "socketTimeoutMs": 1000
+            },
+            "mode": "mockOnly",
+            "origins": [
+              "https://api.example"
+            ],
+            "schemes": [
+              "https"
+            ]
+          },
+          "name": "host.network.mock",
+          "version": 1
+        }
+      ],
+      "context": {
+        "generation": 3,
+        "policyDigest": "207eb1796df69161aec6a933aaf6973319e43251a5ff263365d4248764e34483",
+        "principal": "holo:process-1:3",
+        "processId": "process-1"
+      },
+      "requirement": {
+        "anyOf": [
+          {
+            "allOf": [
+              {
+                "constraints": {
+                  "limits": {
+                    "maxDirectoryEntries": 100,
+                    "maxOpenHandles": 10,
+                    "maxReadBytes": 1000,
+                    "maxWatchers": 2,
+                    "maxWriteBytes": 1000
+                  },
+                  "roots": [
+                    {
+                      "pathPrefixSegments": [
+                        "src"
+                      ],
+                      "rights": [
+                        "read"
+                      ],
+                      "rootId": "workspace"
+                    }
+                  ]
+                },
+                "name": "host.fs",
+                "version": 1
+              }
+            ],
+            "branchId": "fs-read"
+          }
+        ]
+      },
+      "name": "filesystem-narrow-prefix",
+      "selected": {
+        "authorityBindings": [
+          {
+            "authorityDigest": "89f86f4c0fe0dcf731759f442c7f7fddc30f6b136033b64a7a1f52169e060e47",
+            "authorityVersion": 1,
+            "capabilityName": "host.fs",
+            "constraints": {
+              "limits": {
+                "maxDirectoryEntries": 100,
+                "maxOpenHandles": 10,
+                "maxReadBytes": 1000,
+                "maxWatchers": 2,
+                "maxWriteBytes": 1000
+              },
+              "roots": [
+                {
+                  "pathPrefixSegments": [
+                    "src"
+                  ],
+                  "rights": [
+                    "read"
+                  ],
+                  "rootId": "workspace"
+                }
+              ]
+            },
+            "providerModule": "host.fs"
+          }
+        ],
+        "bindings": [
+          {
+            "branchId": "fs-read",
+            "constraints": {
+              "limits": {
+                "maxDirectoryEntries": 100,
+                "maxOpenHandles": 10,
+                "maxReadBytes": 1000,
+                "maxWatchers": 2,
+                "maxWriteBytes": 1000
+              },
+              "roots": [
+                {
+                  "pathPrefixSegments": [
+                    "src"
+                  ],
+                  "rights": [
+                    "read"
+                  ],
+                  "rootId": "workspace"
+                }
+              ]
+            },
+            "digest": "238dbff5e6c7b6cedea348ecd25d24d785b17935fddfc2eff152baa2db4900a9",
+            "name": "host.fs",
+            "source": "policy",
+            "version": 1
+          }
+        ],
+        "branchId": "fs-read",
+        "requirement": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "constraints": {
+                    "limits": {
+                      "maxDirectoryEntries": 100,
+                      "maxOpenHandles": 10,
+                      "maxReadBytes": 1000,
+                      "maxWatchers": 2,
+                      "maxWriteBytes": 1000
+                    },
+                    "roots": [
+                      {
+                        "pathPrefixSegments": [
+                          "src"
+                        ],
+                        "rights": [
+                          "read"
+                        ],
+                        "rootId": "workspace"
+                      }
+                    ]
+                  },
+                  "name": "host.fs",
+                  "version": 1
+                }
+              ],
+              "branchId": "fs-read"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

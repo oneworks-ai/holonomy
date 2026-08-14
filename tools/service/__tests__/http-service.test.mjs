@@ -222,6 +222,7 @@ describe('holonomy loopback service', () => {
         'id',
         'inspectorMode',
         'isolation',
+        'pluginGraphRevision',
         'revision',
         'sandboxPolicy',
         'sandboxPolicyDigest',

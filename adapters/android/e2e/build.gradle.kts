@@ -5,6 +5,7 @@ plugins {
 
 val repositoryRoot = rootProject.projectDir.resolve("../..").canonicalFile
 val generatedRuntimeAssets = layout.buildDirectory.dir("generated/runtimeAssets")
+val v86ProbeAssetRoot = providers.environmentVariable("HOLO_V86_PROBE_ASSET_ROOT")
 
 val prepareRuntimeAssets by tasks.registering(Exec::class) {
     workingDir(repositoryRoot)
@@ -21,8 +22,16 @@ val prepareRuntimeAssets by tasks.registering(Exec::class) {
     inputs.dir(repositoryRoot.resolve("dist"))
     inputs.dir(layout.projectDirectory.dir("src/runtimeBootstrap"))
     inputs.dir(layout.projectDirectory.dir("src/runtimeFixtures"))
+    inputs.dir(layout.projectDirectory.dir("src/backendProbe"))
     inputs.file(layout.projectDirectory.file("tools/prepare-runtime-assets.mjs"))
+    inputs.file(layout.projectDirectory.file("tools/generate-capability-kernel-fixture.mjs"))
+    inputs.file(layout.projectDirectory.file("tools/generate-process-backend-probe.mjs"))
+    inputs.file(layout.projectDirectory.file("tools/verify-runtime-assets.mjs"))
+    inputs.file(repositoryRoot.resolve("tools/service/capability-runtime-manager.mjs"))
     inputs.file(repositoryRoot.resolve("node_modules/acorn/dist/acorn.mjs"))
+    inputs.file(repositoryRoot.resolve("package.json"))
+    inputs.file(repositoryRoot.resolve("pnpm-lock.yaml"))
+    v86ProbeAssetRoot.orNull?.let { inputs.dir(it) }
     outputs.dir(generatedRuntimeAssets)
 }
 
@@ -43,6 +52,9 @@ android {
     }
 
     sourceSets.getByName("main").assets.srcDir(generatedRuntimeAssets)
+    sourceSets.getByName("main").assets.srcDir(
+        repositoryRoot.resolve("src/capability-runtime/machine"),
+    )
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -59,9 +71,12 @@ tasks.configureEach {
 }
 
 dependencies {
+    implementation(project(":capability-host"))
     implementation(project(":v8-host"))
     implementation(project(":network-host"))
     implementation(project(":session-host"))
+    implementation("com.caoccao.javet:javet-v8-android:5.0.10")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("com.caoccao.javet:javet-v8-android:5.0.10")
 }

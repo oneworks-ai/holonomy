@@ -21,6 +21,8 @@ export const serviceHomePaths = home =>
     home,
     journal: join(home, 'journal'),
     lock: join(home, 'service.lock'),
+    processBackends: join(home, 'process-backends.json'),
+    processProfiles: join(home, 'process-profiles.json'),
     state: join(home, 'state'),
     token: join(home, 'token')
   })

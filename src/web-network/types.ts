@@ -56,11 +56,64 @@ export interface WebNetworkRuntimeOptions {
     AbortController?: typeof globalThis.AbortController
     AbortSignal?: typeof globalThis.AbortSignal
   }
+  /** Trusted capability hook. It runs before transport and around response continuations. */
+  capability?: WebNetworkCapabilityHooksV1
   diagnostics?: NetworkDiagnosticsSink
   /** Zero disables body retention. Trusted debuggers may opt into a bounded base64 side channel. */
   diagnosticsBodyLimitBytes?: number
   /** Trusted monotonic milliseconds used only for diagnostics ordering. */
   diagnosticsNow?: () => number
+}
+
+export interface WebNetworkCapabilityRequestV1 {
+  readonly body?: Uint8Array
+  readonly headers: NetworkHeaderEntries
+  readonly hop: number
+  readonly logicalRequestId: string
+  readonly method: string
+  readonly url: string
+}
+
+export interface WebNetworkCapabilityAdmissionV1 {
+  readonly bindingId: string
+  readonly generation: number
+  readonly resourceType: 'network.response'
+}
+
+export interface WebNetworkCapabilityResponseV1 {
+  readonly admission: WebNetworkCapabilityAdmissionV1
+  readonly metadata: Readonly<{
+    headers: NetworkHeaderEntries
+    hop: number
+    logicalRequestId: string
+    redirected: boolean
+    source: 'mock' | 'real'
+    status: number
+    statusText: string
+    url: string
+  }>
+}
+
+export interface WebNetworkCapabilityHooksV1 {
+  authorizeRedirect(
+    from: WebNetworkCapabilityRequestV1,
+    to: WebNetworkCapabilityRequestV1,
+    status: 301 | 302 | 303 | 307 | 308,
+    admission: WebNetworkCapabilityAdmissionV1
+  ): Promise<void>
+  authorizeRequest(request: WebNetworkCapabilityRequestV1): Promise<WebNetworkCapabilityAdmissionV1>
+  authorizeResponse(
+    response: WebNetworkCapabilityResponseV1,
+    member:
+      | 'Response.arrayBuffer'
+      | 'Response.bytes'
+      | 'Response.clone'
+      | 'Response.json'
+      | 'Response.metadata'
+      | 'Response.text'
+  ): Promise<unknown> | unknown
+  cloneResponse(admission: WebNetworkCapabilityAdmissionV1): WebNetworkCapabilityAdmissionV1
+  releaseResponse(admission: WebNetworkCapabilityAdmissionV1): void
 }
 
 export type NetworkHeaderEntries = readonly (readonly [string, string])[]
@@ -70,64 +123,14 @@ export type {
   NetworkDiagnosticsSink,
   NetworkDiagnosticsSource
 } from './network-diagnostics-types.js'
-
-export interface NetworkMockBodyMatch {
-  kind: 'base64' | 'empty' | 'json' | 'jsonSubset' | 'sha256' | 'utf8'
-  value?: unknown
-}
-
-export interface NetworkMockEntryMatch {
-  absent?: readonly string[]
-  entries: NetworkHeaderEntries
-  mode: 'exact' | 'subset'
-}
-
-export interface NetworkMockRule {
-  action:
-    | {
-      body?: { chunks?: readonly string[]; kind: 'base64' | 'json' | 'utf8'; value?: unknown }
-      delayMs?: number
-      headers?: NetworkHeaderEntries
-      status: number
-      type: 'respond'
-    }
-    | { code: 'connection_refused' | 'timeout' | 'unavailable'; delayMs?: number; type: 'fail' }
-    | { type: 'passthrough' }
-  id: string
-  lifetime?: { expiresAt?: string; maxMatches?: number }
-  match: {
-    body?: NetworkMockBodyMatch
-    headers?: NetworkMockEntryMatch
-    method?: string
-    origin?: string
-    path?: { op: 'exact' | 'prefix'; value: string }
-    query?: NetworkMockEntryMatch
-  }
-  priority: number
-  /** Assigned by the trusted rule store; ignored on input. */
-  sequence?: number
-}
-
-export interface NetworkMockRuleSet {
-  mode: 'failClosed' | 'passthrough'
-  rules: readonly NetworkMockRule[]
-}
-
-export interface NetworkMockRuleSetSnapshot extends NetworkMockRuleSet {
-  revision: string
-}
-
-export interface NetworkMockRequest {
-  body: Uint8Array
-  /** Original admitted length when matching uses a bounded body prefix or no contiguous copy. */
-  bodyLength?: number
-  bodySha256?: string
-  headers: NetworkHeaderEntries
-  /** Trusted provider digests for sensitive header values; plaintext is never copied into rules. */
-  sensitiveHeaderSha256?: NetworkHeaderEntries
-  method: string
-  url: string
-}
+export type {
+  NetworkMockBodyMatch,
+  NetworkMockEntryMatch,
+  NetworkMockRequest,
+  NetworkMockRule,
+  NetworkMockRuleSet,
+  NetworkMockRuleSetSnapshot
+} from './network-mock-types.js'
 
 export interface WebNetworkRuntime {
   readonly AbortController: typeof globalThis.AbortController

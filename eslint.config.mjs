@@ -20,7 +20,12 @@ const maxLinesTestRule = [
 
 export default config(
   {
-    ignores: ['**/*.d.ts', 'dist/**', 'coverage/**'],
+    ignores: [
+      '**/*.d.ts',
+      'dist/**',
+      'coverage/**',
+      'src/capability-runtime/machine/*.json'
+    ],
     stylistic: false,
     rules: {
       'max-lines': maxLinesRule,
@@ -57,6 +62,8 @@ export default config(
     files: [
       '**/__tests__/**/*.{cjs,cts,js,jsx,mjs,mts,ts,tsx}',
       '**/*.{spec,test}.{cjs,cts,js,jsx,mjs,mts,ts,tsx}',
+      'adapters/android/e2e/src/backendProbe/**/*.mjs',
+      'adapters/android/e2e/tools/generate-*.mjs',
       'tests/**/*.{cjs,cts,js,jsx,mjs,mts,ts,tsx}'
     ],
     rules: {
@@ -68,6 +75,16 @@ export default config(
     rules: {
       'no-console': 'off',
       'ts/strict-boolean-expressions': 'off'
+    }
+  },
+  {
+    files: [
+      'adapters/node/src/capability-*.mjs',
+      'tools/generate-capability-contracts.mjs',
+      'tools/service/capability-runtime-*.mjs'
+    ],
+    rules: {
+      'antfu/no-import-dist': 'off'
     }
   },
   {

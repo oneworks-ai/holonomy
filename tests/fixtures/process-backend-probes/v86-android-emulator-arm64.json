@@ -1,0 +1,84 @@
+{
+  "artifact": {
+    "artifactKind": "npm",
+    "artifactVersion": "0.5.432",
+    "integritySha256": "de9379ee1ccc118903558faed9ff577a66d486c5551b9e5ef359f0d388c40ebb",
+    "license": "BSD-2-Clause",
+    "sourceRevision": "f3d4472a9c934b9ad78a311f5849ba711a296d23"
+  },
+  "backendId": "experimental.v86-v1",
+  "host": {
+    "architecture": "arm64",
+    "engine": "javet-v8",
+    "engineVersion": "javet-5.0.10-liftoff",
+    "platform": "android",
+    "runtimeVersion": "15-api35-emulator"
+  },
+  "metrics": {
+    "bootDurationMs": 84955,
+    "workloadDurationMs": 273
+  },
+  "observations": [
+    {
+      "capability": "installation",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "boot",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "workload",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "stdio",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "exit",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "filesystem",
+      "provenance": "upstreamContract",
+      "reasonCode": "android_filesystem_bridge_not_connected",
+      "status": "notRun"
+    },
+    {
+      "capability": "network",
+      "provenance": "upstreamContract",
+      "reasonCode": "android_network_bridge_not_connected",
+      "status": "notRun"
+    },
+    {
+      "capability": "processTree",
+      "provenance": "upstreamContract",
+      "reasonCode": "android_environment_scope_not_connected",
+      "status": "notRun"
+    },
+    {
+      "capability": "runtime",
+      "provenance": "upstreamContract",
+      "reasonCode": "android_environment_scope_not_connected",
+      "status": "notRun"
+    },
+    {
+      "capability": "snapshots",
+      "provenance": "upstreamContract",
+      "reasonCode": "android_snapshot_not_connected",
+      "status": "notRun"
+    },
+    {
+      "capability": "androidPackaging",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    }
+  ],
+  "schemaVersion": 1
+}

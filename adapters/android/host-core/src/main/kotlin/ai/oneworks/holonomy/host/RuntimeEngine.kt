@@ -49,6 +49,7 @@ data class RuntimeProcessConfiguration(
     val env: Map<String, String> = emptyMap(),
     val execPath: String = "/runtime/holonomy",
     val pid: Int = 1,
+    val runtimePluginsJson: String = "[]",
 )
 
 interface RuntimeProcessHost {
@@ -156,6 +157,55 @@ interface RuntimeNativeHost : AutoCloseable {
     fun closeResource(ownerCallToken: String, providerToken: String, reason: String?) = Unit
 
     fun grantCredits(callToken: String, credits: Int) = Unit
+
+    override fun close() = Unit
+}
+
+/** Generation-owned authority for capability Runtime configuration and provider calls. */
+interface RuntimeCapabilityHost : AutoCloseable {
+    /** Finite JSON consumed by the reserved bootstrap before any Guest entry can execute. */
+    fun configurationJson(): String
+
+    /** Finite JSON terminal. Implementations re-authorize and never expose native platform values. */
+    fun invokeSync(requestJson: String): String
+
+    /** Subscribes a generation-bound resource. Events are finite JSON and may arrive off-thread. */
+    fun subscribeResource(bindingId: String, sink: RuntimeCapabilityResourceEventSink): AutoCloseable? = null
+
+    /** Releases one generation-bound resource. Unknown or already released bindings are ignored. */
+    fun releaseResource(bindingId: String) = Unit
+
+    override fun close() = Unit
+}
+
+fun interface RuntimeCapabilityResourceEventSink {
+    fun emit(eventJson: String)
+}
+
+/** Channels exposed only to generation-owned trusted Backend implementations. */
+enum class RuntimeTrustedBackendChannel(
+    val wireName: String,
+) {
+    LINUX_FILESYSTEM("linuxFilesystem"),
+    LINUX_PROCESS_NETWORK("linuxProcessNetwork"),
+}
+
+fun interface RuntimeTrustedBackendTerminalSink {
+    fun emit(terminalJson: String)
+}
+
+/** Host-side route into the admitted Runtime Kernel; it is never installed in the Guest Realm. */
+fun interface RuntimeTrustedBackendHost {
+    fun invoke(
+        channel: RuntimeTrustedBackendChannel,
+        requestJson: String,
+        sink: RuntimeTrustedBackendTerminalSink,
+    )
+}
+
+/** One trusted Backend instance owned by exactly one Runtime generation. */
+interface RuntimeTrustedBackend : AutoCloseable {
+    fun start(host: RuntimeTrustedBackendHost)
 
     override fun close() = Unit
 }

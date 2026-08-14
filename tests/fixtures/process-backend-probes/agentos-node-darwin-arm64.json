@@ -1,0 +1,83 @@
+{
+  "artifact": {
+    "artifactKind": "npm",
+    "artifactVersion": "0.2.15",
+    "integritySha256": "3508c0536189af7f7e6c6fc37447efff83fe20ab6f453f3a2231e1a4b597f70c",
+    "license": "Apache-2.0",
+    "sourceRevision": "36843a854ef7609a77d160bce1fd6bce2bb7ebd2"
+  },
+  "backendId": "experimental.agentos-v1",
+  "host": {
+    "architecture": "arm64",
+    "engine": "node-v8",
+    "engineVersion": "12.4.254.21-node.39",
+    "platform": "darwin",
+    "runtimeVersion": "22.22.2"
+  },
+  "metrics": {
+    "bootDurationMs": 178,
+    "peakRssBytes": 495960064,
+    "workloadDurationMs": 487
+  },
+  "observations": [
+    {
+      "capability": "installation",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "boot",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "workload",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "stdio",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "exit",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "filesystem",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "network",
+      "provenance": "behavioralProbe",
+      "reasonCode": "wasm_socket_connect_timeout",
+      "status": "failed"
+    },
+    {
+      "capability": "processTree",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "runtime",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "snapshots",
+      "provenance": "upstreamContract",
+      "reasonCode": "no_full_process_snapshot_contract",
+      "status": "unsupported"
+    },
+    {
+      "capability": "androidPackaging",
+      "provenance": "upstreamContract",
+      "reasonCode": "no_android_sidecar_artifact",
+      "status": "unsupported"
+    }
+  ],
+  "schemaVersion": 1
+}

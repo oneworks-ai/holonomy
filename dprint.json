@@ -19,7 +19,8 @@
   "excludes": [
     "**/node_modules",
     "**/dist",
-    "**/coverage"
+    "**/coverage",
+    "src/capability-runtime/machine/*.json"
   ],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.95.11.wasm",

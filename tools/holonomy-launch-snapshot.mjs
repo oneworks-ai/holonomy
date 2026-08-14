@@ -8,6 +8,7 @@ import { runWrapperSource, testRunnerSource } from './holonomy-entry-source.mjs'
 import { collectHolonomyGraph, expandHolonomyEntries } from './holonomy-module-graph.mjs'
 import { requiresHolonomyNetworkFixture } from './holonomy-network-fixture.mjs'
 import { readHolonomyNetworkRules } from './holonomy-network-rules-file.mjs'
+import { prepareHolonomyRuntimePlugins } from './holonomy-plugin-bundle.mjs'
 
 const MAX_SANDBOX_POLICY_BYTES = 1024 * 1024
 const DEFAULT_SANDBOX_POLICY = Object.freeze({
@@ -69,6 +70,54 @@ export const readHolonomySandboxPolicy = (input, options = {}) => {
   }
 }
 
+export const readHolonomyCapabilityRuntime = (input, options = {}) => {
+  if (typeof input !== 'string' || input === '' || extname(input).toLowerCase() !== '.json') {
+    throw new Error('--capability-runtime must reference one JSON file')
+  }
+  const path = resolve(options.cwd ?? process.cwd(), input)
+  let descriptor
+  try {
+    const before = lstatSync(path)
+    if (before.isSymbolicLink()) throw new Error('Capability Runtime file must not be a symbolic link')
+    descriptor = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0))
+    const opened = fstatSync(descriptor)
+    if (!opened.isFile()) throw new Error('Capability Runtime path is not a file')
+    if (before.dev !== opened.dev || before.ino !== opened.ino) {
+      throw new Error('Capability Runtime file is unavailable')
+    }
+    if (opened.size > MAX_SANDBOX_POLICY_BYTES) throw new Error('Capability Runtime file exceeds the size limit')
+    const bytes = new Uint8Array(MAX_SANDBOX_POLICY_BYTES + 1)
+    let offset = 0
+    while (offset < bytes.byteLength) {
+      const count = readSync(descriptor, bytes, offset, bytes.byteLength - offset)
+      if (count === 0) break
+      offset += count
+    }
+    if (offset > MAX_SANDBOX_POLICY_BYTES) throw new Error('Capability Runtime file exceeds the size limit')
+    let value
+    try {
+      value = JSON.parse(decoder.decode(bytes.subarray(0, offset)))
+    } catch {
+      throw new Error('Capability Runtime file is not valid UTF-8 JSON')
+    }
+    if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('Capability Runtime file must contain one configuration object')
+    }
+    return freezeJson(value)
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Capability Runtime ')) throw error
+    throw new Error('Capability Runtime file is unavailable')
+  } finally {
+    if (descriptor != null) {
+      try {
+        closeSync(descriptor)
+      } catch {
+        // The stable read result remains authoritative.
+      }
+    }
+  }
+}
+
 export const prepareHolonomyLaunchSnapshot = (command, options, dependencies = {}) => {
   const entries = expandHolonomyEntries(options.entries)
   if (command === 'run' && entries.length !== 1) {
@@ -88,7 +137,16 @@ export const prepareHolonomyLaunchSnapshot = (command, options, dependencies = {
   const sandboxPolicy = options.sandbox == null
     ? DEFAULT_SANDBOX_POLICY
     : (dependencies.readSandboxPolicy ?? readHolonomySandboxPolicy)(options.sandbox)
+  const capabilityRuntime = options.capabilityRuntime == null
+    ? undefined
+    : (dependencies.readCapabilityRuntime ?? readHolonomyCapabilityRuntime)(options.capabilityRuntime)
+  const preparedPlugins = options.config == null
+    ? undefined
+    : (dependencies.prepareRuntimePlugins ?? prepareHolonomyRuntimePlugins)(options.config, {
+      allowedAbsoluteRoots: options.pluginRoots
+    })
   return Object.freeze({
+    capabilityRuntime,
     entryUrl: virtualEntry,
     fixture: requiresHolonomyNetworkFixture(command, entries)
       ? Object.freeze({ kind: 'conformance-network-v1' })
@@ -111,6 +169,8 @@ export const prepareHolonomyLaunchSnapshot = (command, options, dependencies = {
       target: options.target
     }),
     networkRuleSet,
+    pluginConfigPath: preparedPlugins?.configPath,
+    runtimePlugins: preparedPlugins?.bundles,
     sandboxPolicy: freezeJson(sandboxPolicy),
     target: options.target
   })

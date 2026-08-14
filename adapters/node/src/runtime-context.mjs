@@ -110,6 +110,12 @@ export function createNativeEventValue(runtimeContext, event) {
 const HOST_FACADE_SOURCE = `(() => {
   const call = (name, ...args) => dispatch(name, args)
   return Object.freeze({
+    capabilityConfiguration: () => call('capabilityConfiguration'),
+    capabilityInvoke: (...args) => call('capabilityInvoke', ...args),
+    capabilityInvokeImmediate: (...args) => call('capabilityInvokeImmediate', ...args),
+    capabilityInvokeSync: (...args) => call('capabilityInvokeSync', ...args),
+    capabilityReleaseResource: (...args) => call('capabilityReleaseResource', ...args),
+    capabilitySubscribeResource: (...args) => call('capabilitySubscribeResource', ...args),
     cancelNative: (...args) => call('cancelNative', ...args),
     cancelTimer: (...args) => call('cancelTimer', ...args),
     closeNativeResource: (...args) => call('closeNativeResource', ...args),
@@ -122,6 +128,7 @@ const HOST_FACADE_SOURCE = `(() => {
     now: () => call('now'),
     readModule: (...args) => call('readModule', ...args),
     registerDispose: (...args) => call('registerDispose', ...args),
+    registerPluginUpdater: (...args) => call('registerPluginUpdater', ...args),
     registerRuleUpdater: (...args) => call('registerRuleUpdater', ...args),
     registerTimerFire: (...args) => call('registerTimerFire', ...args),
     registerTurn: (...args) => call('registerTurn', ...args),

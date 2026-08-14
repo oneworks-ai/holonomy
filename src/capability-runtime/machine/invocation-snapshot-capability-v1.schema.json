@@ -1,0 +1,28 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "binaryInternalSlotCopy": {
+      "const": true
+    },
+    "engineIsProxyWithoutTrap": {
+      "const": true
+    },
+    "guestReentryPrevented": {
+      "const": true
+    },
+    "plainOwnSlotWalker": {
+      "const": true
+    },
+    "schemaVersion": {
+      "const": 1
+    }
+  },
+  "required": [
+    "binaryInternalSlotCopy",
+    "engineIsProxyWithoutTrap",
+    "guestReentryPrevented",
+    "plainOwnSlotWalker",
+    "schemaVersion"
+  ],
+  "type": "object"
+}

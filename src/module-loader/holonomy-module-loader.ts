@@ -42,6 +42,7 @@ const SOURCE_REQUIRE_CONDITIONS = [
 ] as const
 const HEX_SHA256 = /^[\da-f]{64}$/u
 const SCHEME = /^[A-Z][+\-.\dA-Z]*:/iu
+const SYNTHETIC_SCHEME = /^(?:holo|node):/u
 const LIMIT_KEYS = [
   'maxAstDepth',
   'maxAstNodes',
@@ -352,7 +353,7 @@ export class HolonomyModuleLoader {
     const cached = this.resolutionCache.get(resolutionKey)
     if (cached != null) return cached
     let resolvedUrl: string
-    if (specifier.startsWith('node:')) {
+    if (this.port.syntheticNodeModules[specifier] != null || SYNTHETIC_SCHEME.test(specifier)) {
       resolvedUrl = this.resolveSynthetic(specifier)
       return this.publishResolution(transaction, resolutionKey, resolvedUrl)
     }
@@ -522,7 +523,9 @@ export class HolonomyModuleLoader {
   }
 
   private canonicalizeModuleParent(value: string) {
-    if (value.startsWith('node:')) return this.resolveSynthetic(value)
+    if (this.port.syntheticNodeModules[value] != null || SYNTHETIC_SCHEME.test(value)) {
+      return this.resolveSynthetic(value)
+    }
     return this.canonicalizeModuleUrl(value, this.rootUrl, false)
   }
 
@@ -591,7 +594,7 @@ export class HolonomyModuleLoader {
 
   private resolveSynthetic(specifier: string) {
     if (
-      specifier.includes('?') || specifier.includes('#') || specifier === 'node:' ||
+      specifier.includes('?') || specifier.includes('#') || specifier === 'node:' || specifier === 'holo:' ||
       this.port.syntheticNodeModules[specifier] == null
     ) {
       throw new HolonomyModuleLoaderError(
@@ -890,7 +893,7 @@ export class HolonomyModuleLoader {
     this.accountModule(transaction, url)
     const cached = this.moduleCache.get(url)
     if (cached != null) return cached
-    if (url.startsWith('node:')) {
+    if (this.port.syntheticNodeModules[url] != null) {
       const synthetic = this.port.syntheticNodeModules[url]
       if (synthetic == null) this.resolveSynthetic(url)
       const module: MutablePlannedModule = {
@@ -978,7 +981,9 @@ export class HolonomyModuleLoader {
         throw new RequireEsmError(resolvedUrl)
       }
       const targetFormat = target?.format ??
-        (resolvedUrl.startsWith('node:') ? 'synthetic' : await this.moduleFormat(resolvedUrl, transaction))
+        (this.port.syntheticNodeModules[resolvedUrl] != null
+          ? 'synthetic'
+          : await this.moduleFormat(resolvedUrl, transaction))
       module.dependencies.push({
         interop: interopForFormat(targetFormat),
         kind: dependency.kind,
@@ -1169,7 +1174,7 @@ export class HolonomyModuleLoader {
   }
 
   private canonicalizeCachedModuleUrl(url: string) {
-    return url.startsWith('node:')
+    return this.port.syntheticNodeModules[url] != null || SYNTHETIC_SCHEME.test(url)
       ? this.resolveSynthetic(url)
       : this.canonicalizeModuleUrl(url, this.rootUrl, false)
   }

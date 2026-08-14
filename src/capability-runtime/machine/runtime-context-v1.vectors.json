@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "vectors": [
+    {
+      "context": {
+        "schemaVersion": 1,
+        "guest": {
+          "application": "example"
+        }
+      },
+      "digest": "badaebe108bb82cd46fdf1c14661654f3691f4911943da35bd4c30ec46a85f3c",
+      "name": "separate-projections"
+    }
+  ]
+}

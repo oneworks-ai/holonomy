@@ -1,0 +1,1873 @@
+{
+  "$id": "https://holonomy.dev/schemas/sandbox-policy-v2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "codeGeneration": {
+      "additionalProperties": false,
+      "properties": {
+        "dynamicImport": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "none"
+                }
+              },
+              "required": [
+                "access"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "controlled"
+                },
+                "decisionTimeoutMs": {
+                  "maximum": 120000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxOperations": {
+                  "maximum": 100000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxSourceBytes": {
+                  "maximum": 16777216,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "decisionTimeoutMs",
+                "maxOperations",
+                "maxSourceBytes"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "strings": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "none"
+                }
+              },
+              "required": [
+                "access"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "controlled"
+                },
+                "decisionTimeoutMs": {
+                  "maximum": 120000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxOperations": {
+                  "maximum": 100000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxSourceBytes": {
+                  "maximum": 16777216,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "decisionTimeoutMs",
+                "maxOperations",
+                "maxSourceBytes"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "wasm": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "none"
+                }
+              },
+              "required": [
+                "access"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "controlled"
+                },
+                "decisionTimeoutMs": {
+                  "maximum": 120000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxOperations": {
+                  "maximum": 100000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxSourceBytes": {
+                  "maximum": 16777216,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "decisionTimeoutMs",
+                "maxOperations",
+                "maxSourceBytes"
+              ],
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "required": [
+        "dynamicImport",
+        "strings",
+        "wasm"
+      ],
+      "type": "object"
+    },
+    "device": {
+      "additionalProperties": false,
+      "properties": {
+        "defaultAccess": {
+          "const": "deny"
+        },
+        "maxEventsPerSecond": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "maxSubscriptions": {
+          "maximum": 256,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "operations": {
+          "additionalProperties": false,
+          "properties": {
+            "device.connectivity.cellular.state.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.connectivity.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.connectivity.wifi.identity.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.connectivity.wifi.state.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.display.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.events.subscribe": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.form-factor.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.input.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.lifecycle.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.media.capabilities.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.power.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.security.capabilities.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.sensor.capabilities.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.summary.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            },
+            "device.thermal.read": {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "allow"
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "standard"
+                  ]
+                },
+                "maxPrivacyTier": {
+                  "maximum": 3,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "access",
+                "maxPrecision",
+                "maxPrivacyTier"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "defaultAccess",
+        "maxEventsPerSecond",
+        "maxSubscriptions",
+        "operations"
+      ],
+      "type": "object"
+    },
+    "diagnostics": {
+      "additionalProperties": false,
+      "properties": {
+        "maxObserverCallbackMs": {
+          "maximum": 120000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "maxQueuedEvents": {
+          "maximum": 4096,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxSourceReadBytes": {
+          "maximum": 1048576,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "observerEvents": {
+          "items": {
+            "enum": [
+              "gc.completed",
+              "memory.pressure",
+              "promise.rejected",
+              "runtime.exception",
+              "runtime.terminated",
+              "script.compiled",
+              "script.execution-finished",
+              "script.execution-started"
+            ]
+          },
+          "maxItems": 8,
+          "minItems": 0,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "retentionMs": {
+          "maximum": 86400000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sourceReader": {
+          "enum": [
+            "boundedSource",
+            "metadataOnly",
+            "none"
+          ]
+        }
+      },
+      "required": [
+        "maxObserverCallbackMs",
+        "maxQueuedEvents",
+        "maxSourceReadBytes",
+        "observerEvents",
+        "retentionMs",
+        "sourceReader"
+      ],
+      "type": "object"
+    },
+    "filesystem": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "access": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "access"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "access": {
+              "const": "sandboxed"
+            },
+            "limits": {
+              "additionalProperties": false,
+              "properties": {
+                "maxDirectoryEntries": {
+                  "maximum": 100000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxOpenHandles": {
+                  "maximum": 4096,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxReadBytes": {
+                  "maximum": 268435456,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxWatchers": {
+                  "maximum": 1024,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "maxWriteBytes": {
+                  "maximum": 268435456,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "maxDirectoryEntries",
+                "maxOpenHandles",
+                "maxReadBytes",
+                "maxWatchers",
+                "maxWriteBytes"
+              ],
+              "type": "object"
+            },
+            "roots": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "rights": {
+                    "items": {
+                      "enum": [
+                        "create",
+                        "delete",
+                        "list",
+                        "move",
+                        "read",
+                        "watch",
+                        "write"
+                      ]
+                    },
+                    "maxItems": 7,
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "rootId": {
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z0-9._-]+$",
+                    "type": "string"
+                  },
+                  "symlinks": {
+                    "enum": [
+                      "deny",
+                      "withinRoot"
+                    ]
+                  },
+                  "virtualUrl": {
+                    "maxLength": 4096,
+                    "minLength": 11,
+                    "pattern": "^holo-fs://",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "rights",
+                  "rootId",
+                  "symlinks",
+                  "virtualUrl"
+                ],
+                "type": "object"
+              },
+              "maxItems": 64,
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "access",
+            "limits",
+            "roots"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "inspector": {
+      "additionalProperties": false,
+      "properties": {
+        "callFunctionOn": {
+          "type": "boolean"
+        },
+        "compileScript": {
+          "type": "boolean"
+        },
+        "evaluate": {
+          "type": "boolean"
+        },
+        "runScript": {
+          "type": "boolean"
+        },
+        "setScriptSource": {
+          "type": "boolean"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "network": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "access": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "access"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "access": {
+              "enum": [
+                "mockOnly",
+                "restricted"
+              ]
+            },
+            "allowedOrigins": {
+              "items": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 64,
+              "minItems": 0,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "allowedSchemes": {
+              "items": {
+                "enum": [
+                  "http",
+                  "https"
+                ]
+              },
+              "maxItems": 2,
+              "minItems": 0,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "allowPrivateNetwork": {
+              "type": "boolean"
+            },
+            "limits": {
+              "additionalProperties": false,
+              "properties": {
+                "maxChunkBytes": {
+                  "maximum": 1048576,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxConcurrentConnections": {
+                  "maximum": 128,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxHeaderBytes": {
+                  "maximum": 1048576,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxHeaders": {
+                  "maximum": 1024,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxRedirects": {
+                  "maximum": 32,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "maxRequestBodyBytes": {
+                  "maximum": 67108864,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxResponseBodyBytes": {
+                  "maximum": 268435456,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxUrlBytes": {
+                  "maximum": 1048576,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "socketTimeoutMs": {
+                  "maximum": 120000,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "maxChunkBytes",
+                "maxConcurrentConnections",
+                "maxHeaderBytes",
+                "maxHeaders",
+                "maxRedirects",
+                "maxRequestBodyBytes",
+                "maxResponseBodyBytes",
+                "maxUrlBytes",
+                "socketTimeoutMs"
+              ],
+              "type": "object"
+            },
+            "requestBodyInspection": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "none"
+                    }
+                  },
+                  "required": [
+                    "access"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "bounded"
+                    },
+                    "maxBytes": {
+                      "maximum": 1048576,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxReadsPerRuntime": {
+                      "maximum": 1024,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "access",
+                    "maxBytes",
+                    "maxReadsPerRuntime"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "required": [
+            "access",
+            "allowedOrigins",
+            "allowedSchemes",
+            "allowPrivateNetwork",
+            "limits",
+            "requestBodyInspection"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "process": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "access": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "access"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "access": {
+              "const": "sandboxed"
+            },
+            "environment": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedNames": {
+                  "items": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 256,
+                  "minItems": 0,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxValueBytes": {
+                  "maximum": 16777216,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "allowedNames",
+                "maxValueBytes"
+              ],
+              "type": "object"
+            },
+            "executables": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "argumentBytes": {
+                    "maximum": 16777216,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "executableId": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z0-9._-]+$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "argumentBytes",
+                  "executableId"
+                ],
+                "type": "object"
+              },
+              "maxItems": 256,
+              "minItems": 1,
+              "type": "array"
+            },
+            "limits": {
+              "additionalProperties": false,
+              "properties": {
+                "maxConcurrentProcesses": {
+                  "maximum": 64,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxExecutionTimeMs": {
+                  "maximum": 86400000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxOpenPipes": {
+                  "maximum": 256,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "maxProcessTreeDepth": {
+                  "maximum": 32,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxStderrBytes": {
+                  "maximum": 16777216,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxStdinBytes": {
+                  "maximum": 16777216,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxStdoutBytes": {
+                  "maximum": 16777216,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxTotalProcesses": {
+                  "maximum": 100000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "maxWritableRootfsBytes": {
+                  "maximum": 4294967296,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "maxConcurrentProcesses",
+                "maxExecutionTimeMs",
+                "maxOpenPipes",
+                "maxProcessTreeDepth",
+                "maxStderrBytes",
+                "maxStdinBytes",
+                "maxStdoutBytes",
+                "maxTotalProcesses",
+                "maxWritableRootfsBytes"
+              ],
+              "type": "object"
+            },
+            "mounts": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "guestPath": {
+                    "maxLength": 4096,
+                    "minLength": 1,
+                    "pattern": "^/",
+                    "type": "string"
+                  },
+                  "rights": {
+                    "items": {
+                      "enum": [
+                        "read",
+                        "write"
+                      ]
+                    },
+                    "maxItems": 2,
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "rootId": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "pattern": "^[A-Za-z0-9._-]+$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "guestPath",
+                  "rights",
+                  "rootId"
+                ],
+                "type": "object"
+              },
+              "maxItems": 64,
+              "minItems": 0,
+              "type": "array"
+            },
+            "network": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "none"
+                    }
+                  },
+                  "required": [
+                    "access"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "restricted"
+                    },
+                    "endpoints": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "hostname": {
+                            "maxLength": 253,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "ports": {
+                            "items": {
+                              "maximum": 65535,
+                              "minimum": 1,
+                              "type": "integer"
+                            },
+                            "maxItems": 64,
+                            "minItems": 1,
+                            "type": "array",
+                            "uniqueItems": true
+                          },
+                          "transport": {
+                            "enum": [
+                              "tcp",
+                              "tls"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "hostname",
+                          "ports",
+                          "transport"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 256,
+                      "minItems": 0,
+                      "type": "array"
+                    },
+                    "maxSockets": {
+                      "maximum": 256,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "access",
+                    "endpoints",
+                    "maxSockets"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "shell": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "none"
+                    }
+                  },
+                  "required": [
+                    "access"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "access": {
+                      "const": "restricted"
+                    },
+                    "executableId": {
+                      "maxLength": 128,
+                      "minLength": 1,
+                      "pattern": "^[A-Za-z0-9._-]+$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "access",
+                    "executableId"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "required": [
+            "access",
+            "environment",
+            "executables",
+            "limits",
+            "mounts",
+            "network",
+            "shell"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaVersion": {
+      "const": 2
+    },
+    "systemInformation": {
+      "additionalProperties": false,
+      "properties": {
+        "defaultMode": {
+          "const": "unavailable"
+        },
+        "fields": {
+          "additionalProperties": false,
+          "properties": {
+            "os.arch": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.availableParallelism": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.cpus": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.freemem": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.homedir": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.hostname": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.loadavg": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.machine": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.networkInterfaces": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.platform": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.release": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.tmpdir": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.totalmem": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.type": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.uptime": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.userInfo": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "os.version": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "process.cwd": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "process.env": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "process.execPath": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            },
+            "process.pid": {
+              "additionalProperties": false,
+              "properties": {
+                "allowedModes": {
+                  "items": {
+                    "enum": [
+                      "real",
+                      "redacted",
+                      "synthetic"
+                    ]
+                  },
+                  "maxItems": 3,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                },
+                "maxPrecision": {
+                  "enum": [
+                    "coarse",
+                    "exact",
+                    "redacted"
+                  ]
+                }
+              },
+              "required": [
+                "allowedModes"
+              ],
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "defaultMode",
+        "fields"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schemaVersion"
+  ],
+  "type": "object"
+}

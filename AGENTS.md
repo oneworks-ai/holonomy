@@ -1,12 +1,13 @@
 # Holonomy Runtime Package
 
-`@oneworks/holonomy` owns platform-neutral JavaScript runtime behavior used by native hosts. Android, Javet and V8 bindings adapt to package ports and own only engine-thread, monotonic scheduling and operating-system primitives; they do not reinterpret guest APIs or test semantics.
+`holonomy` owns platform-neutral JavaScript runtime behavior used by native hosts. Android, Javet and V8 bindings adapt to package ports and own only engine-thread, monotonic scheduling and operating-system primitives; they do not reinterpret guest APIs or test semantics.
 
 Read [`.oo/rules/project-identity.md`](.oo/rules/project-identity.md) before changing the public positioning, icon assets, root README structure or the boundary between public documentation and internal design notes.
 
 ## Naming contract
 
 - The public project, package and runtime brand is **Holonomy**. Public TypeScript APIs, stable error identifiers, virtual schemes, Android namespaces and generated declarations use Holonomy naming.
+- The unscoped runtime and CLI package is `holonomy`. Future scoped packages use `@holonomyjs/*`; do not publish this repository as `@oneworks/holonomy` or rename the root package to `@holonomyjs/holonomy`.
 - Do not reintroduce `MobileRuntime`, `MobileModuleLoader`, `MobileFs`, `ERR_MOBILE_RUNTIME_*`, `mobile-fs://` or `@oneworks/mobile-runtime` compatibility aliases. The clean rename happened before a public npm release.
 - “Mobile” remains a deployment category, not the runtime identity. Host-specific adapters may describe mobile behavior without becoming owners of the shared runtime contract.
 
@@ -43,6 +44,7 @@ Read [`.oo/rules/project-identity.md`](.oo/rules/project-identity.md) before cha
 - `adapters/android/session-host/`: non-UI foreground Supervisor, logical Runtime generations, command-v2 replay, app-private state/output and local-abstract control transport. It does not understand CLI, OpenAPI, tests or Network rule text.
 - `adapters/node/`: one isolated Node child process per Runtime, restricted VM context, shared JavaScript bootstrap, exact-address Network host and Inspector endpoint. Read its nearest `AGENTS.md` before changing it.
 - `.oo/docs/`: public product and usage documentation. Simplified Chinese is the root locale and English mirrors it under `.oo/docs/en/`; read `.oo/docs/AGENTS.md` before changing the tree.
+- `.oo/rules/rfcs/0001-holo-capability-runtime.md`: proposed design for `holo:*` modules, host-created Runtime context, unified capability middleware, device information and controlled engine hooks. It is not a current support claim; read it before implementing that proposal.
 - `conformance/`: developer-visible CLI end-to-end cases written against `node:test`; they prove the complete CLI → Adapter → JavaScript API → Runtime path without copying lower-layer matrices. Common cases are the capability denominator and `*.holonomy.<platform>` cases are separate platform verification. Read `conformance/AGENTS.md` and `.oo/rules/testing-strategy.md` before adding cases.
 - `tools/holonomy.mjs`: thin CLI entry for code discovery, launch compilation, reporting and Service commands.
 - `tools/service/`: the only desktop owner for ADB, devices, managed emulators, Runtime process state, fixtures, logs, Network Rules, Inspector/CDP leases and OpenAPI publication. Read its nearest `AGENTS.md`; CLI paths must not fall back to direct ADB.

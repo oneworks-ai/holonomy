@@ -1,0 +1,149 @@
+[
+  {
+    "constraintKind": "device",
+    "constraintSchemaId": "DeviceCapabilityConstraintsV1",
+    "name": "host.device.sensitive",
+    "providerModule": "host.device",
+    "version": 1
+  },
+  {
+    "constraintKind": "device",
+    "constraintSchemaId": "DeviceCapabilityConstraintsV1",
+    "name": "host.device.state",
+    "providerModule": "host.device",
+    "version": 1
+  },
+  {
+    "constraintKind": "device",
+    "constraintSchemaId": "DeviceCapabilityConstraintsV1",
+    "name": "host.device.summary",
+    "providerModule": "host.device",
+    "version": 1
+  },
+  {
+    "constraintKind": "numericReader",
+    "constraintSchemaId": "ReaderCapabilityConstraintsV1",
+    "name": "host.diagnostics.source.read",
+    "providerModule": "host.diagnostics",
+    "version": 1
+  },
+  {
+    "constraintKind": "filesystem",
+    "constraintSchemaId": "FsCapabilityConstraintsV1",
+    "name": "host.fs",
+    "providerModule": "host.fs",
+    "version": 1
+  },
+  {
+    "constraintKind": "network",
+    "constraintSchemaId": "NetworkCapabilityConstraintsV1",
+    "name": "host.network.http",
+    "providerModule": "host.network",
+    "version": 1
+  },
+  {
+    "constraintKind": "network",
+    "constraintSchemaId": "NetworkCapabilityConstraintsV1",
+    "name": "host.network.mock",
+    "providerModule": "host.network.mock",
+    "version": 1
+  },
+  {
+    "constraintKind": "numericReader",
+    "constraintSchemaId": "ReaderCapabilityConstraintsV1",
+    "name": "host.network.request-body.read",
+    "providerModule": "host.network",
+    "version": 1
+  },
+  {
+    "constraintKind": "process",
+    "constraintSchemaId": "ProcessExecutionCapabilityConstraintsV1",
+    "name": "host.process.execute",
+    "providerModule": "host.process",
+    "version": 1
+  },
+  {
+    "constraintKind": "process",
+    "constraintSchemaId": "ProcessNetworkCapabilityConstraintsV1",
+    "name": "host.process.network",
+    "providerModule": "host.process",
+    "version": 1
+  },
+  {
+    "constraintKind": "process",
+    "constraintSchemaId": "ProcessShellCapabilityConstraintsV1",
+    "name": "host.process.shell",
+    "providerModule": "host.process",
+    "version": 1
+  },
+  {
+    "constraintKind": "process",
+    "constraintSchemaId": "ProcessSignalCapabilityConstraintsV1",
+    "name": "host.process.signal",
+    "providerModule": "host.process",
+    "version": 1
+  },
+  {
+    "constraintKind": "credential",
+    "constraintSchemaId": "CredentialCapabilityConstraintsV1",
+    "name": "host.storage.credential",
+    "providerModule": "host.storage",
+    "version": 1
+  },
+  {
+    "constraintKind": "system",
+    "constraintSchemaId": "SystemCapabilityConstraintsV1",
+    "name": "host.system.basic",
+    "providerModule": "host.system",
+    "version": 1
+  },
+  {
+    "constraintKind": "system",
+    "constraintSchemaId": "SystemCapabilityConstraintsV1",
+    "name": "host.system.compute",
+    "providerModule": "host.system",
+    "version": 1
+  },
+  {
+    "constraintKind": "system",
+    "constraintSchemaId": "SystemCapabilityConstraintsV1",
+    "name": "host.system.identity",
+    "providerModule": "host.system",
+    "version": 1
+  },
+  {
+    "constraintKind": "system",
+    "constraintSchemaId": "SystemCapabilityConstraintsV1",
+    "name": "host.system.memory",
+    "providerModule": "host.system",
+    "version": 1
+  },
+  {
+    "constraintKind": "system",
+    "constraintSchemaId": "SystemCapabilityConstraintsV1",
+    "name": "host.system.network-topology",
+    "providerModule": "host.system",
+    "version": 1
+  },
+  {
+    "constraintKind": "system",
+    "constraintSchemaId": "SystemCapabilityConstraintsV1",
+    "name": "host.system.process-identity",
+    "providerModule": "host.system",
+    "version": 1
+  },
+  {
+    "constraintKind": "system",
+    "constraintSchemaId": "SystemCapabilityConstraintsV1",
+    "name": "host.system.runtime",
+    "providerModule": "host.system",
+    "version": 1
+  },
+  {
+    "constraintKind": "system",
+    "constraintSchemaId": "SystemCapabilityConstraintsV1",
+    "name": "host.system.version",
+    "providerModule": "host.system",
+    "version": 1
+  }
+]

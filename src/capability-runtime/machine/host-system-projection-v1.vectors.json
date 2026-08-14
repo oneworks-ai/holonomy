@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "vectors": [
+    {
+      "input": {
+        "fields": {
+          "os.arch": {
+            "mode": "real",
+            "precision": "exact",
+            "value": "arm64"
+          },
+          "os.availableParallelism": {
+            "mode": "real",
+            "precision": "coarse",
+            "value": 5
+          },
+          "os.hostname": {
+            "mode": "redacted",
+            "precision": "redacted",
+            "value": "host-secret"
+          },
+          "os.networkInterfaces": {
+            "mode": "real",
+            "precision": "coarse",
+            "value": {
+              "en0": [
+                {
+                  "address": "192.0.2.1",
+                  "cidr": "192.0.2.1/24",
+                  "family": "IPv4",
+                  "internal": false,
+                  "mac": "aa:bb:cc:dd:ee:ff",
+                  "netmask": "255.255.255.0"
+                }
+              ]
+            }
+          },
+          "process.cwd": {
+            "mode": "synthetic",
+            "precision": "exact",
+            "value": "holo-fs://workspace/"
+          },
+          "process.env": {
+            "mode": "redacted",
+            "precision": "redacted",
+            "value": {
+              "SECRET": "value"
+            }
+          },
+          "process.pid": {
+            "mode": "redacted",
+            "precision": "redacted",
+            "value": 9000
+          }
+        },
+        "schemaVersion": 1
+      },
+      "name": "configured-projection",
+      "normalized": {
+        "fields": {
+          "os.arch": {
+            "mode": "real",
+            "precision": "exact",
+            "value": "arm64"
+          },
+          "os.availableParallelism": {
+            "mode": "real",
+            "precision": "coarse",
+            "value": 8
+          },
+          "os.hostname": {
+            "mode": "redacted",
+            "precision": "redacted",
+            "value": "sandbox"
+          },
+          "os.networkInterfaces": {
+            "mode": "real",
+            "precision": "coarse",
+            "value": {
+              "interface-1": [
+                {
+                  "address": "0.0.0.0",
+                  "cidr": null,
+                  "family": "IPv4",
+                  "internal": false,
+                  "mac": "00:00:00:00:00:00",
+                  "netmask": "0.0.0.0"
+                }
+              ]
+            }
+          },
+          "process.cwd": {
+            "mode": "synthetic",
+            "precision": "exact",
+            "value": "holo-fs://workspace/"
+          },
+          "process.env": {
+            "mode": "redacted",
+            "precision": "redacted",
+            "value": {}
+          },
+          "process.pid": {
+            "mode": "redacted",
+            "precision": "redacted",
+            "value": 1
+          }
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "input": {
+        "fields": {},
+        "schemaVersion": 1
+      },
+      "name": "default-unavailable",
+      "normalized": {
+        "fields": {},
+        "schemaVersion": 1
+      }
+    }
+  ]
+}

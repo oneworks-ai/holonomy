@@ -1,0 +1,27 @@
+{
+  "invalid": [
+    "holo-fs://workspace/../secret",
+    "holo-fs://workspace/%2e%2e/secret",
+    "holo-fs://workspace/%2Fsecret",
+    "holo-fs://workspace/%41",
+    "holo-fs://workspace//file",
+    "holo-fs://workspace/file?query=1",
+    "holo-fs://workspace/file#fragment",
+    "holo-fs://workspace/raw\\path"
+  ],
+  "schemaVersion": 1,
+  "valid": [
+    {
+      "input": "holo-fs://workspace/",
+      "normalized": "holo-fs://workspace/"
+    },
+    {
+      "input": "holo-fs://workspace/src/main.js",
+      "normalized": "holo-fs://workspace/src/main.js"
+    },
+    {
+      "input": "holo-fs://workspace/%E6%96%87%E4%BB%B6.txt",
+      "normalized": "holo-fs://workspace/%E6%96%87%E4%BB%B6.txt"
+    }
+  ]
+}

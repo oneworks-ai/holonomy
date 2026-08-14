@@ -13,6 +13,7 @@ import { stageSandboxedAdapterProcess } from './sandbox-process-staging.mjs'
 export class HolonomyControlRunner {
   #adapters
   #capabilities
+  #capabilityRuntime
   #fixtures
   #inspectorProxy
   #lifecycle
@@ -39,6 +40,7 @@ export class HolonomyControlRunner {
       registry: this.#registry,
       schedule: (deviceId, operationId, work) => this.#scheduler.schedule(deviceId, operationId, work)
     })
+    this.#capabilityRuntime = options.capabilityRuntime
   }
 
   scheduleStart(value) {
@@ -132,6 +134,9 @@ export class HolonomyControlRunner {
   scheduleNetworkRules(value) {
     this.#capabilities.networkRules(value)
   }
+  scheduleRuntimePlugins(value) {
+    this.#capabilities.runtimePlugins(value)
+  }
   scheduleRemoveNetworkRules(value) {
     this.#capabilities.removeNetworkRules(value)
   }
@@ -155,6 +160,7 @@ export class HolonomyControlRunner {
     })
     const result = await startSandboxedAdapterProcess({
       adapter,
+      capabilityRuntime: await this.#capabilityRuntime.prepare(staged.process),
       fixtureRuntimeUrl: staged.fixtureRuntimeUrl,
       networkRules,
       process: staged.process,

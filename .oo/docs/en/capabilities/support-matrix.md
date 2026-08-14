@@ -13,6 +13,8 @@ Status: ✅ supported; 🟡 supported subset; ⛔ unsupported; 🧪 implemented,
 | list/show/logs/stop/restart/remove | ✅                                               | ✅                                         | 🧪                                                                                          |
 | Inspector and DevTools             | ✅                                               | ✅                                         | 🧪                                                                                          |
 | Network Mock                       | ✅                                               | ✅                                         | 🧪                                                                                          |
+| Runtime Plugin startup loading     | ✅                                               | ✅                                         | 🧪                                                                                          |
+| Runtime Plugin `--watch`           | ✅                                               | ⛔                                         | ⛔                                                                                          |
 | Multiple runtimes                  | ✅ Separate OS child processes                   | ✅ Multiple logical V8 runtimes in one app | 🧪                                                                                          |
 | `isolatedProcess`                  | Not applicable: already a separate child process | ⛔                                         | ⛔                                                                                          |
 
@@ -32,14 +34,20 @@ Status: ✅ supported; 🟡 supported subset; ⛔ unsupported; 🧪 implemented,
 
 ## Security
 
-| Capability                    | Status | Notes                                                                  |
-| ----------------------------- | ------ | ---------------------------------------------------------------------- |
-| Network denied by default     | ✅     | No Fetch provider is installed for `network=none`                      |
-| Mock-only network             | ✅     | Unmatched requests fail closed and make zero native transport calls    |
-| Restricted network            | ✅     | Canonical origins/schemes, private-network policy, and resource limits |
-| Live rule revisions           | ✅     | Protected by generation and `If-Match`                                 |
-| Filesystem denied by default  | ✅     | Host paths are not exposed                                             |
-| Production sandbox filesystem | ⛔     | `filesystem=sandboxed` returns stable 501                              |
+| Capability                                | Node/Desktop | Android emulator | Notes                                                                                                                                                                             |
+| ----------------------------------------- | ------------ | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Network denied by default                 | ✅           | ✅               | No Fetch provider is installed for `network=none`                                                                                                                                 |
+| Mock-only network                         | ✅           | ✅               | Unmatched requests fail closed and make zero native transport calls                                                                                                               |
+| Restricted network                        | ✅           | ✅               | Canonical origins/schemes, private-network policy, and resource limits                                                                                                            |
+| Live rule revisions                       | ✅           | ✅               | Protected by generation and `If-Match`                                                                                                                                            |
+| Capability Runtime `kernel-slice`         | 🟡           | 🟡               | Atomic Context/Policy/Middleware/Provider install and old-generation fencing                                                                                                      |
+| Controlled workspace file read/write      | 🟡           | 🟡               | Limited `node:fs` sync/callback/promise on `holo-fs://workspace/` only                                                                                                            |
+| Host System / Device slice                | 🟡           | 🟡               | `os.arch` and form factor; Android also verifies power                                                                                                                            |
+| Complete production sandbox filesystem v1 | ⛔           | ⛔               | Full exports, handles, watch, and platform matrices are not complete                                                                                                              |
+| Controlled `node:child_process` profile   | 🟡           | ⛔               | macOS `process-profile-v1` + `native.darwin-seatbelt-v1` is opt-in; Android currently installs no compatible Backend                                                              |
+| Experimental v86 Linux Backend            | 🧪           | 🧪               | Node/Desktop supports private Host installation and passes a production-Runtime E2E; emulator coverage remains instrumentation; arbitrary TCP/UDP/DNS and complete FS remain open |
+
+The `kernel-slice` is executable cross-platform security-kernel evidence, not a complete Provider claim. See the [secure capability kernel](../concepts/capability-runtime.md) for the invocation order and exact boundary.
 
 ## Control plane
 

@@ -33,6 +33,24 @@ describe('holonomy Service OpenAPI contract', () => {
       target: 'node'
     })
     assert.equal(processStart.launch.modules[0].url, processStart.entryUrl)
+    const withCapability = validateServiceRequest('ProcessStartRequest', {
+      ...processStart,
+      capabilityRuntime: {
+        context: { guest: { application: 'example' }, schemaVersion: 1 },
+        initialMiddlewareId: 'service.continue.v1',
+        sandboxPolicy: { schemaVersion: 2 },
+        schemaVersion: 1
+      }
+    })
+    assert.equal(withCapability.capabilityRuntime.sandboxPolicy.schemaVersion, 2)
+    assert.throws(
+      () =>
+        validateServiceRequest('ProcessStartRequest', {
+          ...withCapability,
+          capabilityRuntime: { ...withCapability.capabilityRuntime, providerBindings: [] }
+        }),
+      error => error.code === 'service.invalid_request'
+    )
     assert.throws(
       () =>
         validateServiceRequest('ProcessStartRequest', {

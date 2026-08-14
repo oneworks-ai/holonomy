@@ -1,8 +1,13 @@
-/* eslint-disable antfu/no-top-level-await -- Module evaluation must not complete before the shared Runtime bootstrap. */
+/* eslint-disable antfu/no-top-level-await, max-lines -- This generated bootstrap is shipped as one module. */
 
+import {
+  createCapabilityModuleOverridesV1,
+  createCapabilityNetworkHooksV1,
+  createUnsupportedCapabilityWebSocketV1
+} from './modules/capability-runtime/guest-facades.js'
 import { RuntimeEventLoop } from './modules/event-loop/index.js'
 import { createRuntimeConsole } from './modules/runtime-console/index.js'
-import { createHolonomyRuntime } from './modules/runtime/index.js'
+import { HolonomyRuntimePluginAppV1, createHolonomyRuntime } from './modules/runtime/index.js'
 import { createRuntimeTimers } from './modules/timers/index.js'
 import { NetworkMockRouter } from './modules/web-network/network-mock-router.js'
 import { RuntimeTextDecoder, RuntimeURL, RuntimeURLSearchParams } from './runtime-web-standards.mjs'
@@ -96,6 +101,52 @@ const nodeCore = {
   webStandards: { URL: RuntimeURL, URLSearchParams: RuntimeURLSearchParams }
 }
 
+const capabilityConfigurationSource = host.capabilityConfiguration()
+const capabilityConfiguration = capabilityConfigurationSource == null
+  ? null
+  : JSON.parse(capabilityConfigurationSource)
+
+const capabilityBridge = capabilityConfiguration == null
+  ? undefined
+  : Object.freeze({
+    invoke: requestJson =>
+      new Promise((resolve, reject) => {
+        const accepted = host.capabilityInvoke(requestJson, resolve)
+        if (accepted !== true) reject(new Error('Holonomy capability Runtime is unavailable'))
+      }),
+    invokeImmediate: requestJson => {
+      const source = host.capabilityInvokeImmediate(requestJson)
+      if (source == null) throw new Error('Holonomy capability Runtime is unavailable')
+      return source
+    },
+    invokeSync: requestJson => {
+      const source = host.capabilityInvokeSync(requestJson)
+      if (source == null) throw new Error('Holonomy capability Runtime is unavailable')
+      return source
+    },
+    releaseResource: bindingId => host.capabilityReleaseResource(bindingId),
+    subscribeResource: (bindingId, listener) => {
+      const dispose = host.capabilitySubscribeResource(bindingId, listener)
+      if (typeof dispose !== 'function') throw new Error('Holonomy capability resource is unavailable')
+      return dispose
+    }
+  })
+
+const capabilityModules = capabilityBridge == null
+  ? undefined
+  : createCapabilityModuleOverridesV1({
+    context: capabilityConfiguration.context,
+    processEnvironment: capabilityConfiguration.processEnvironment,
+    processShellExecutableId: capabilityConfiguration.processShellExecutableId,
+    ...(capabilityConfiguration.processEnabled
+      ? {
+        process: nodeCore.process,
+        processControl: nodeCore.processControl,
+        stdio: nodeCore.stdio
+      }
+      : {})
+  }, capabilityBridge)
+
 const runtime = await createHolonomyRuntime({
   authority: {
     capabilities: sandboxPlan.capabilities,
@@ -109,6 +160,7 @@ const runtime = await createHolonomyRuntime({
     ? {
       network: {
         authority: sandboxPlan.authority,
+        ...(capabilityBridge == null ? {} : { capability: createCapabilityNetworkHooksV1(capabilityBridge) }),
         diagnostics: { emit: event => host.networkDiagnostic(JSON.stringify(event)) },
         diagnosticsBodyLimitBytes: 2 * 1024 * 1024,
         principal: sandboxPlan.principal
@@ -116,6 +168,7 @@ const runtime = await createHolonomyRuntime({
     }
     : {}),
   nodeCore,
+  ...(capabilityModules == null ? {} : { moduleOverrides: capabilityModules }),
   testPlatform: 'node',
   timers
 })
@@ -123,7 +176,10 @@ const runtime = await createHolonomyRuntime({
 if (host.installSyntheticModules(runtime.syntheticModules) !== true) {
   throw new Error('Node Runtime synthetic registry installation failed')
 }
-for (const [name, value] of Object.entries(runtime.globals)) {
+const runtimeGlobals = capabilityConfiguration == null
+  ? runtime.globals
+  : { ...runtime.globals, WebSocket: createUnsupportedCapabilityWebSocketV1() }
+for (const [name, value] of Object.entries(runtimeGlobals)) {
   Object.defineProperty(globalThis, name, {
     configurable: true,
     enumerable: false,
@@ -132,9 +188,19 @@ for (const [name, value] of Object.entries(runtime.globals)) {
   })
 }
 
+const pluginApp = new HolonomyRuntimePluginAppV1({
+  importModule: entryUrl => import(entryUrl),
+  initialRevision: configuration.pluginGraphRevision - (configuration.runtimePlugins.length === 0 ? 0 : 1)
+})
+await pluginApp.replace(configuration.runtimePlugins)
+if (pluginApp.snapshot().pluginGraphRevision !== configuration.pluginGraphRevision) {
+  throw new Error('Runtime plugin graph revision mismatch')
+}
+host.registerPluginUpdater(json => pluginApp.replace(JSON.parse(json)))
+
 const plan = await runtime.moduleLoader.createPlan(configuration.userEntryUrl)
 if (!plan.modules.some(module => module.url === configuration.userEntryUrl)) {
   throw new Error('Node Runtime entry is absent from the module plan')
 }
-host.registerDispose(() => runtime.dispose())
+host.registerDispose(() => pluginApp.close().then(() => runtime.dispose()))
 await import(configuration.userEntryUrl)

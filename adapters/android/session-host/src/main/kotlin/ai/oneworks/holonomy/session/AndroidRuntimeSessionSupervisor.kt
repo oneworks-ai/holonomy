@@ -337,6 +337,8 @@ class AndroidRuntimeSessionSupervisor(
                 val graph = SessionModuleGraph(record.spec)
                 val processHost = SupervisorProcessHost(record, generation)
                 val principal = generationPrincipal(record.runtimeId, generation)
+                val capabilityRuntimeConfiguration =
+                    SessionCapabilityRuntime.configurationForGeneration(record.spec, generation)
                 val context = SessionRuntimeContext(
                     runtimeId = record.runtimeId,
                     generation = generation,
@@ -346,6 +348,7 @@ class AndroidRuntimeSessionSupervisor(
                     sandboxPolicyDigest = record.spec.sandboxPolicy.digest,
                     principal = principal,
                     freshNativeHostFactory = freshNativeHostFactory(record, generation, principal),
+                    capabilityRuntimeConfigurationJson = capabilityRuntimeConfiguration,
                 )
                 val instance = runtimeFactory.create(context)
                 val engine = instance.engine
@@ -675,6 +678,7 @@ class AndroidRuntimeSessionSupervisor(
         override val configuration = RuntimeProcessConfiguration(
             argv = record.spec.argv,
             env = record.spec.env,
+            runtimePluginsJson = encodeRuntimePluginBundles(record.spec.runtimePlugins).toString(),
         )
 
         override fun write(stream: RuntimeOutputStream, chunk: String) {

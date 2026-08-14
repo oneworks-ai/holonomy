@@ -67,12 +67,18 @@ export const createHolonomyService = options => {
   })
   const core = options.core ?? new HolonomyControlCore({
     adapterDispatcher,
+    capabilityMiddlewareRegistry: options.capabilityMiddlewareRegistry,
+    capabilityProcessBackendInstallations: options.capabilityProcessBackendInstallations,
+    capabilityProcessBackendRegistry: options.capabilityProcessBackendRegistry,
+    capabilityProcessProfiles: options.capabilityProcessProfiles,
+    capabilityRuntimeManager: options.capabilityRuntimeManager,
     fixtureManager: options.fixtureManager,
     inspectorProxy: options.inspectorProxy,
     logStore,
     mutationCoordinator,
     now: options.now,
     retentionMs: options.retentionMs,
+    stateDirectory: options.stateDirectory,
     store
   })
   let activeToken = configuration.token

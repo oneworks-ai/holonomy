@@ -1,0 +1,72 @@
+{
+  "$id": "https://oneworks.ai/holonomy/contracts/capability-definition-registry-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "items": {
+    "additionalProperties": false,
+    "properties": {
+      "constraintKind": {
+        "enum": [
+          "credential",
+          "device",
+          "empty",
+          "filesystem",
+          "network",
+          "numericReader",
+          "process",
+          "system"
+        ]
+      },
+      "constraintSchemaId": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        "type": "string"
+      },
+      "name": {
+        "enum": [
+          "host.device.sensitive",
+          "host.device.state",
+          "host.device.summary",
+          "host.diagnostics.source.read",
+          "host.fs",
+          "host.network.http",
+          "host.network.mock",
+          "host.network.request-body.read",
+          "host.process.execute",
+          "host.process.network",
+          "host.process.shell",
+          "host.process.signal",
+          "host.storage.credential",
+          "host.system.basic",
+          "host.system.compute",
+          "host.system.identity",
+          "host.system.memory",
+          "host.system.network-topology",
+          "host.system.process-identity",
+          "host.system.runtime",
+          "host.system.version"
+        ]
+      },
+      "providerModule": {
+        "maxLength": 128,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+        "type": "string"
+      },
+      "version": {
+        "const": 1
+      }
+    },
+    "required": [
+      "constraintKind",
+      "constraintSchemaId",
+      "name",
+      "providerModule",
+      "version"
+    ],
+    "type": "object"
+  },
+  "maxItems": 21,
+  "minItems": 21,
+  "type": "array"
+}

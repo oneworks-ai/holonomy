@@ -307,6 +307,10 @@ describe('mobileModuleLoader security and entry boundaries', () => {
       'ERR_HOLONOMY_MODULE_SYNTHETIC_NOT_FOUND'
     )
     await expectLoaderError(
+      () => loader.resolve('holo:device'),
+      'ERR_HOLONOMY_MODULE_SYNTHETIC_NOT_FOUND'
+    )
+    await expectLoaderError(
       () => loader.resolve('@fixture/f1-runtime/private'),
       'ERR_PACKAGE_PATH_NOT_EXPORTED'
     )

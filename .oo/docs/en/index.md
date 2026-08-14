@@ -26,8 +26,8 @@ Holonomy is a platform-neutral, Node-like JavaScript Runtime for native hosts. T
 
 ## Current boundary
 
-The network sandbox supports `none`, `mockOnly`, and explicitly authorized `restricted` access. No production filesystem provider is exposed yet; `filesystem=sandboxed` returns a stable unsupported error. Android currently provides multiple logical V8 Runtimes in one application process; `isolatedProcess` is not implemented.
+The network sandbox supports `none`, `mockOnly`, and explicitly authorized `restricted` access. Capability Runtime exposes a controlled workspace `kernel-slice` across Node/Desktop and the Android emulator; the complete production filesystem provider is not available yet. Android currently provides multiple logical V8 Runtimes in one application process; `isolatedProcess` is not implemented.
 
 See [Known limitations](./capabilities/known-limitations.md) for the complete summary.
 
-See [System architecture](./concepts/architecture.md) for the full module relationship.
+See [System architecture](./concepts/architecture.md) for the full module relationship and [Secure capability kernel](./concepts/capability-runtime.md) for admission and invocation order.

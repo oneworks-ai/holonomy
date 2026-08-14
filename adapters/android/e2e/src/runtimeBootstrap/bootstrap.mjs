@@ -1,10 +1,14 @@
 /* eslint-disable max-lines -- The generated E2E bootstrap keeps its composer state and controls together. */
 
+import { runtimePluginNamespaces } from 'holo-plugins:///manifest.mjs'
+import { createAndroidCapabilityRuntime } from './capability-runtime.mjs'
 import { RuntimeEventLoop } from './modules/event-loop/index.js'
 import { createRuntimeConsole } from './modules/runtime-console/index.js'
 import { createHolonomyRuntime } from './modules/runtime/index.js'
+import { HolonomyRuntimePluginAppV1 } from './modules/runtime/plugin-app.js'
 import { createRuntimeTimers } from './modules/timers/index.js'
 import { NetworkMockRouter } from './modules/web-network/network-mock-router.js'
+import { WebAbortController, WebAbortSignal } from './modules/web-network/web-abort.js'
 import { RuntimeTextDecoder, RuntimeURL, RuntimeURLSearchParams } from './runtime-web-standards.mjs'
 
 const host = globalThis.__oneworksAndroidHost
@@ -12,6 +16,14 @@ if (host == null) throw new Error('Android host is unavailable')
 delete globalThis.__oneworksAndroidHost
 const runtimeArchitecture = host.architecture()
 const processConfiguration = JSON.parse(host.processConfiguration())
+const runtimePluginBundles = JSON.parse(host.runtimePlugins())
+const runtimePluginDefinitions = runtimePluginBundles.map(bundle => ({
+  bundleSha256: bundle.bundleSha256,
+  config: bundle.config,
+  entryUrl: bundle.entryUrl,
+  exportName: bundle.exportName,
+  instanceId: bundle.instanceId
+}))
 const nativeConfiguration = (() => {
   try {
     const value = JSON.parse(host.nativeConfiguration())
@@ -33,6 +45,7 @@ const SET_ADD = Set.prototype.add
 const SET_DELETE = Set.prototype.delete
 const SET_HAS = Set.prototype.has
 const SET_SIZE = Object.getOwnPropertyDescriptor(Set.prototype, 'size').get
+const UINT8_ARRAY = Uint8Array
 const mapDelete = (map, key) => APPLY(MAP_DELETE, map, [key])
 const mapGet = (map, key) => APPLY(MAP_GET, map, [key])
 const mapSet = (map, key, value) => APPLY(MAP_SET, map, [key, value])
@@ -54,6 +67,8 @@ const networkEnabled = (nativeCapabilities.includes('host.network.http') ||
 globalThis.URL = RuntimeURL
 globalThis.URLSearchParams = RuntimeURLSearchParams
 globalThis.TextDecoder = RuntimeTextDecoder
+globalThis.AbortController = WebAbortController
+globalThis.AbortSignal = WebAbortSignal
 
 const EXPECTED_MODULES = Object.freeze([
   'node:buffer',
@@ -74,13 +89,15 @@ const EXPECTED_GLOBALS = Object.freeze([
   'ReadableStream',
   'TransformStream',
   'WritableStream',
+  'AbortController',
+  'AbortSignal',
   'console',
   'clearInterval',
   'clearTimeout',
   'setInterval',
   'setTimeout',
   ...(networkEnabled
-    ? ['AbortController', 'AbortSignal', 'Headers', 'Request', 'Response', 'fetch']
+    ? ['Headers', 'Request', 'Response', 'fetch']
     : [])
 ])
 const OPTIONAL_CAPABILITIES = Object.freeze([
@@ -92,6 +109,15 @@ const OPTIONAL_CAPABILITIES = Object.freeze([
   ...(networkEnabled ? [] : ['network']),
   'storage'
 ])
+
+const capabilityRuntime = createAndroidCapabilityRuntime(host)
+const runtimePluginApp = new HolonomyRuntimePluginAppV1({
+  importModule: async url => {
+    const namespace = runtimePluginNamespaces[url]
+    if (namespace == null) throw new Error('Android Runtime plugin namespace is unavailable')
+    return namespace
+  }
+})
 
 const state = {
   architecture: runtimeArchitecture,
@@ -399,8 +425,46 @@ globalThis.__oneworksAndroidTurn = () => {
 }
 globalThis.__oneworksAndroidTimer = timerId => timers.fire(timerId)
 
+const trustedBackendValue = value => {
+  if (!(value instanceof UINT8_ARRAY)) return { kind: 'value', value }
+  const bytes = []
+  for (let index = 0; index < value.length; index += 1) arrayPush(bytes, value[index])
+  return { bytes, kind: 'bytes' }
+}
+
+globalThis.__oneworksAndroidTrustedBackend = async (channel, requestJson) => {
+  try {
+    if (!['linuxFilesystem', 'linuxProcessNetwork'].includes(channel) || capabilityRuntime == null) {
+      throw Object.assign(new Error('Trusted Backend channel is unavailable'), {
+        code: 'runtime.capability_unsupported'
+      })
+    }
+    const input = JSON_PARSE(requestJson)
+    if (channel === 'linuxFilesystem' && Array.isArray(input.bytes)) {
+      if (
+        input.bytes.length > 64 * 1024 ||
+        input.bytes.some(value => !Number.isInteger(value) || value < 0 || value > 255)
+      ) throw Object.assign(new Error('Invalid trusted Backend binary payload'), { code: 'argument.invalid' })
+      input.bytes = new UINT8_ARRAY(input.bytes)
+    }
+    const value = channel === 'linuxFilesystem'
+      ? await capabilityRuntime.linuxFilesystem.dispatch(input)
+      : await capabilityRuntime.linuxProcessNetwork.authorize(input)
+    return JSON_STRINGIFY({ ok: true, result: trustedBackendValue(value) })
+  } catch (error) {
+    return JSON_STRINGIFY({
+      error: {
+        code: typeof error?.code === 'string' ? error.code : 'runtime.internal',
+        ...(Number.isInteger(error?.errno) ? { errno: error.errno } : {}),
+        message: typeof error?.message === 'string' ? error.message : 'Trusted Backend invocation failed'
+      },
+      ok: false
+    })
+  }
+}
+
 let runtime
-createHolonomyRuntime({
+const runtimeReady = createHolonomyRuntime({
   authority: { capabilities: nativeCapabilities, principal: nativePrincipal },
   console: runtimeConsole,
   eventLoop,
@@ -418,24 +482,28 @@ createHolonomyRuntime({
     }
     : {}),
   nodeCore,
+  ...(capabilityRuntime == null ? {} : { moduleOverrides: capabilityRuntime.moduleOverrides }),
   testPlatform: 'android',
   timers
-}).then(createdRuntime => {
+}).then(async createdRuntime => {
   runtime = createdRuntime
   host.installSyntheticModules(runtime.syntheticModules)
   for (const [name, value] of Object.entries(runtime.globals)) {
     Object.defineProperty(globalThis, name, {
       configurable: true,
       enumerable: false,
-      value,
+      value: name === 'fetch' && capabilityRuntime != null ? capabilityRuntime.fetch(value) : value,
       writable: true
     })
   }
+  await runtimePluginApp.replace(runtimePluginDefinitions)
   state.phase = 'ready'
 }).catch(error => {
   state.error = publicError(error)
   state.phase = 'failed'
+  throw error
 })
+globalThis.__oneworksAndroidReady = () => runtimeReady
 
 globalThis.__oneworksHolonomy = Object.freeze({
   dispose() {
@@ -443,7 +511,8 @@ globalThis.__oneworksHolonomy = Object.freeze({
     eventLoop.setTimeout(() => {
       state.disposeRaceFired = true
     }, 500)
-    runtime.dispose().then(async () => {
+    capabilityRuntime?.close()
+    runtimePluginApp.close().then(() => runtime.dispose()).then(async () => {
       let loaderError = null
       try {
         await runtime.moduleLoader.createPlan('./managed-plugin.mjs')
@@ -501,6 +570,77 @@ globalThis.__oneworksHolonomy = Object.freeze({
       state.native = { error: publicError(error), phase: 'rejected' }
     })
     return { beforeTurn: runtime.getSnapshot().nativeBridge.pendingRequests }
+  },
+  async exerciseLinuxFilesystemBridge() {
+    if (capabilityRuntime == null) throw new Error('Capability Runtime is unavailable')
+    const policy = Object.freeze({
+      access: 'sandboxed',
+      environment: Object.freeze({ allowedNames: Object.freeze([]), maxValueBytes: 1 }),
+      executables: Object.freeze([]),
+      limits: Object.freeze({
+        maxConcurrentProcesses: 1,
+        maxExecutionTimeMs: 1_000,
+        maxOpenPipes: 3,
+        maxProcessTreeDepth: 1,
+        maxStderrBytes: 4_096,
+        maxStdinBytes: 4_096,
+        maxStdoutBytes: 4_096,
+        maxTotalProcesses: 1,
+        maxWritableRootfsBytes: 4_096
+      }),
+      mounts: Object.freeze([Object.freeze({
+        guestPath: '/workspace',
+        rights: Object.freeze(['read', 'write']),
+        rootId: 'workspace'
+      })]),
+      network: Object.freeze({ access: 'none' }),
+      shell: Object.freeze({ access: 'none' })
+    })
+    const common = Object.freeze({
+      environmentId: 'android-v86-environment',
+      executableId: 'android-v86-fuse',
+      linuxPid: 41,
+      policy,
+      processId: 9,
+      processResourceId: 'android-v86-fuse-process',
+      scope: 'runtime'
+    })
+    const dispatch = input => capabilityRuntime.linuxFilesystem.dispatch({ ...common, ...input })
+    const metadata = await dispatch({ operation: 'lookup', path: '/workspace/input.txt' })
+    const inputHandle = await dispatch({ flags: 0, operation: 'open', path: '/workspace/input.txt' })
+    const input = await dispatch({
+      handle: inputHandle,
+      offset: 0,
+      operation: 'read',
+      path: '/workspace/input.txt',
+      size: 64
+    })
+    await dispatch({ handle: inputHandle, operation: 'release', path: '/workspace/input.txt' })
+    const outputHandle = await dispatch({
+      flags: 0x41,
+      operation: 'create',
+      path: '/workspace/linux-output.txt'
+    })
+    const outputBytes = asciiBytes('android-linux-output')
+    const written = await dispatch({
+      bytes: outputBytes,
+      handle: outputHandle.handle,
+      offset: 0,
+      operation: 'write',
+      path: '/workspace/linux-output.txt'
+    })
+    await dispatch({
+      handle: outputHandle.handle,
+      operation: 'release',
+      path: '/workspace/linux-output.txt'
+    })
+    return Object.freeze({
+      input: new TextDecoder().decode(input),
+      linuxPid: common.linuxPid,
+      size: metadata.size,
+      syntheticProcessId: common.processId,
+      written
+    })
   },
   exerciseNativeBinarySnapshot() {
     state.nativeBinary = { phase: 'pending' }

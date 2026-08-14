@@ -30,5 +30,13 @@ export const createRuntimeConfiguration = session =>
       virtualRoot: '/runtime'
     },
     sandboxPlan: session.sandboxPlan,
+    pluginGraphRevision: session.pluginGraphRevision,
+    runtimePlugins: session.runtimePlugins.map(plugin => ({
+      bundleSha256: plugin.bundleSha256,
+      config: plugin.config,
+      entryUrl: plugin.entryUrl,
+      exportName: plugin.exportName,
+      instanceId: plugin.instanceId
+    })),
     userEntryUrl: session.userEntryUrl
   })

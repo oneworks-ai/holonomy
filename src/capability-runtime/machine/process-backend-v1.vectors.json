@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "vectors": [
+    {
+      "name": "native-darwin-seatbelt",
+      "normalized": {
+        "backendId": "native.darwin-seatbelt-v1",
+        "binaryFormats": [
+          "host-native"
+        ],
+        "environmentScopes": [
+          "processTree"
+        ],
+        "family": "native",
+        "features": {
+          "filesystemBridge": false,
+          "networkBridge": false,
+          "pty": false,
+          "shell": true,
+          "signals": true,
+          "snapshots": false,
+          "synchronousSpawn": true
+        },
+        "platforms": [
+          "desktop",
+          "node"
+        ],
+        "stability": "stable",
+        "version": 1
+      }
+    }
+  ]
+}

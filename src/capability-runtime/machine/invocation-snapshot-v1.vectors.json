@@ -1,0 +1,89 @@
+{
+  "invalid": [
+    {
+      "name": "duplicate-object-key",
+      "snapshot": {
+        "direction": "argument",
+        "root": {
+          "entries": [
+            {
+              "key": "same",
+              "value": {
+                "kind": "scalar",
+                "value": 1
+              }
+            },
+            {
+              "key": "same",
+              "value": {
+                "kind": "scalar",
+                "value": 2
+              }
+            }
+          ],
+          "kind": "object"
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "name": "result-callback-binding",
+      "snapshot": {
+        "direction": "result",
+        "root": {
+          "bindingId": "callback-result",
+          "bindingType": "callback",
+          "generation": 1,
+          "kind": "binding"
+        },
+        "schemaVersion": 1
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "vectors": [
+    {
+      "name": "argument-with-binary-and-callback",
+      "snapshot": {
+        "direction": "argument",
+        "root": {
+          "entries": [
+            {
+              "key": "body",
+              "value": {
+                "bindingId": "binary-1",
+                "byteLength": 3,
+                "kind": "binary",
+                "sha256": "8e7e3dbc1efdad3742053d2e2365e753cc13c88cef76323d8c0dbfe339a97185"
+              }
+            },
+            {
+              "key": "callback",
+              "value": {
+                "bindingId": "callback-1",
+                "bindingType": "callback",
+                "generation": 3,
+                "kind": "binding"
+              }
+            }
+          ],
+          "kind": "object"
+        },
+        "schemaVersion": 1
+      }
+    },
+    {
+      "name": "result-with-resource",
+      "snapshot": {
+        "direction": "result",
+        "root": {
+          "bindingId": "resource-1",
+          "bindingType": "resource",
+          "generation": 3,
+          "kind": "binding"
+        },
+        "schemaVersion": 1
+      }
+    }
+  ]
+}

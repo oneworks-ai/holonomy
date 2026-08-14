@@ -1,0 +1,114 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "backendId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "type": "string"
+    },
+    "binaryFormats": {
+      "items": {
+        "enum": [
+          "host-native",
+          "linux-x86-32",
+          "packaged-wasm",
+          "wasix"
+        ]
+      },
+      "maxItems": 4,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "environmentScopes": {
+      "items": {
+        "enum": [
+          "processTree",
+          "runtime"
+        ]
+      },
+      "maxItems": 2,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "family": {
+      "enum": [
+        "native",
+        "virtual-kernel",
+        "virtual-machine",
+        "wasix"
+      ]
+    },
+    "features": {
+      "additionalProperties": false,
+      "properties": {
+        "filesystemBridge": {
+          "type": "boolean"
+        },
+        "networkBridge": {
+          "type": "boolean"
+        },
+        "pty": {
+          "type": "boolean"
+        },
+        "shell": {
+          "type": "boolean"
+        },
+        "signals": {
+          "type": "boolean"
+        },
+        "snapshots": {
+          "type": "boolean"
+        },
+        "synchronousSpawn": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "filesystemBridge",
+        "networkBridge",
+        "pty",
+        "shell",
+        "signals",
+        "snapshots",
+        "synchronousSpawn"
+      ],
+      "type": "object"
+    },
+    "platforms": {
+      "items": {
+        "enum": [
+          "android",
+          "desktop",
+          "node"
+        ]
+      },
+      "maxItems": 3,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "stability": {
+      "enum": [
+        "experimental",
+        "stable"
+      ]
+    },
+    "version": {
+      "const": 1
+    }
+  },
+  "required": [
+    "backendId",
+    "binaryFormats",
+    "environmentScopes",
+    "family",
+    "features",
+    "platforms",
+    "stability",
+    "version"
+  ],
+  "type": "object"
+}

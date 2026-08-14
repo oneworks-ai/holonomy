@@ -17,7 +17,15 @@ export const publicProcessDto = process => {
     id: process.id,
     inspectorMode: process.inspectorMode,
     isolation: process.isolation,
+    pluginGraphRevision: process.pluginGraphRevision ?? 0,
     revision: process.revision,
+    ...(process.capabilityRuntime == null
+      ? {}
+      : {
+        capabilityContextDigest: process.capabilityRuntime.contextDigest,
+        capabilityPolicyDigest: process.capabilityRuntime.policyDigest,
+        capabilityRuntimeState: 'kernel-slice'
+      }),
     sandboxPolicyState: effective ? 'effective' : 'pending',
     sessionId: process.sessionId,
     state: process.state,

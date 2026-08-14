@@ -1,0 +1,206 @@
+{
+  "argument.invalid": {
+    "childProcess": {
+      "default": "EINVAL"
+    },
+    "holo": "holo.invalid_arguments",
+    "nodeFs": "EINVAL",
+    "nodeSystem": "ERR_INVALID_ARG_VALUE"
+  },
+  "capability.denied": {
+    "childProcess": {
+      "default": "EACCES"
+    },
+    "holo": "holo.capability_denied",
+    "nodeFs": "EACCES",
+    "nodeSystem": "ERR_ACCESS_DENIED"
+  },
+  "middleware.failed": {
+    "childProcess": {
+      "default": "EIO"
+    },
+    "holo": "holo.middleware_failed",
+    "nodeFs": "EIO",
+    "nodeSystem": "ERR_OPERATION_FAILED"
+  },
+  "middleware.invalid_result": {
+    "childProcess": {
+      "default": "EPROTO"
+    },
+    "holo": "holo.invalid_result",
+    "nodeFs": "EPROTO",
+    "nodeSystem": "ERR_INVALID_RETURN_VALUE"
+  },
+  "middleware.permission_denied": {
+    "childProcess": {
+      "default": "EACCES"
+    },
+    "holo": "holo.permission_denied",
+    "nodeFs": "EACCES",
+    "nodeSystem": "ERR_ACCESS_DENIED"
+  },
+  "middleware.timeout": {
+    "childProcess": {
+      "default": "ETIMEDOUT"
+    },
+    "holo": "holo.operation_timeout",
+    "nodeFs": "ETIMEDOUT",
+    "nodeSystem": "ERR_OPERATION_TIMEOUT"
+  },
+  "policy.denied": {
+    "childProcess": {
+      "default": "EACCES"
+    },
+    "holo": "holo.policy_denied",
+    "nodeFs": "EACCES",
+    "nodeSystem": "ERR_ACCESS_DENIED"
+  },
+  "provider.connection_refused": {
+    "childProcess": {
+      "default": "ECONNREFUSED"
+    },
+    "holo": "holo.connection_refused",
+    "nodeFs": "ECONNREFUSED",
+    "nodeSystem": "ERR_SYSTEM_ERROR"
+  },
+  "provider.permission_denied": {
+    "childProcess": {
+      "default": "EACCES"
+    },
+    "holo": "holo.permission_denied",
+    "nodeFs": "EACCES",
+    "nodeSystem": "ERR_ACCESS_DENIED"
+  },
+  "provider.protocol_error": {
+    "childProcess": {
+      "default": "EPROTO"
+    },
+    "holo": "holo.protocol_error",
+    "nodeFs": "EPROTO",
+    "nodeSystem": "ERR_SYSTEM_ERROR"
+  },
+  "provider.quota": {
+    "childProcess": {
+      "capturedOutput": "ERR_CHILD_PROCESS_STDIO_MAXBUFFER",
+      "default": "ERR_OUT_OF_RANGE",
+      "stdinWrite": "EFBIG"
+    },
+    "holo": "holo.resource_exhausted",
+    "nodeFs": "EFBIG",
+    "nodeSystem": "ERR_OUT_OF_RANGE"
+  },
+  "provider.timeout": {
+    "childProcess": {
+      "default": "ETIMEDOUT"
+    },
+    "holo": "holo.operation_timeout",
+    "nodeFs": "ETIMEDOUT",
+    "nodeSystem": "ERR_OPERATION_TIMEOUT"
+  },
+  "provider.unavailable": {
+    "childProcess": {
+      "default": "EIO"
+    },
+    "holo": "holo.provider_unavailable",
+    "nodeFs": "EIO",
+    "nodeSystem": "ERR_SYSTEM_ERROR"
+  },
+  "resource.byte_limit": {
+    "childProcess": {
+      "capturedOutput": "ERR_CHILD_PROCESS_STDIO_MAXBUFFER",
+      "default": "ERR_OUT_OF_RANGE",
+      "stdinWrite": "EFBIG"
+    },
+    "holo": "holo.resource_exhausted",
+    "nodeFs": "EFBIG",
+    "nodeSystem": "ERR_OUT_OF_RANGE"
+  },
+  "resource.cross_root": {
+    "childProcess": {
+      "default": "EINVAL"
+    },
+    "holo": "holo.invalid_arguments",
+    "nodeFs": "EXDEV",
+    "nodeSystem": "ERR_INVALID_ARG_VALUE"
+  },
+  "resource.event_limit": {
+    "childProcess": {
+      "default": "EMFILE"
+    },
+    "holo": "holo.resource_exhausted",
+    "nodeFs": "ENOSPC",
+    "nodeSystem": "ERR_SYSTEM_ERROR"
+  },
+  "resource.exists": {
+    "childProcess": {
+      "default": "ERR_INVALID_STATE"
+    },
+    "holo": "holo.already_exists",
+    "nodeFs": "EEXIST",
+    "nodeSystem": "ERR_INVALID_STATE"
+  },
+  "resource.handle_limit": {
+    "childProcess": {
+      "default": "EMFILE"
+    },
+    "holo": "holo.resource_exhausted",
+    "nodeFs": "EMFILE",
+    "nodeSystem": "ERR_SYSTEM_ERROR"
+  },
+  "resource.invalid": {
+    "childProcess": {
+      "default": "EINVAL"
+    },
+    "holo": "holo.invalid_arguments",
+    "nodeFs": "EINVAL",
+    "nodeSystem": "ERR_INVALID_ARG_VALUE"
+  },
+  "resource.not_found": {
+    "childProcess": {
+      "default": "ENOENT"
+    },
+    "holo": "holo.not_found",
+    "nodeFs": "ENOENT",
+    "nodeSystem": "ERR_INVALID_STATE"
+  },
+  "resource.stale": {
+    "childProcess": {
+      "default": "ERR_INVALID_STATE"
+    },
+    "holo": "holo.generation_stale",
+    "nodeFs": "EBADF",
+    "nodeSystem": "ERR_INVALID_STATE"
+  },
+  "result.invalid": {
+    "childProcess": {
+      "default": "EPROTO"
+    },
+    "holo": "holo.invalid_result",
+    "nodeFs": "EPROTO",
+    "nodeSystem": "ERR_INVALID_RETURN_VALUE"
+  },
+  "runtime.async_required": {
+    "childProcess": {
+      "default": "ENOSYS"
+    },
+    "holo": "holo.async_required",
+    "nodeFs": "ENOSYS",
+    "nodeSystem": "ERR_METHOD_NOT_IMPLEMENTED"
+  },
+  "runtime.cancelled": {
+    "childProcess": {
+      "default": "ABORT_ERR"
+    },
+    "holo": "holo.operation_cancelled",
+    "nodeFs": "ABORT_ERR",
+    "nodeSystem": "ABORT_ERR"
+  },
+  "runtime.generation_stale": {
+    "childProcess": {
+      "default": "ERR_INVALID_STATE"
+    },
+    "holo": "holo.generation_stale",
+    "nodeFs": "EBADF",
+    "nodeSystem": "ERR_INVALID_STATE"
+  }
+}

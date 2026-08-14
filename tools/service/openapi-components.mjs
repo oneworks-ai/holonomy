@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- This declarative OpenAPI component table remains a single generated-document owner. */
+
 import { SERVICE_ERROR_CODES } from './errors.mjs'
 import { SERVICE_REQUEST_SCHEMAS } from './request-schemas.mjs'
 
@@ -96,6 +98,9 @@ export const OPENAPI_COMPONENTS = {
       ],
       properties: {
         activeOperationId: { type: 'string' },
+        capabilityContextDigest: { pattern: '^[0-9a-f]{64}$', type: 'string' },
+        capabilityPolicyDigest: { pattern: '^[0-9a-f]{64}$', type: 'string' },
+        capabilityRuntimeState: { const: 'kernel-slice' },
         cleanupPending: { type: 'boolean' },
         createdAt: { minimum: 0, type: 'integer' },
         deviceId: { type: 'string' },
@@ -114,6 +119,7 @@ export const OPENAPI_COMPONENTS = {
         id: { type: 'string' },
         inspectorMode: { enum: ['break', 'enabled', 'off'] },
         isolation: { enum: ['isolatedProcess', 'runtime'] },
+        pluginGraphRevision: { minimum: 0, type: 'integer' },
         revision: { minimum: 1, type: 'integer' },
         sandboxPolicy: SERVICE_REQUEST_SCHEMAS.ProcessStartRequest.properties.sandboxPolicy,
         sandboxPolicyDigest: { pattern: '^[0-9a-f]{64}$', type: 'string' },
@@ -144,6 +150,7 @@ export const OPENAPI_COMPONENTS = {
         'id',
         'inspectorMode',
         'isolation',
+        'pluginGraphRevision',
         'revision',
         'sandboxPolicyState',
         'sessionId',

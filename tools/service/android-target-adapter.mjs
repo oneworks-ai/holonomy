@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- The Android adapter's returned port is kept atomically in one factory. */
+
 import { readTarget } from '../android-devtools-cdp.mjs'
 import { createAdbPort } from './adb-port.mjs'
 import { AndroidAdbLeaseStore } from './android-adb-lease-store.mjs'
@@ -118,15 +120,24 @@ export const createAndroidRuntimeAdapter = (options = {}) => {
         transport.close()
       }
     },
-    startProcess: async ({ initialNetworkRuleSet, process, signal }) => {
+    startProcess: async ({ capabilityRuntime, initialNetworkRuleSet, process, signal }) => {
       const serial = androidSerialOf(process)
       let record = records.get(process.id)
+      if (record != null && record.processGeneration !== process.generation) {
+        await commandPort.command(serial, {
+          command: 'dispose',
+          expectedGeneration: record.generation,
+          runtimeId: process.id
+        }, { signal })
+        records.delete(process.id)
+        record = undefined
+      }
       if (record == null) {
         const socketName = process.inspectorMode === 'off' ? undefined : androidInspectorSocket(process.id)
         const created = await commandPort.command(serial, {
           command: 'create',
           runtimeId: process.id,
-          spec: createAndroidRuntimeSpec(process, socketName, initialNetworkRuleSet)
+          spec: createAndroidRuntimeSpec(process, socketName, initialNetworkRuleSet, capabilityRuntime)
         }, { signal })
         record = {
           generation: created.ack.generation,

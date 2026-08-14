@@ -35,6 +35,7 @@ const createHarness = async () => {
   const terminalListeners = new Map()
   const adbPort = createAdbPort({
     applyNetworkRules: async input => calls.push(`rules:${input.networkRules.ruleRevision}`),
+    applyRuntimePlugins: async input => calls.push(`plugins:${input.revision}:${input.runtimePlugins.length}`),
     closeInspector: async input => calls.push(`close-inspector:${input.inspector.id}`),
     listDevices:
       async () => [{ id: 'android:emulator-5554', kind: 'emulator', serial: 'emulator-5554', state: 'online' }],
@@ -177,6 +178,19 @@ describe('holonomyControlCore', () => {
       )
       assert.equal((await waitForOperation(test.core, inspector.value.operation.id)).state, 'succeeded')
       assert.equal((await waitForOperation(test.core, rules.value.operation.id)).state, 'succeeded')
+      const plugins = await test.core.replaceRuntimePlugins(
+        process.id,
+        process.generation,
+        [],
+        0,
+        'plugins-key'
+      )
+      assert.equal((await waitForOperation(test.core, plugins.value.operation.id)).state, 'succeeded')
+      assert.equal(test.core.get('processes', process.id, 'Runtime process').pluginGraphRevision, 1)
+      await assert.rejects(
+        () => test.core.replaceRuntimePlugins(process.id, process.generation, [], 0, 'plugins-stale'),
+        error => error.code === 'service.precondition_failed'
+      )
       assert.equal(test.core.get('inspectors', inspector.value.inspector.id, 'Inspector lease').state, 'ready')
       assert.equal(test.core.get('networkRules', rules.value.networkRules.id, 'Network rules').state, 'active')
       const removedRules = await test.core.removeProcessNetworkRules(
@@ -201,6 +215,7 @@ describe('holonomyControlCore', () => {
         'remove-rules:2',
         'rules:3'
       ])
+      assert.ok(test.calls.includes('plugins:1:0'))
       assert.deepEqual(await test.core.readLogs(process.id, { after: 0, waitMs: 500 }), {
         cursor: 1,
         events: [{ chunk: 'ready', generation: 1, sequence: 1, sourceSequence: 1, stream: 'stdout' }]

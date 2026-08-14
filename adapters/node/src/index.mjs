@@ -1,3 +1,4 @@
+export { createNodeModuleLaunchV1 } from './capability-session.mjs'
 export { NodeNetworkAuthority, isPrivateAddress } from './network-authority.mjs'
 export { NodeHttpNetworkHost } from './node-http-network-host.mjs'
 export { normalizeNodeRuntimeSession } from './session-validation.mjs'

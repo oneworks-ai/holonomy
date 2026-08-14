@@ -1,0 +1,23 @@
+{
+  "engine": "node-vm",
+  "metadata": {
+    "callsite": "unavailable",
+    "entryDetail": "unavailable",
+    "origin": "unavailable",
+    "source": "unavailable"
+  },
+  "provenance": {
+    "generationLevel": "behavioralProbe",
+    "metadata": "profileStaticUnsupported",
+    "perCompilationCallback": "profileStaticUnsupported"
+  },
+  "schemaVersion": 1,
+  "strings": {
+    "generationLevelDeny": true,
+    "perCompilationCallback": false
+  },
+  "wasm": {
+    "generationLevelDeny": true,
+    "perCompilationCallback": false
+  }
+}

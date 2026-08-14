@@ -1,0 +1,331 @@
+{
+  "invalid": [
+    {
+      "expectedCode": "runtime.configuration_invalid",
+      "name": "filesystem-cross-root",
+      "value": {
+        "challengeId": "filesystem-cross-root",
+        "evidence": {
+          "bindingId": "evidence-filesystemTarget",
+          "evidenceDigest": "44f9abaeca9fa2260294b9034be0927e6be6782b2e2e9dcfcb7ca69118cd5fa3",
+          "kind": "filesystemTarget"
+        },
+        "parentRequestId": "request-resolution",
+        "reason": "filesystemTarget",
+        "requested": {
+          "pathSegments": [
+            "link"
+          ],
+          "rootId": "workspace",
+          "virtualUrl": "holo-fs://workspace/link",
+          "display": {
+            "label": "link"
+          },
+          "kind": "filesystem",
+          "schemaVersion": 1,
+          "semanticId": "holo-fs:workspace/link",
+          "semanticResourceDigest": "2bad9ce765176cbf56526571e3593f75a7c897d01d2a3a5052cfb5664d67fae1"
+        },
+        "resolved": {
+          "pathSegments": [
+            "target"
+          ],
+          "rootId": "other",
+          "virtualUrl": "holo-fs://other/target",
+          "display": {
+            "label": "target"
+          },
+          "kind": "filesystem",
+          "schemaVersion": 1,
+          "semanticId": "holo-fs:other/target",
+          "semanticResourceDigest": "85143883a61ecdaa90a3be3ea66f65657e26d6520e9f32809aff1a1e712fb95e"
+        },
+        "schemaVersion": 1,
+        "sequence": 1
+      }
+    },
+    {
+      "expectedCode": "runtime.configuration_invalid",
+      "name": "network-semantic-tamper",
+      "value": {
+        "challengeId": "network-tamper",
+        "evidence": {
+          "bindingId": "evidence-networkAddress",
+          "evidenceDigest": "98c5d7db115c6197f225962424afdeea215ee4e6a0cfbea07dca19fa455ce68b",
+          "kind": "networkAddress"
+        },
+        "parentRequestId": "request-resolution",
+        "reason": "networkAddress",
+        "requested": {
+          "method": "GET",
+          "origin": "https://api.example",
+          "pathname": "/profile",
+          "display": {
+            "label": "Profile"
+          },
+          "kind": "network",
+          "schemaVersion": 1,
+          "semanticId": "GET https://api.example/profile",
+          "semanticResourceDigest": "c3c6247658216d3273a93455b23365734af36fa80d8e96da245c3a88a55fba57"
+        },
+        "resolved": {
+          "method": "GET",
+          "origin": "https://api.example",
+          "pathname": "/admin",
+          "display": {
+            "label": "Admin"
+          },
+          "kind": "network",
+          "schemaVersion": 1,
+          "semanticId": "GET https://api.example/admin",
+          "semanticResourceDigest": "e19c626c500cf902b6722b85aada3d18b411f16a4197a375340cc7a4a1577fb6"
+        },
+        "schemaVersion": 1,
+        "sequence": 1
+      }
+    },
+    {
+      "expectedCode": "runtime.configuration_invalid",
+      "name": "opaque-generation-tamper",
+      "value": {
+        "challengeId": "opaque-tamper",
+        "evidence": {
+          "bindingId": "evidence-opaqueIdentity",
+          "evidenceDigest": "d3a9dd2a1eac33a89dfcc7fc8fddb79f3ff9f2e292660050670f5e1fe021a72f",
+          "kind": "opaqueIdentity"
+        },
+        "parentRequestId": "request-resolution",
+        "reason": "opaqueRebind",
+        "requested": {
+          "bridgeIdentityDigest": "8bc1ca1bbb83ccb5367c3155f71d935f325908b9e948f63697d12182e38f0cee",
+          "display": {
+            "label": "Handle"
+          },
+          "generation": 3,
+          "kind": "opaqueHandle",
+          "resourceType": "fs.file",
+          "rightsDigest": "cffb8443a51aa8ae446e7c11f993fabe5c9257ed645bdce731c89bc3ab8c0f77",
+          "schemaVersion": 1,
+          "semanticId": "fs.file:8bc1ca1bbb83ccb5",
+          "semanticResourceDigest": "96ab143bdb0a6c0b66d7fa9f558519af560103d4092b4a02332173fb98819474"
+        },
+        "resolved": {
+          "bridgeIdentityDigest": "8bc1ca1bbb83ccb5367c3155f71d935f325908b9e948f63697d12182e38f0cee",
+          "display": {
+            "label": "Handle"
+          },
+          "generation": 4,
+          "kind": "opaqueHandle",
+          "resourceType": "fs.file",
+          "rightsDigest": "cffb8443a51aa8ae446e7c11f993fabe5c9257ed645bdce731c89bc3ab8c0f77",
+          "schemaVersion": 1,
+          "semanticId": "fs.file:8bc1ca1bbb83ccb5",
+          "semanticResourceDigest": "96ab143bdb0a6c0b66d7fa9f558519af560103d4092b4a02332173fb98819474"
+        },
+        "schemaVersion": 1,
+        "sequence": 1
+      }
+    },
+    {
+      "expectedCode": "runtime.configuration_invalid",
+      "name": "network-forged-digest",
+      "value": {
+        "challengeId": "network-forged-digest",
+        "evidence": {
+          "bindingId": "evidence-networkAddress",
+          "evidenceDigest": "98c5d7db115c6197f225962424afdeea215ee4e6a0cfbea07dca19fa455ce68b",
+          "kind": "networkAddress"
+        },
+        "parentRequestId": "request-resolution",
+        "reason": "networkAddress",
+        "requested": {
+          "method": "GET",
+          "origin": "https://api.example",
+          "pathname": "/profile",
+          "display": {
+            "label": "Profile"
+          },
+          "kind": "network",
+          "schemaVersion": 1,
+          "semanticId": "GET https://api.example/profile",
+          "semanticResourceDigest": "c3c6247658216d3273a93455b23365734af36fa80d8e96da245c3a88a55fba57"
+        },
+        "resolved": {
+          "method": "GET",
+          "origin": "https://api.example",
+          "pathname": "/admin",
+          "display": {
+            "label": "Admin"
+          },
+          "kind": "network",
+          "schemaVersion": 1,
+          "semanticId": "GET https://api.example/profile",
+          "semanticResourceDigest": "c3c6247658216d3273a93455b23365734af36fa80d8e96da245c3a88a55fba57"
+        },
+        "schemaVersion": 1,
+        "sequence": 1
+      }
+    },
+    {
+      "expectedCode": "runtime.configuration_invalid",
+      "name": "filesystem-forged-root",
+      "value": {
+        "challengeId": "filesystem-forged-root",
+        "evidence": {
+          "bindingId": "evidence-filesystemTarget",
+          "evidenceDigest": "44f9abaeca9fa2260294b9034be0927e6be6782b2e2e9dcfcb7ca69118cd5fa3",
+          "kind": "filesystemTarget"
+        },
+        "parentRequestId": "request-resolution",
+        "reason": "filesystemTarget",
+        "requested": {
+          "pathSegments": [
+            "link"
+          ],
+          "rootId": "workspace",
+          "virtualUrl": "holo-fs://workspace/link",
+          "display": {
+            "label": "link"
+          },
+          "kind": "filesystem",
+          "schemaVersion": 1,
+          "semanticId": "holo-fs:workspace/link",
+          "semanticResourceDigest": "2bad9ce765176cbf56526571e3593f75a7c897d01d2a3a5052cfb5664d67fae1"
+        },
+        "resolved": {
+          "pathSegments": [
+            "secret"
+          ],
+          "rootId": "workspace",
+          "virtualUrl": "holo-fs://other/secret",
+          "display": {
+            "label": "secret"
+          },
+          "kind": "filesystem",
+          "schemaVersion": 1,
+          "semanticId": "holo-fs:workspace/link",
+          "semanticResourceDigest": "2bad9ce765176cbf56526571e3593f75a7c897d01d2a3a5052cfb5664d67fae1"
+        },
+        "schemaVersion": 1,
+        "sequence": 1
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "valid": [
+    {
+      "challengeId": "network",
+      "parentRequestId": "request-resolution",
+      "schemaVersion": 1,
+      "sequence": 1,
+      "evidence": {
+        "bindingId": "evidence-networkAddress",
+        "evidenceDigest": "98c5d7db115c6197f225962424afdeea215ee4e6a0cfbea07dca19fa455ce68b",
+        "kind": "networkAddress"
+      },
+      "reason": "networkAddress",
+      "requested": {
+        "method": "GET",
+        "origin": "https://api.example",
+        "pathname": "/profile",
+        "display": {
+          "label": "Profile"
+        },
+        "kind": "network",
+        "schemaVersion": 1,
+        "semanticId": "GET https://api.example/profile",
+        "semanticResourceDigest": "c3c6247658216d3273a93455b23365734af36fa80d8e96da245c3a88a55fba57"
+      },
+      "resolved": {
+        "method": "GET",
+        "origin": "https://api.example",
+        "pathname": "/profile",
+        "display": {
+          "label": "Profile"
+        },
+        "kind": "network",
+        "schemaVersion": 1,
+        "semanticId": "GET https://api.example/profile",
+        "semanticResourceDigest": "c3c6247658216d3273a93455b23365734af36fa80d8e96da245c3a88a55fba57"
+      }
+    },
+    {
+      "challengeId": "filesystem",
+      "parentRequestId": "request-resolution",
+      "schemaVersion": 1,
+      "sequence": 1,
+      "evidence": {
+        "bindingId": "evidence-filesystemTarget",
+        "evidenceDigest": "44f9abaeca9fa2260294b9034be0927e6be6782b2e2e9dcfcb7ca69118cd5fa3",
+        "kind": "filesystemTarget"
+      },
+      "reason": "filesystemTarget",
+      "requested": {
+        "pathSegments": [
+          "link"
+        ],
+        "rootId": "workspace",
+        "virtualUrl": "holo-fs://workspace/link",
+        "display": {
+          "label": "link"
+        },
+        "kind": "filesystem",
+        "schemaVersion": 1,
+        "semanticId": "holo-fs:workspace/link",
+        "semanticResourceDigest": "2bad9ce765176cbf56526571e3593f75a7c897d01d2a3a5052cfb5664d67fae1"
+      },
+      "resolved": {
+        "pathSegments": [
+          "target"
+        ],
+        "rootId": "workspace",
+        "virtualUrl": "holo-fs://workspace/target",
+        "display": {
+          "label": "target"
+        },
+        "kind": "filesystem",
+        "schemaVersion": 1,
+        "semanticId": "holo-fs:workspace/target",
+        "semanticResourceDigest": "c298463e0de4370e309d8312cdd9b8b1bc2d4b6ad1c6f152e12475246aeaf8f3"
+      }
+    },
+    {
+      "challengeId": "opaque",
+      "parentRequestId": "request-resolution",
+      "schemaVersion": 1,
+      "sequence": 1,
+      "evidence": {
+        "bindingId": "evidence-opaqueIdentity",
+        "evidenceDigest": "d3a9dd2a1eac33a89dfcc7fc8fddb79f3ff9f2e292660050670f5e1fe021a72f",
+        "kind": "opaqueIdentity"
+      },
+      "reason": "opaqueRebind",
+      "requested": {
+        "bridgeIdentityDigest": "8bc1ca1bbb83ccb5367c3155f71d935f325908b9e948f63697d12182e38f0cee",
+        "display": {
+          "label": "Handle"
+        },
+        "generation": 3,
+        "kind": "opaqueHandle",
+        "resourceType": "fs.file",
+        "rightsDigest": "cffb8443a51aa8ae446e7c11f993fabe5c9257ed645bdce731c89bc3ab8c0f77",
+        "schemaVersion": 1,
+        "semanticId": "fs.file:8bc1ca1bbb83ccb5",
+        "semanticResourceDigest": "96ab143bdb0a6c0b66d7fa9f558519af560103d4092b4a02332173fb98819474"
+      },
+      "resolved": {
+        "bridgeIdentityDigest": "8bc1ca1bbb83ccb5367c3155f71d935f325908b9e948f63697d12182e38f0cee",
+        "display": {
+          "label": "Handle"
+        },
+        "generation": 3,
+        "kind": "opaqueHandle",
+        "resourceType": "fs.file",
+        "rightsDigest": "cffb8443a51aa8ae446e7c11f993fabe5c9257ed645bdce731c89bc3ab8c0f77",
+        "schemaVersion": 1,
+        "semanticId": "fs.file:8bc1ca1bbb83ccb5",
+        "semanticResourceDigest": "96ab143bdb0a6c0b66d7fa9f558519af560103d4092b4a02332173fb98819474"
+      }
+    }
+  ]
+}

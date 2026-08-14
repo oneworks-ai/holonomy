@@ -1,3 +1,4 @@
+export * from './capability-runtime/index.js'
 export * from './child-process/index.js'
 export * from './crypto/index.js'
 export * from './event-loop/index.js'

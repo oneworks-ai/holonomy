@@ -38,6 +38,7 @@ data class SessionRuntimeContext(
     val sandboxPolicyDigest: String,
     val principal: String,
     val freshNativeHostFactory: () -> RuntimeNativeHost,
+    val capabilityRuntimeConfigurationJson: String?,
 )
 
 data class SessionNativeHostContext(
@@ -68,14 +69,22 @@ internal class SessionModuleGraph(spec: SessionRuntimeSpec) {
     private val modules = spec.modules.associate { module ->
         module.url to RuntimeModuleSource(module.url, module.source)
     }
+    private val plugins = SessionRuntimePluginGraph(spec.runtimePlugins)
 
     val entry: RuntimeModuleSource = modules.getValue(spec.entryUrl)
 
     val resolver = RuntimeModuleResolver { specifier, referrerUrl ->
-        val canonical = runCatching {
-            val candidate = URI(specifier)
-            if (candidate.isAbsolute) candidate else URI(requireNotNull(referrerUrl)).resolve(candidate)
-        }.getOrNull()?.normalize()?.toString()
-        canonical?.let(modules::get)
+        if (isPluginModule(specifier) || isPluginModule(referrerUrl)) {
+            plugins.resolve(specifier, referrerUrl)
+        } else {
+            val canonical = runCatching {
+                val candidate = URI(specifier)
+                if (candidate.isAbsolute) candidate else URI(requireNotNull(referrerUrl)).resolve(candidate)
+            }.getOrNull()?.normalize()?.toString()
+            canonical?.let(modules::get)
+        }
     }
+
+    private fun isPluginModule(value: String?): Boolean =
+        value != null && runCatching { URI(value).scheme == "holo-plugins" }.getOrDefault(false)
 }

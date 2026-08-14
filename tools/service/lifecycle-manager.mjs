@@ -1,5 +1,6 @@
 import process from 'node:process'
 
+import { readServiceProcessConfigurationV1 } from './capability-process-backends.mjs'
 import { PROCESS_TERMINAL_STATES, SERVICE_API_VERSION } from './constants.mjs'
 import { serviceError } from './errors.mjs'
 import { createServiceToken } from './http-utils.mjs'
@@ -23,7 +24,6 @@ import {
 export class HolonomyServiceLifecycleManager {
   #client
   #createService
-  #home
   #lock
   #options
   #paths
@@ -31,15 +31,15 @@ export class HolonomyServiceLifecycleManager {
   #stopping
 
   constructor(options = {}) {
-    this.#home = options.home ?? resolveHolonomyHome(options.environment)
-    this.#paths = serviceHomePaths(this.#home)
+    const home = options.home ?? resolveHolonomyHome(options.environment)
+    this.#paths = serviceHomePaths(home)
     this.#client = options.client ?? new HolonomyServiceClient({ paths: this.#paths })
     this.#createService = options.createService ?? createHolonomyService
     this.#options = options
   }
 
   async ensure() {
-    await prepareServiceHome(this.#home)
+    await prepareServiceHome(this.#paths.home)
     const current = await this.#client.status()
     if (current.running) return { ...current, reused: true }
     this.#lock = await acquireServiceLock(this.#paths.lock)
@@ -122,9 +122,16 @@ export class HolonomyServiceLifecycleManager {
 
   async #startOwnedService() {
     const token = await ensureServiceToken(this.#paths.token)
+    const capabilityProcess = await readServiceProcessConfigurationV1(
+      this.#paths,
+      this.#options.service
+    )
     this.#service = this.#createService({
       ...this.#options.service,
       adapterDispatcher: this.#options.adapterDispatcher,
+      capabilityProcessBackendInstallations: capabilityProcess.backends.installations,
+      capabilityProcessBackendRegistry: capabilityProcess.backends.registry,
+      capabilityProcessProfiles: capabilityProcess.profiles,
       control: {
         rotateToken: () => this.rotateToken(),
         shutdown: input => this.requestShutdown(input),

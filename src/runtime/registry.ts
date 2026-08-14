@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- Registry assembly remains the single owner of synthetic-module composition order. */
+
 import { createChildProcessSyntheticModuleBinding } from '../child-process/index.js'
 import { createHttpServerSyntheticModuleBindings } from '../http-server/index.js'
 import { createNodeCoreSyntheticModuleBindings } from '../node-compat/index.js'
@@ -39,6 +41,16 @@ const SYNTHETIC_SPECIFIERS = [
   'node:stream/web',
   'node:url'
 ] as const
+const OVERRIDABLE_SPECIFIERS = new Set([
+  'holo:device',
+  'holo:device/promises',
+  'holo:runtime',
+  'node:fs',
+  'node:fs/promises',
+  'node:child_process',
+  'node:os',
+  'node:process'
+])
 
 const binding = (
   namespace: object,
@@ -81,11 +93,13 @@ const moduleNames = (namespace: object) => {
 
 const add = (
   target: Record<string, RuntimeSyntheticModuleBinding>,
-  source: Record<string, RuntimeSyntheticModuleBinding>
+  source: Record<string, RuntimeSyntheticModuleBinding>,
+  skippedSpecifiers?: ReadonlySet<string>
 ) => {
   const specifiers = KEYS(source)
   for (let index = 0; index < specifiers.length; index += 1) {
     const specifier = specifiers[index] as string
+    if (skippedSpecifiers?.has(specifier) === true) continue
     if (getRuntimeOwnDescriptor(target, specifier) != null) {
       throw runtimeComposerError('runtime_composer.duplicate_module')
     }
@@ -103,12 +117,14 @@ const createRegistry = (
     readonly git?: GitFacade
     readonly httpServer?: HttpServerRuntime
     readonly nodeCore: NodeCoreCompatOptions
+    readonly moduleOverrides?: Readonly<Record<string, RuntimeSyntheticModuleBinding>>
     readonly testModules: ReturnType<typeof createNodeTestSyntheticModules>
     readonly timers?: RuntimeTimers
   }
 ) => {
   const modules = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
-  add(modules, createNodeCoreSyntheticModuleBindings(input.nodeCore))
+  const overrideSpecifiers = new Set(input.moduleOverrides == null ? [] : KEYS(input.moduleOverrides))
+  add(modules, createNodeCoreSyntheticModuleBindings(input.nodeCore), overrideSpecifiers)
   add(modules, createStreamSyntheticModuleBindings())
   {
     const source = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
@@ -155,7 +171,7 @@ const createRegistry = (
       const names = KEYS(module.named)
       const source = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
       defineRuntimeData(source, specifier, binding(module.named, names, module.default))
-      add(modules, source)
+      add(modules, source, overrideSpecifiers)
     }
   }
   if (input.httpServer != null) add(modules, createHttpServerSyntheticModuleBindings(input.httpServer))
@@ -167,9 +183,50 @@ const createRegistry = (
   if (input.git != null) {
     const source = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
     defineRuntimeData(source, 'node:child_process', createChildProcessSyntheticModuleBinding({ git: input.git }))
+    add(modules, source, overrideSpecifiers)
+  }
+  if (input.moduleOverrides != null) {
+    const source = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
+    for (const specifier of KEYS(input.moduleOverrides)) {
+      if (!OVERRIDABLE_SPECIFIERS.has(specifier)) {
+        throw runtimeComposerError('runtime_composer.invalid_options')
+      }
+      const bindingValue = getRuntimeOwnDescriptor(input.moduleOverrides, specifier)
+      if (bindingValue == null || !('value' in bindingValue)) {
+        throw runtimeComposerError('runtime_composer.invalid_options')
+      }
+      const value = bindingValue.value as RuntimeSyntheticModuleBinding
+      const names = value?.descriptor?.exportNames
+      const namespace = value?.namespace
+      if (
+        !Array.isArray(names) || new Set(names).size !== names.length || names.some(name => typeof name !== 'string')
+      ) {
+        throw runtimeComposerError('runtime_composer.invalid_options')
+      }
+      if (namespace == null || (typeof namespace !== 'object' && typeof namespace !== 'function')) {
+        throw runtimeComposerError('runtime_composer.invalid_options')
+      }
+      for (const name of names) {
+        const descriptor = getRuntimeOwnDescriptor(namespace, name)
+        if (descriptor == null || !('value' in descriptor)) {
+          throw runtimeComposerError('runtime_composer.invalid_options')
+        }
+      }
+      defineRuntimeData(
+        source,
+        specifier,
+        freezeRuntimeValue({
+          descriptor: freezeRuntimeValue({ exportNames: freezeRuntimeValue([...names]) }),
+          namespace
+        })
+      )
+    }
     add(modules, source)
   }
   return freezeRuntimeValue(modules)
 }
 export const createRuntimeRegistry = (input: Parameters<typeof createRegistry>[0]) =>
-  withUnshadowedObjectPrototypeKeys(SYNTHETIC_SPECIFIERS, () => createRegistry(input))
+  withUnshadowedObjectPrototypeKeys(
+    [...SYNTHETIC_SPECIFIERS, ...OVERRIDABLE_SPECIFIERS],
+    () => createRegistry(input)
+  )

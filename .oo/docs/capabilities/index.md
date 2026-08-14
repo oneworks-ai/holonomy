@@ -5,6 +5,8 @@
 先阅读[支持矩阵](./support-matrix.md)，再按主题查看：
 
 - [Node 兼容模块](./node-compatibility.md)
+- [安全能力内核](../concepts/capability-runtime.md)
+- [受控进程能力](./process.md)
 - [已知限制](./known-limitations.md)
 - [SandboxPolicy](../reference/sandbox-policy.md)
 - [Network Rule Schema](../reference/network-rule-schema.md)

@@ -26,8 +26,8 @@ Holonomy 是面向原生宿主的平台中立 Node-like JavaScript Runtime。开
 
 ## 当前边界
 
-网络沙箱已经支持 `none`、`mockOnly` 与精确授权的 `restricted`。生产文件系统 Provider 尚未开放，`filesystem=sandboxed` 会返回稳定的不支持错误。Android 当前提供同一应用进程内的多逻辑 V8 Runtime，`isolatedProcess` 尚未实现。
+网络沙箱已经支持 `none`、`mockOnly` 与精确授权的 `restricted`。Capability Runtime 已开放跨 Node/Desktop 与 Android 模拟器的受控 workspace `kernel-slice`；完整生产文件系统 Provider 尚未开放。Android 当前提供同一应用进程内的多逻辑 V8 Runtime，`isolatedProcess` 尚未实现。
 
 完整限制见[已知限制](./capabilities/known-limitations.md)。
 
-整体模块关系见[架构图](./concepts/architecture.md)。
+整体模块关系见[架构图](./concepts/architecture.md)，能力准入与调用顺序见[安全能力内核](./concepts/capability-runtime.md)。

@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- public process admission and generation fencing share one control facade. */
 
+import { createServiceCapabilityRuntimeManagerV1 } from './capability-runtime-manager.mjs'
 import { DEFAULT_EVENT_RETENTION_MS } from './constants.mjs'
 import { createControlDeviceWatcher } from './control-device-watcher.mjs'
 import { ControlDirectMutations } from './control-direct-mutations.mjs'
@@ -33,6 +34,15 @@ export class HolonomyControlCore {
   #store
 
   constructor(options) {
+    const capabilityRuntime = options.capabilityRuntimeManager ?? createServiceCapabilityRuntimeManagerV1({
+      deviceSnapshotFactory: options.capabilityDeviceSnapshotFactory,
+      middlewareRegistry: options.capabilityMiddlewareRegistry,
+      processBackendInstallations: options.capabilityProcessBackendInstallations,
+      processBackendRegistry: options.capabilityProcessBackendRegistry,
+      processProfiles: options.capabilityProcessProfiles,
+      stateDirectory: options.stateDirectory,
+      systemProjectionFactory: options.capabilitySystemProjectionFactory
+    })
     this.#adapters = options.adapterDispatcher ?? createTargetAdapterDispatcher({
       android: options.adbPort ?? createOptionalAndroidRuntimeAdapter(),
       node: options.nodeAdapter ?? createNodeRuntimeAdapter()
@@ -40,6 +50,7 @@ export class HolonomyControlCore {
     this.#store = options.store
     this.#inspectorProxy = options.inspectorProxy ?? new InspectorCdpProxy({ now: options.now })
     this.#registry = new ControlRegistry(options.store, {
+      capabilityRuntime,
       now: options.now,
       retentionMs: options.retentionMs ?? DEFAULT_EVENT_RETENTION_MS
     })
@@ -60,6 +71,7 @@ export class HolonomyControlCore {
     })
     this.#runner = new HolonomyControlRunner({
       adapterDispatcher: this.#adapters,
+      capabilityRuntime,
       fixtureManager: options.fixtureManager,
       inspectorProxy: this.#inspectorProxy,
       outputPump: this.#outputs,
@@ -166,6 +178,17 @@ export class HolonomyControlCore {
       expectedRuleRevision,
       idempotencyKey
     )
+  }
+  async replaceRuntimePlugins(processId, expectedGeneration, input, expectedRevision, idempotencyKey) {
+    const admission = await this.#registry.admitRuntimePluginUpdate(
+      processId,
+      expectedGeneration,
+      input,
+      expectedRevision,
+      idempotencyKey
+    )
+    if (!admission.replayed) this.#runner.scheduleRuntimePlugins(admission.value)
+    return admission
   }
 
   async removeNetworkRules(id, expectedGeneration, expectedRuleRevision, idempotencyKey) {

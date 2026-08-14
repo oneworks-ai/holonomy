@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- the public client keeps one method per Service operation. */
+
 import process from 'node:process'
 
 import { serviceError } from './errors.mjs'
@@ -173,6 +175,14 @@ export class HolonomyServiceClient {
     return await this.call(`/v1/processes/${encodeURIComponent(processId)}/network/rules`, {
       body: input,
       headers: { 'idempotency-key': idempotencyKey, 'if-match': expectedRevision },
+      method: 'PUT'
+    })
+  }
+
+  async replaceRuntimePlugins(processId, input, expectedRevision, idempotencyKey) {
+    return await this.call(`/v1/processes/${encodeURIComponent(processId)}/runtime-plugins`, {
+      body: input,
+      headers: { 'idempotency-key': idempotencyKey, 'if-match': String(expectedRevision) },
       method: 'PUT'
     })
   }

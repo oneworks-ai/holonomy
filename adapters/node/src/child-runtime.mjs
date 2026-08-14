@@ -1,6 +1,9 @@
+/* eslint-disable max-lines -- child IPC lifecycle and generation fencing share one state machine. */
+
 import inspector from 'node:inspector'
 import process from 'node:process'
 
+import { applyNodeRuntimePluginUpdateV1 } from './child-plugin-update.mjs'
 import { SessionModuleGraph } from './module-graph.mjs'
 import { NODE_ADAPTER_PROTOCOL_VERSION, childEvent } from './protocol.mjs'
 import { createRuntimeContext, drainRuntimeLogs } from './runtime-context.mjs'
@@ -11,6 +14,7 @@ let generation = 0
 let graph
 let hostController
 let networkRules = Object.freeze({ mode: 'passthrough', rules: Object.freeze([]) })
+let pluginGraphRevision = 0
 let rulesRevision = 0
 let runtimeContext
 let state = 'idle'
@@ -43,6 +47,7 @@ const status = () => ({
   generation,
   inspectorUrl: inspector.url() ?? null,
   pid: process.pid,
+  pluginGraphRevision,
   rulesRevision,
   state
 })
@@ -73,6 +78,7 @@ const start = async command => {
   try {
     const session = normalizeNodeRuntimeSession(command.value)
     networkRules = session.networkRules
+    pluginGraphRevision = session.pluginGraphRevision
     stage = 'runtime_context'
     runtimeContext = createRuntimeContext(`holonomy-runtime-${generation}`)
     stage = 'module_graph'
@@ -85,6 +91,7 @@ const start = async command => {
       emitNetwork: diagnostic => {
         void emit('network', { diagnostic }).catch(() => undefined)
       },
+      generation,
       graph,
       runtimeContext,
       session
@@ -138,6 +145,14 @@ const updateRules = async command => {
   await acknowledge(command.requestId, { revision })
 }
 
+const updatePlugins = async command => {
+  if (state !== 'running') return reject(command.requestId, 'invalid_state')
+  const result = await applyNodeRuntimePluginUpdateV1(command, pluginGraphRevision, hostController)
+  if (result.error != null) return reject(command.requestId, result.error)
+  pluginGraphRevision = result.revision
+  await acknowledge(command.requestId, { pluginGraphRevision })
+}
+
 const stop = async command => {
   if (state !== 'stopped') await transition('stopping')
   await hostController?.dispose().catch(() => undefined)
@@ -153,7 +168,8 @@ const stop = async command => {
 const validCommand = command =>
   command != null && typeof command === 'object' && !Array.isArray(command) &&
   command.protocolVersion === NODE_ADAPTER_PROTOCOL_VERSION && Number.isSafeInteger(command.requestId) &&
-  Number.isSafeInteger(command.generation) && ['resume', 'rules', 'start', 'status', 'stop'].includes(command.type)
+  Number.isSafeInteger(command.generation) &&
+  ['plugins', 'resume', 'rules', 'start', 'status', 'stop'].includes(command.type)
 
 process.on('message', command => {
   void (async () => {
@@ -161,6 +177,7 @@ process.on('message', command => {
     if (command.type !== 'start' && command.generation !== generation) return
     if (command.type === 'start') return start(command)
     if (command.type === 'resume') return resume(command)
+    if (command.type === 'plugins') return updatePlugins(command)
     if (command.type === 'rules') return updateRules(command)
     if (command.type === 'status') return acknowledge(command.requestId, status())
     await stop(command)

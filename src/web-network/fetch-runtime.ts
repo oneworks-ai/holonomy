@@ -20,6 +20,8 @@ import type {
   NetworkHeaderEntries,
   ResolvedNetworkAuthority,
   WebFetchInit,
+  WebNetworkCapabilityAdmissionV1,
+  WebNetworkCapabilityRequestV1,
   WebNetworkRuntime,
   WebNetworkRuntimeOptions
 } from './types.js'
@@ -343,11 +345,19 @@ class FetchRuntimeController {
     }
     const redirect = init.redirect ?? 'follow'
     let redirectResponse: NetworkDiagnosticsResponse | undefined
+    let capabilityAdmission: WebNetworkCapabilityAdmissionV1 | undefined
     if (redirect !== 'follow' && redirect !== 'error' && redirect !== 'manual') {
       throw new TypeError('Invalid redirect mode')
     }
     try {
       for (let count = 0;; count += 1) {
+        const capabilityHooks = this.options.capability
+        const capabilityRequest = capabilityHooks == null
+          ? undefined
+          : this.capabilityRequest(trace, url, method, headers, body)
+        if (capabilityHooks != null && capabilityRequest != null) {
+          capabilityAdmission = await capabilityHooks.authorizeRequest(capabilityRequest)
+        }
         this.emit({
           headers: diagnosticHeaders(headers),
           hasPostData: body !== undefined,
@@ -375,7 +385,16 @@ class FetchRuntimeController {
         })
         const location = response.head.headers.get('location')
         if (!REDIRECT_STATUSES.has(response.head.status) || location == null || redirect === 'manual') {
-          return this.toResponse(response, count > 0, method, generation, trace)
+          const result = await this.toResponse(
+            response,
+            count > 0,
+            method,
+            generation,
+            trace,
+            capabilityAdmission
+          )
+          capabilityAdmission = undefined
+          return result
         }
         this.closeConnection(response.lease, 'redirect')
         if (redirect === 'error' || count >= this.authority.limits.maxRedirects) {
@@ -409,8 +428,20 @@ class FetchRuntimeController {
           body = undefined
           for (const name of BODY_REPRESENTATION_HEADERS) headers.delete(name)
         }
+        if (capabilityAdmission != null && capabilityRequest != null && capabilityHooks != null) {
+          const nextRequest = this.capabilityRequest(trace, url, method, headers, body)
+          await capabilityHooks.authorizeRedirect(
+            capabilityRequest,
+            nextRequest,
+            response.head.status as 301 | 302 | 303 | 307 | 308,
+            capabilityAdmission
+          )
+          capabilityHooks.releaseResponse(capabilityAdmission)
+          capabilityAdmission = undefined
+        }
       }
     } catch (error) {
+      if (capabilityAdmission != null) this.options.capability?.releaseResponse(capabilityAdmission)
       this.failTrace(trace, (error as { code?: string })?.code ?? 'network.internal')
       throw error
     }
@@ -483,12 +514,13 @@ class FetchRuntimeController {
     }
   }
 
-  private toResponse(
+  private async toResponse(
     response: Awaited<ReturnType<FetchRuntimeController['issue']>>,
     redirected: boolean,
     method: string,
     generation: number,
-    trace: DiagnosticsTrace
+    trace: DiagnosticsTrace,
+    capabilityAdmission?: WebNetworkCapabilityAdmissionV1
   ) {
     this.assertCurrent(generation, response.lease)
     if (response.options.signal?.aborted) {
@@ -523,14 +555,50 @@ class FetchRuntimeController {
       this.closeConnection(response.lease, 'no_response_body')
       this.finishTrace(trace, 0)
     }
+    const metadata = Object.freeze({
+      headers: [...response.head.headers].map(entry => Object.freeze(entry as readonly [string, string])),
+      hop: trace.hop,
+      logicalRequestId: trace.requestId,
+      redirected,
+      source: response.head.source,
+      status: response.head.status,
+      statusText: response.head.statusText,
+      url: response.head.url
+    })
+    if (capabilityAdmission != null) {
+      await this.options.capability?.authorizeResponse(
+        { admission: capabilityAdmission, metadata },
+        'Response.metadata'
+      )
+    }
     return WebResponse.fromNetwork({
       body: new WebBodyController(body),
+      ...(capabilityAdmission == null || this.options.capability == null
+        ? {}
+        : { capability: { admission: capabilityAdmission, hooks: this.options.capability, metadata } }),
       headers: response.head.headers,
       maxBodyBytes: this.authority.limits.maxResponseBodyBytes,
       redirected,
       status: response.head.status,
       statusText: response.head.statusText,
       url: response.head.url
+    })
+  }
+
+  private capabilityRequest(
+    trace: DiagnosticsTrace,
+    url: URL,
+    method: string,
+    headers: WebHeaders,
+    body: Uint8Array | undefined
+  ): WebNetworkCapabilityRequestV1 {
+    return Object.freeze({
+      ...(body == null ? {} : { body: body.slice() }),
+      headers: Object.freeze([...headers].map(entry => Object.freeze(entry as readonly [string, string]))),
+      hop: trace.hop,
+      logicalRequestId: trace.requestId,
+      method,
+      url: url.toString()
     })
   }
 

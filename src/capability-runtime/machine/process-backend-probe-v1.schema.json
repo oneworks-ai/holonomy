@@ -1,0 +1,306 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "artifactKind": {
+          "enum": [
+            "npm",
+            "source",
+            "wasm"
+          ]
+        },
+        "artifactVersion": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][\\w.+-]*$",
+          "type": "string"
+        },
+        "integritySha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "license": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][\\w.+-]*$",
+          "type": "string"
+        },
+        "sourceRevision": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][\\w.+-]*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifactKind",
+        "artifactVersion",
+        "license"
+      ],
+      "type": "object"
+    },
+    "backendId": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][\\w.+-]*$",
+      "type": "string"
+    },
+    "host": {
+      "additionalProperties": false,
+      "properties": {
+        "architecture": {
+          "enum": [
+            "arm64",
+            "x64",
+            "x86"
+          ]
+        },
+        "engine": {
+          "enum": [
+            "javet-v8",
+            "node-v8"
+          ]
+        },
+        "engineVersion": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][\\w.+-]*$",
+          "type": "string"
+        },
+        "platform": {
+          "enum": [
+            "android",
+            "darwin",
+            "linux",
+            "win32"
+          ]
+        },
+        "runtimeVersion": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][\\w.+-]*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "architecture",
+        "engine",
+        "engineVersion",
+        "platform",
+        "runtimeVersion"
+      ],
+      "type": "object"
+    },
+    "metrics": {
+      "additionalProperties": false,
+      "properties": {
+        "bootDurationMs": {
+          "maximum": 86400000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "peakRssBytes": {
+          "maximum": 137438953472,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "workloadDurationMs": {
+          "maximum": 86400000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "observations": {
+      "items": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "enum": [
+                  "installation",
+                  "boot",
+                  "workload",
+                  "stdio",
+                  "exit",
+                  "filesystem",
+                  "network",
+                  "processTree",
+                  "runtime",
+                  "snapshots",
+                  "androidPackaging"
+                ]
+              },
+              "provenance": {
+                "enum": [
+                  "behavioralProbe"
+                ]
+              },
+              "reasonCode": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][\\w.+-]*$",
+                "type": "string"
+              },
+              "status": {
+                "const": "passed"
+              }
+            },
+            "required": [
+              "capability",
+              "provenance",
+              "status"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "enum": [
+                  "installation",
+                  "boot",
+                  "workload",
+                  "stdio",
+                  "exit",
+                  "filesystem",
+                  "network",
+                  "processTree",
+                  "runtime",
+                  "snapshots",
+                  "androidPackaging"
+                ]
+              },
+              "provenance": {
+                "enum": [
+                  "behavioralProbe"
+                ]
+              },
+              "reasonCode": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][\\w.+-]*$",
+                "type": "string"
+              },
+              "status": {
+                "const": "failed"
+              }
+            },
+            "required": [
+              "capability",
+              "provenance",
+              "reasonCode",
+              "status"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "enum": [
+                  "installation",
+                  "boot",
+                  "workload",
+                  "stdio",
+                  "exit",
+                  "filesystem",
+                  "network",
+                  "processTree",
+                  "runtime",
+                  "snapshots",
+                  "androidPackaging"
+                ]
+              },
+              "provenance": {
+                "enum": [
+                  "behavioralProbe",
+                  "profileStaticUnsupported",
+                  "upstreamContract"
+                ]
+              },
+              "reasonCode": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][\\w.+-]*$",
+                "type": "string"
+              },
+              "status": {
+                "const": "unsupported"
+              }
+            },
+            "required": [
+              "capability",
+              "provenance",
+              "reasonCode",
+              "status"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "enum": [
+                  "installation",
+                  "boot",
+                  "workload",
+                  "stdio",
+                  "exit",
+                  "filesystem",
+                  "network",
+                  "processTree",
+                  "runtime",
+                  "snapshots",
+                  "androidPackaging"
+                ]
+              },
+              "provenance": {
+                "enum": [
+                  "profileStaticUnsupported",
+                  "upstreamContract"
+                ]
+              },
+              "reasonCode": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9][\\w.+-]*$",
+                "type": "string"
+              },
+              "status": {
+                "const": "notRun"
+              }
+            },
+            "required": [
+              "capability",
+              "provenance",
+              "reasonCode",
+              "status"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "maxItems": 11,
+      "minItems": 11,
+      "type": "array"
+    },
+    "schemaVersion": {
+      "const": 1
+    }
+  },
+  "required": [
+    "artifact",
+    "backendId",
+    "host",
+    "metrics",
+    "observations",
+    "schemaVersion"
+  ],
+  "type": "object"
+}

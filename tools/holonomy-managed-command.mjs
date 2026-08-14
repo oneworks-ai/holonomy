@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { openHolonomyDevTools } from './holonomy-devtools-launcher.mjs'
 import { prepareHolonomyLaunchSnapshot } from './holonomy-launch-snapshot.mjs'
+import { startHolonomyPluginWatch } from './holonomy-plugin-watch.mjs'
 import { createHolonomyServiceClient } from './service/service-client.mjs'
 import { ensureHolonomyServiceProcess } from './service/service-process.mjs'
 
@@ -28,7 +29,7 @@ export const createClient = async (options, dependencies, ensure = true) => {
   return client
 }
 
-const waitForOperation = async (client, operationId, options = {}) => {
+export const waitForOperation = async (client, operationId, options = {}) => {
   const deadline = (options.now ?? Date.now)() + (options.timeoutMs ?? 30_000)
   while ((options.now ?? Date.now)() < deadline) {
     const operation = await client.call(`/v1/operations/${encodeURIComponent(operationId)}`)
@@ -104,6 +105,7 @@ export const runHolonomyRuntimeCommand = async (parsed, io, dependencies = {}) =
   const device = await refreshAndSelectDevice(client, parsed.options)
   const snapshot = (dependencies.prepareLaunch ?? prepareHolonomyLaunchSnapshot)(parsed.command, parsed.options)
   const admitted = await client.launchProcess({
+    ...(snapshot.capabilityRuntime == null ? {} : { capabilityRuntime: snapshot.capabilityRuntime }),
     deviceId: device.id,
     entryUrl: snapshot.entryUrl,
     ...(snapshot.fixture == null ? {} : { fixture: snapshot.fixture }),
@@ -111,6 +113,7 @@ export const runHolonomyRuntimeCommand = async (parsed, io, dependencies = {}) =
     inspectorMode: snapshot.inspectorMode,
     isolation: snapshot.isolation,
     launch: snapshot.launch,
+    ...(snapshot.runtimePlugins == null ? {} : { runtimePlugins: snapshot.runtimePlugins }),
     sandboxPolicy: snapshot.sandboxPolicy,
     target: snapshot.target
   }, randomUUID())
@@ -127,10 +130,25 @@ export const runHolonomyRuntimeCommand = async (parsed, io, dependencies = {}) =
   if (parsed.options.openDevTools) {
     await openProcessInspector(client, current, parsed.options, dependencies)
   }
-  current = await followProcess(client, process.id, io, {
-    ...dependencies,
-    timeoutMs: parsed.options.timeoutMs
-  })
+  const pluginWatch = parsed.options.watch
+    ? (dependencies.startPluginWatch ?? startHolonomyPluginWatch)({
+      client,
+      configPath: snapshot.pluginConfigPath,
+      dependencies: { ...dependencies, waitForOperation },
+      io,
+      pluginRoots: parsed.options.pluginRoots,
+      process: current,
+      runtimePlugins: snapshot.runtimePlugins
+    })
+    : undefined
+  try {
+    current = await followProcess(client, process.id, io, {
+      ...dependencies,
+      timeoutMs: parsed.options.timeoutMs
+    })
+  } finally {
+    await pluginWatch?.close()
+  }
   const code = current.exit?.code ?? (current.state === 'exited' ? 0 : 1)
   return parsed.options.allowFailures ? 0 : code
 }
