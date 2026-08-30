@@ -1,9 +1,9 @@
-import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { lstatSync, readFileSync, realpathSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { TextDecoder } from 'node:util'
 
 import { parse } from 'acorn'
 
@@ -11,6 +11,12 @@ import { readHoloPluginConfig, validateHoloPluginOptions } from './holonomy-plug
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024
 const MAX_GRAPH_BYTES = 32 * 1024 * 1024
+const UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true })
+const TRUSTED_RUNTIME_LIBRARIES = new Set([
+  '@holonomyjs/plugin-audit',
+  '@holonomyjs/plugin-permission',
+  'cordis'
+])
 
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 const canonicalJson = value => {
@@ -115,18 +121,23 @@ const collectFiles = (instanceId, root, entryFile) => {
   while (pending.length > 0) {
     const file = pending.pop()
     if (files.has(file)) continue
-    const source = readFileSync(file, 'utf8')
-    const bytes = Buffer.byteLength(source)
-    total += bytes
-    if (bytes > MAX_FILE_BYTES || total > MAX_GRAPH_BYTES) {
+    const bytes = readFileSync(file)
+    let source
+    try {
+      source = UTF8.decode(bytes)
+    } catch {
+      throw new Error('Holo plugin modules must contain strict UTF-8 source')
+    }
+    total += bytes.byteLength
+    if (bytes.byteLength > MAX_FILE_BYTES || total > MAX_GRAPH_BYTES) {
       throw new Error('Holo plugin module graph exceeds the byte limit')
     }
     const relative = path.relative(root, file).split(path.sep).join('/')
     if (relative.startsWith('../')) throw new Error('Holo plugin module escapes its source root')
     const url = `holo-plugins:///${instanceId}/${relative}`
-    files.set(file, Object.freeze({ sha256: sha256(source), source, url }))
+    files.set(file, Object.freeze({ sha256: sha256(bytes), source, url }))
     for (const specifier of dependencies(source)) {
-      if (specifier === 'cordis') continue
+      if (TRUSTED_RUNTIME_LIBRARIES.has(specifier)) continue
       if (!specifier.startsWith('.')) throw new Error(`Unsupported Holo plugin import: ${specifier}`)
       pending.push(safeFile(root, path.resolve(path.dirname(file), specifier)))
     }

@@ -23,16 +23,33 @@ export const mapProviderError = (error, operation, digest) => {
   throw new CapabilityInvocationError(code, operation, digest)
 }
 
-export const selectedFilesystemRoot = (authority, resource, right) => {
+export const selectedFilesystemRootConstraint = (authority, resource, rights, requirePrefix = true) => {
+  const required = Array.isArray(rights) ? rights : [rights]
   for (const binding of authority.bindings) {
     for (const root of binding.constraints.roots ?? []) {
       if (
-        root.rootId === resource.rootId && root.rights?.includes(right) &&
-        (root.pathPrefixSegments ?? []).every((part, index) => resource.pathSegments[index] === part)
-      ) return true
+        root.rootId === resource.rootId && required.every(right => root.rights?.includes(right)) &&
+        (!requirePrefix || (root.pathPrefixSegments ?? []).every(
+          (part, index) => resource.pathSegments[index] === part
+        ))
+      ) return root
     }
   }
-  return false
+}
+
+export const selectedFilesystemRoot = (authority, resource, right) =>
+  selectedFilesystemRootConstraint(authority, resource, right) != null
+
+export const filesystemSymlinkMode = (authority, resource) => {
+  const root = selectedFilesystemRootConstraint(authority, resource, [], false)
+  if (root?.symlinks !== 'deny' && root?.symlinks !== 'withinRoot') {
+    throw new CapabilityInvocationError(
+      'capability.denied',
+      'filesystem.resolve',
+      resource.semanticResourceDigest
+    )
+  }
+  return root.symlinks
 }
 
 export const flagRights = flag =>
@@ -107,6 +124,22 @@ export const assertWriteLimit = (context, data) => {
       context.resource.requested.semanticResourceDigest
     )
   }
+}
+
+export const watchQueueLimit = context => {
+  const maximum = context.authorityBindings[0]?.constraints?.limits?.maxQueuedEvents
+  const requested = context.arguments.options?.maxQueuedEvents
+  if (
+    !Number.isSafeInteger(maximum) || maximum < 1 ||
+    requested != null && (!Number.isSafeInteger(requested) || requested < 1 || requested > maximum)
+  ) {
+    throw new CapabilityInvocationError(
+      requested == null ? 'resource.handle_limit' : 'argument.invalid',
+      context.operation,
+      context.resource.requested.semanticResourceDigest
+    )
+  }
+  return requested ?? maximum
 }
 
 export const atomicWrite = (target, data, options) => {

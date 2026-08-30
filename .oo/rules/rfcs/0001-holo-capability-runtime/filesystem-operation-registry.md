@@ -146,6 +146,7 @@ type VirtualFsWatcherDeliveryV1 =
   | Readonly<{ event: 'close'; tuple: readonly [] }>
 
 interface VirtualFsWatcherV1 {
+  readonly maxQueuedEvents: number
   on(
     event: 'change',
     listener: (type: 'rename' | 'change', filename: string | null) => void
@@ -158,6 +159,7 @@ interface VirtualFsWatcherV1 {
 interface VirtualFsWatchAsyncIteratorV1
   extends AsyncIterableIterator<VirtualFsWatchEventV1>
 {
+  readonly maxQueuedEvents: number
   next(): Promise<IteratorResult<VirtualFsWatchEventV1, undefined>>
   return(): Promise<IteratorResult<VirtualFsWatchEventV1, undefined>>
   throw(
@@ -166,9 +168,9 @@ interface VirtualFsWatchAsyncIteratorV1
 }
 ```
 
-Stat只支持省略或`bigint:false`。watch `recursive:true`、ref/unref、filename Buffer和其他events unsupported。`fs.watch`同步返回`VirtualFsWatcherV1`；change/error/close按`VirtualFsWatcherDeliveryV1`精确tuple异步投递，close exactly-once且close后无change。listener throw被消费。
+Stat只支持省略或`bigint:false`。watch `recursive:true`、ref/unref、filename Buffer和其他events unsupported。`maxQueuedEvents`省略时继承Filesystem Policy，显式值只能收紧Policy；有效值写入Watcher/Iterator facade。Policy上限或watcher上限为0时订阅拒绝。`fs.watch`同步返回`VirtualFsWatcherV1`；change/error/close按`VirtualFsWatcherDeliveryV1`精确tuple异步投递，close exactly-once且close后无change。listener throw被消费。
 
-`fs/promises.watch`调用同步返回`VirtualFsWatchAsyncIteratorV1`，不会返回`Promise<AsyncIterator>`。`next()`等待下一事件；`return()`原子关闭并返回`{done:true,value:undefined}`，重复调用复用done terminal；`throw()`先关闭，再以E.1 snapshot后的Guest error reject，不能把任意Guest Error传到Host。Abort等同return后的AbortError terminal。overflow以ENOSPC终止FSWatcher error→close或reject pending/future iterator next；terminal后不交付queued event。resource的process/generation/watchId、序列、队列和Policy watcher slot由Kernel绑定，Guest listener/iterator不是authority。
+`fs/promises.watch`调用同步返回`VirtualFsWatchAsyncIteratorV1`，不会返回`Promise<AsyncIterator>`。`next()`等待下一事件；`return()`原子关闭并返回`{done:true,value:undefined}`，重复调用复用done terminal；`throw()`先关闭，再以E.1 snapshot后的Guest error reject，不能把任意Guest Error传到Host。Abort拒绝pending/future `next()`并关闭resource。队列到达有效`maxQueuedEvents`后，新事件不入队并以ENOSPC终止：FSWatcher按error→close，iterator拒绝pending/future `next()`；terminal后不交付queued event。resource的process/generation/watchId、序列、队列和Policy watcher slot由Kernel绑定，Guest listener/iterator不是authority。
 
 ## H.1.4 Machine owner
 

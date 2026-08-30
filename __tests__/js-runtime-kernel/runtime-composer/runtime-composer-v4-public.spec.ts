@@ -31,8 +31,16 @@ describe('runtime composer V4 public and bare boundaries', () => {
   it('keeps public root/runtime declarations limited to runtime contracts', () => {
     const sourceRoot = readFileSync(new URL('../../../src/index.ts', import.meta.url), 'utf8')
     const sourceRuntime = readFileSync(new URL('../../../src/runtime/index.ts', import.meta.url), 'utf8')
+    const workspaceRuntime = readFileSync(
+      new URL('../../../packages/runtime/src/app/index.ts', import.meta.url),
+      'utf8'
+    )
     const distRoot = readFileSync(new URL('../../../dist/index.d.ts', import.meta.url), 'utf8')
     const distRuntime = readFileSync(new URL('../../../dist/runtime/index.d.ts', import.meta.url), 'utf8')
+    const workspaceRuntimeDeclaration = readFileSync(
+      new URL('../../../packages/runtime/dist/app/index.d.ts', import.meta.url),
+      'utf8'
+    )
     const privateNames = [
       'setRuntimeComposerFactoriesForTest',
       'getRuntimeComposerFactories',
@@ -45,12 +53,17 @@ describe('runtime composer V4 public and bare boundaries', () => {
       const name = privateNames[index]!
       expect(sourceRoot).not.toContain(name)
       expect(sourceRuntime).not.toContain(name)
+      expect(workspaceRuntime).not.toContain(name)
       expect(distRoot).not.toContain(name)
       expect(distRuntime).not.toContain(name)
+      expect(workspaceRuntimeDeclaration).not.toContain(name)
     }
-    expect(`${sourceRoot}\n${sourceRuntime}`).toContain('./runtime/index.js')
-    expect(distRoot).toContain('./runtime/index.js')
-    expect(distRuntime).toContain('./runtime.js')
+    expect(sourceRoot).toContain('@holonomyjs/runtime')
+    expect(sourceRuntime).toContain('@holonomyjs/runtime/app')
+    expect(workspaceRuntime).toContain('./runtime.js')
+    expect(distRoot).toContain('@holonomyjs/runtime')
+    expect(distRuntime).toContain('@holonomyjs/runtime/app')
+    expect(workspaceRuntimeDeclaration).toContain('./runtime.js')
   })
 
   it('exposes one Holonomy brand across package, runtime, loader, errors and virtual paths', () => {

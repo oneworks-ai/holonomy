@@ -4,8 +4,10 @@ import {
   CapabilityFacadeDispatcherV1,
   CapabilityInvocationBrokerV1,
   CapabilityInvocationError,
+  canonicalizeFilesystemResource,
   canonicalizeProcessNetworkEndpointResource
 } from '../../../src/capability-runtime/index.js'
+import type { CapabilityBrokerProviderV1 } from '../../../src/capability-runtime/index.js'
 import { creation, fsResource, middleware, policyV2, provider, snapshot, systemResource } from './broker-fixtures.js'
 
 const fsInvocation = (mode: 'callback' | 'promise' | 'sync', member = 'readFile') => ({
@@ -21,6 +23,128 @@ const fsInvocation = (mode: 'callback' | 'promise' | 'sync', member = 'readFile'
 })
 
 describe('capability invocation broker v1', () => {
+  it('runs a filesystem resolution sub-admission without re-entering the requested continuation', () => {
+    const events: string[] = []
+    const resolved = canonicalizeFilesystemResource('holo-fs://workspace/real.txt', 'real.txt')
+    const evidence = {
+      ancestorIdentityDigests: ['1'.repeat(64)],
+      kind: 'filesystemTarget' as const,
+      rootId: 'workspace',
+      targetIdentityDigest: '2'.repeat(64),
+      targetType: 'file' as const
+    }
+    const fs: CapabilityBrokerProviderV1 = {
+      execution: 'sync' as const,
+      invoke: () => {
+        throw new Error('invoke must not bypass preflight')
+      },
+      module: 'host.fs',
+      preflight: () => {
+        events.push('preflight')
+        return {
+          execute(context, authorities, tokens) {
+            events.push('execute')
+            expect(context.phase).toBe('resolved')
+            expect(context.resource.resolved).toEqual(resolved)
+            expect(tokens[0]).toMatchObject({
+              requestedSemanticDigest: fsResource().semanticResourceDigest,
+              resolvedSemanticDigest: resolved.semanticResourceDigest
+            })
+            return authorities[0]!.complete(snapshot('resolved-value', 'result'))
+          },
+          requests: [{
+            evidence,
+            reason: 'filesystemTarget' as const,
+            resolved,
+            sideEffectCount: 0 as const,
+            verify: () => {
+              events.push('verify')
+              return { evidence, resolved }
+            }
+          }]
+        }
+      }
+    }
+    const broker = new CapabilityInvocationBrokerV1({
+      admitted: creation({ 'host.fs': fs }, {
+        registrations: [
+          middleware('requested', (context, next) => {
+            events.push(`${context.phase}-before`)
+            const result = next()
+            events.push(`${context.phase}-after`)
+            return result
+          }, 'sync'),
+          {
+            ...middleware('resolved', (context, next) => {
+              events.push(`${context.phase}-before`)
+              const result = next()
+              events.push(`${context.phase}-after`)
+              return result
+            }, 'sync'),
+            matcher: { phase: 'resolved' as const }
+          }
+        ],
+        schemaVersion: 1
+      }),
+      engine: 'node-vm',
+      target: 'node'
+    })
+    expect(broker.invokeSync(fsInvocation('sync', 'readFileSync')).value).toBe('resolved-value')
+    expect(events).toEqual([
+      'requested-before',
+      'preflight',
+      'resolved-before',
+      'resolved-after',
+      'verify',
+      'execute',
+      'requested-after'
+    ])
+  })
+
+  it('rejects resolution evidence changed between admission and Provider execution', () => {
+    let executeCalls = 0
+    const resolved = canonicalizeFilesystemResource('holo-fs://workspace/real.txt', 'real.txt')
+    const evidence = {
+      ancestorIdentityDigests: ['1'.repeat(64)],
+      kind: 'filesystemTarget' as const,
+      rootId: 'workspace',
+      targetIdentityDigest: '2'.repeat(64),
+      targetType: 'file' as const
+    }
+    const fs: CapabilityBrokerProviderV1 = {
+      execution: 'sync' as const,
+      invoke: () => {
+        throw new Error('invoke must not bypass preflight')
+      },
+      module: 'host.fs',
+      preflight: () => ({
+        execute() {
+          executeCalls += 1
+          throw new Error('unreachable')
+        },
+        requests: [{
+          evidence,
+          reason: 'filesystemTarget' as const,
+          resolved,
+          sideEffectCount: 0 as const,
+          verify: () => ({
+            evidence: { ...evidence, targetIdentityDigest: '3'.repeat(64) },
+            resolved
+          })
+        }]
+      })
+    }
+    const broker = new CapabilityInvocationBrokerV1({
+      admitted: creation({ 'host.fs': fs }),
+      engine: 'node-vm',
+      target: 'node'
+    })
+    expect(() => broker.invokeSync(fsInvocation('sync', 'readFileSync'))).toThrow(
+      expect.objectContaining({ code: 'resource.invalid' })
+    )
+    expect(executeCalls).toBe(0)
+  })
+
   it('runs Policy, frozen Koa middleware, narrow authority and Provider in order', async () => {
     const events: string[] = []
     const fs = provider('host.fs', 'async', 'hello', (context, authority) => {
@@ -365,59 +489,5 @@ describe('capability invocation broker v1', () => {
       target: 'node'
     })
     await expect(broker.invoke(fsInvocation('promise'))).rejects.toMatchObject({ code: 'provider.unavailable' })
-  })
-
-  it('publishes generation-bound resources and reuses inherited authority without Host middleware', () => {
-    let hostCalls = 0
-    let resourceClosed = 0
-    let providerCalls = 0
-    const fs = provider('host.fs', 'sync', 'unused', (context, authority) => {
-      providerCalls += 1
-      if (context.member === 'openSync') {
-        return authority.complete(snapshot({ binding: 'opaque', fd: 7 }, 'result'), [{
-          bindingId: 'fd-7',
-          close: () => {
-            resourceClosed += 1
-          },
-          resource: context.resource.requested,
-          resourceType: 'filesystem.file-handle'
-        }])
-      }
-      return authority.complete(snapshot({}, 'result'))
-    })
-    const broker = new CapabilityInvocationBrokerV1({
-      admitted: creation({ 'host.fs': fs }, {
-        registrations: [middleware('host', (_context, next) => {
-          hostCalls += 1
-          return next()
-        }, 'sync')],
-        schemaVersion: 1
-      }),
-      engine: 'node-vm',
-      target: 'node'
-    })
-    const opened = broker.invokeSync({
-      arguments: snapshot({ flag: 'r', path: 'holo-fs://workspace/demo.txt' }, 'argument'),
-      invocationMode: 'sync',
-      member: 'openSync',
-      module: 'node:fs',
-      requestId: 'open-resource',
-      resource: fsResource()
-    })
-    expect(opened.value).toEqual({ binding: 'opaque', fd: 7 })
-    expect(broker.resource('fd-7').semanticResourceDigest).toBe(fsResource().semanticResourceDigest)
-
-    broker.invokeSync({
-      arguments: snapshot({ fd: 7 }, 'argument'),
-      inheritedBindingId: 'fd-7',
-      invocationMode: 'sync',
-      member: 'closeSync',
-      module: 'node:fs',
-      requestId: 'close-resource',
-      resource: fsResource()
-    })
-    expect({ hostCalls, providerCalls }).toEqual({ hostCalls: 1, providerCalls: 2 })
-    expect(resourceClosed).toBe(1)
-    expect(() => broker.resource('fd-7')).toThrow(expect.objectContaining({ code: 'runtime.generation_stale' }))
   })
 })

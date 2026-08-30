@@ -59,7 +59,11 @@ const readHeaders = (input, limits) => {
 
 export function normalizeNetworkRequest(input, limits = NODE_NETWORK_DEFAULT_LIMITS) {
   if (input == null || typeof input !== 'object' || Array.isArray(input)) invalid('Invalid Node network request')
-  if (Object.keys(input).some(key => !['body', 'headers', 'method', 'signal', 'timeoutMs', 'url'].includes(key))) {
+  if (
+    Object.keys(input).some(key =>
+      !['body', 'capabilityBindingId', 'headers', 'method', 'signal', 'timeoutMs', 'url'].includes(key)
+    )
+  ) {
     invalid('Invalid Node network request')
   }
   if (typeof input.url !== 'string') invalid('Invalid Node network URL')
@@ -97,8 +101,13 @@ export function normalizeNetworkRequest(input, limits = NODE_NETWORK_DEFAULT_LIM
   ) {
     invalid('Invalid Node network abort signal')
   }
+  if (
+    input.capabilityBindingId != null &&
+    (typeof input.capabilityBindingId !== 'string' || !/^[A-Za-z0-9][\w.:-]{0,255}$/u.test(input.capabilityBindingId))
+  ) invalid('Invalid Node capability network binding')
   return Object.freeze({
     body,
+    capabilityBindingId: input.capabilityBindingId,
     headers: readHeaders(input.headers, limits),
     method,
     signal: input.signal,

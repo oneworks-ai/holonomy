@@ -24,7 +24,7 @@ export const publicProcessDto = process => {
       : {
         capabilityContextDigest: process.capabilityRuntime.contextDigest,
         capabilityPolicyDigest: process.capabilityRuntime.policyDigest,
-        capabilityRuntimeState: 'kernel-slice'
+        capabilityRuntimeState: 'provider-v1'
       }),
     sandboxPolicyState: effective ? 'effective' : 'pending',
     sessionId: process.sessionId,

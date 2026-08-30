@@ -5,6 +5,7 @@ import android.os.Build
 import ai.oneworks.holonomy.host.DedicatedThreadRuntimeEngine
 import ai.oneworks.holonomy.host.RuntimeCapabilities
 import ai.oneworks.holonomy.host.RuntimeCapabilityHost
+import ai.oneworks.holonomy.host.RuntimeCapabilityServicesFactory
 import ai.oneworks.holonomy.host.RuntimeEngine
 import ai.oneworks.holonomy.host.RuntimeImplementationStage
 import ai.oneworks.holonomy.host.RuntimeMicrotaskMode
@@ -52,7 +53,12 @@ object RuntimeEngineFactory {
         processHost: RuntimeProcessHost = SilentRuntimeProcessHost,
         capabilityHostFactory: (() -> RuntimeCapabilityHost)? = null,
         trustedBackendFactory: (() -> RuntimeTrustedBackend)? = null,
-    ): RuntimeEngine = createEngine(
+        capabilityServicesFactory: RuntimeCapabilityServicesFactory? = null,
+    ): RuntimeEngine {
+        require(
+            capabilityServicesFactory == null || capabilityHostFactory == null && trustedBackendFactory == null,
+        ) { "Capability services cannot be combined with individual factories" }
+        return createEngine(
         assets = assets,
         nativeHostSource = RuntimeNativeHostGenerationSource.restartable(nativeHostFactory),
         bootstrapAssetPath = bootstrapAssetPath,
@@ -61,7 +67,11 @@ object RuntimeEngineFactory {
         processHost = processHost,
         capabilityHostSource = capabilityHostFactory?.let(RuntimeCapabilityHostGenerationSource::restartable),
         trustedBackendSource = trustedBackendFactory?.let(RuntimeTrustedBackendGenerationSource::restartable),
-    )
+        capabilityServicesSource = capabilityServicesFactory?.let { factory ->
+            RuntimeCapabilityServicesGenerationSource(factory::create)
+        },
+        )
+    }
 
     private fun createEngine(
         assets: AssetManager,
@@ -72,6 +82,7 @@ object RuntimeEngineFactory {
         processHost: RuntimeProcessHost,
         capabilityHostSource: RuntimeCapabilityHostGenerationSource?,
         trustedBackendSource: RuntimeTrustedBackendGenerationSource?,
+        capabilityServicesSource: RuntimeCapabilityServicesGenerationSource? = null,
     ): RuntimeEngine = DedicatedThreadRuntimeEngine(
         JavetRuntimeAdapterFactory(
             assets = assets,
@@ -82,6 +93,7 @@ object RuntimeEngineFactory {
             processHost = processHost,
             capabilityHostSource = capabilityHostSource,
             trustedBackendSource = trustedBackendSource,
+            capabilityServicesSource = capabilityServicesSource,
             runtimeArchitecture = resolveRuntimeArchitecture(Build.SUPPORTED_ABIS),
         ),
     )
@@ -102,6 +114,7 @@ internal class JavetRuntimeAdapterFactory(
     private val processHost: RuntimeProcessHost,
     private val capabilityHostSource: RuntimeCapabilityHostGenerationSource?,
     private val trustedBackendSource: RuntimeTrustedBackendGenerationSource?,
+    private val capabilityServicesSource: RuntimeCapabilityServicesGenerationSource?,
     private val runtimeArchitecture: String,
 ) : ai.oneworks.holonomy.host.RuntimeAdapterFactory {
     override val capabilities = RuntimeCapabilities(
@@ -114,19 +127,22 @@ internal class JavetRuntimeAdapterFactory(
     override fun create(
         threadGuard: ai.oneworks.holonomy.host.RuntimeThreadGuard,
         host: ai.oneworks.holonomy.host.RuntimeAdapterHost,
-    ): ai.oneworks.holonomy.host.RuntimeAdapter = JavetRuntimeAdapter(
+    ): ai.oneworks.holonomy.host.RuntimeAdapter {
+        val services = capabilityServicesSource?.create()
+        return JavetRuntimeAdapter(
         assets = assets,
         bootstrapAssetPath = bootstrapAssetPath,
         host = host,
         inspectorOptions = inspectorOptions,
         moduleResolver = moduleResolver,
         processHost = processHost,
-        capabilityHost = capabilityHostSource?.create(),
-        trustedBackend = trustedBackendSource?.create(),
-        nativeHost = nativeHostSource.create(),
+        capabilityHost = services?.capabilityHost ?: capabilityHostSource?.create(),
+        trustedBackend = services?.trustedBackend ?: trustedBackendSource?.create(),
+        nativeHost = services?.nativeHost ?: nativeHostSource.create(),
         runtimeArchitecture = runtimeArchitecture,
         threadGuard = threadGuard,
-    )
+        )
+    }
 }
 
 internal fun resolveRuntimeArchitecture(supportedAbis: Array<String>): String = when (supportedAbis.firstOrNull()) {

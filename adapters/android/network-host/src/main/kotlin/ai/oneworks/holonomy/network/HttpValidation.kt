@@ -13,7 +13,10 @@ internal fun parseHttpRequestMetadata(
     args: JSONObject,
     configuration: AndroidNetworkHostConfiguration,
 ): HttpRequestMetadata {
-    require(args.hasExactKeys("headers", "method", "url"))
+    require(
+        args.hasExactKeys("headers", "method", "url") ||
+            args.hasExactKeys("capabilityBindingId", "headers", "method", "url"),
+    )
     val method = normalizeHttpMethod(args.get("method") as? String ?: throw IllegalArgumentException())
     val rawUrl = args.get("url") as? String ?: throw IllegalArgumentException()
     val url = configuration.authorizeUrl(rawUrl)

@@ -17,6 +17,7 @@ const policy = () => ({
   device: {
     defaultAccess: 'deny',
     maxEventsPerSecond: 1,
+    maxQueuedEvents: 0,
     maxSubscriptions: 0,
     operations: {
       'device.form-factor.read': { access: 'allow', maxPrecision: 'standard', maxPrivacyTier: 0 }
@@ -27,6 +28,7 @@ const policy = () => ({
     limits: {
       maxDirectoryEntries: 32,
       maxOpenHandles: 8,
+      maxQueuedEvents: 0,
       maxReadBytes: 4096,
       maxWatchers: 0,
       maxWriteBytes: 4096
@@ -157,7 +159,7 @@ describe('service to Node capability Runtime kernel slice', () => {
 
       const internal = core.get('processes', started.value.process.id, 'Runtime process')
       const publicProcess = publicProcessDto(internal)
-      assert.equal(publicProcess.capabilityRuntimeState, 'kernel-slice')
+      assert.equal(publicProcess.capabilityRuntimeState, 'provider-v1')
       assert.match(publicProcess.capabilityContextDigest, /^[\da-f]{64}$/u)
       assert.match(publicProcess.capabilityPolicyDigest, /^[\da-f]{64}$/u)
       const serialized = JSON.stringify(publicProcess)

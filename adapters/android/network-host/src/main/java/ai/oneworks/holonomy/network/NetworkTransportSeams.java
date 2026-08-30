@@ -158,9 +158,27 @@ final class NetworkHostDependencies {
                     configuration,
                     platform(configuration.getLimits()),
                     observation,
-                    generation);
+                    generation,
+                    null);
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Cannot create Android network provider", error);
+        }
+    }
+
+    static AndroidHttpNetworkHost createCapabilityProvider(
+            AndroidNetworkHostConfiguration configuration,
+            AndroidNetworkObservationConfiguration observation,
+            AndroidNetworkProviderGeneration generation,
+            AndroidCapabilityNetworkAuthority authority) {
+        try {
+            return HOST_CONSTRUCTOR.newInstance(
+                    configuration,
+                    platform(configuration.getLimits()),
+                    observation,
+                    generation,
+                    authority);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Cannot create capability-bound Android network provider", error);
         }
     }
 
@@ -170,7 +188,8 @@ final class NetworkHostDependencies {
                     AndroidNetworkHostConfiguration.class,
                     NetworkHostDependencies.class,
                     AndroidNetworkObservationConfiguration.class,
-                    AndroidNetworkProviderGeneration.class);
+                    AndroidNetworkProviderGeneration.class,
+                    AndroidCapabilityNetworkAuthority.class);
             constructor.setAccessible(true);
             return constructor;
         } catch (ReflectiveOperationException error) {

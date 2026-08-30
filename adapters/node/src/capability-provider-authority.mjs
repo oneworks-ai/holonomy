@@ -35,12 +35,13 @@ export const assertNodeNetworkAuthorityV1 = (context, authority, module) => {
   const resource = context.resource.requested
   const expectedMode = module === 'host.network.mock' ? 'mockOnly' : 'restricted'
   const scheme = new URL(resource.origin).protocol.slice(0, -1)
-  const accepted = bindingsFor(authority, module).some(binding => {
+  const accepted = bindingsFor(authority, module).find(binding => {
     const constraints = binding.constraints
     return constraints.mode === expectedMode && constraints.origins?.includes(resource.origin) &&
       constraints.schemes?.includes(scheme)
   })
   if (!accepted) denied(context)
+  return accepted.constraints
 }
 
 export const assertNodeProcessAuthorityV1 = (context, authority, executableId, signal) => {

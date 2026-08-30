@@ -2,7 +2,7 @@
 
 [返回 RFC 总览](../0001-holo-capability-runtime.md)
 
-本附录冻结完整插件目标，并区分当前证据：Node/Desktop CLI 已支持配置装载与 watch graph replacement，Android v1 仅支持启动时静态 Bundle；Capability Middleware graph snapshot、drain 与 Permission/Audit 基础合同仍属于 M3 Exit。每个 Runtime generation 拥有一个 Cordis App；Cordis 管理 JavaScript 插件的 Context、依赖与 dispose，Holonomy Kernel 继续拥有 Policy、Broker、资源、authority、generation 和终态安全。
+本附录冻结完整插件目标，并区分当前证据：Node/Desktop CLI 已支持配置装载、Capability Middleware graph snapshot/drain 与 watch graph replacement；Permission/Audit 提供官方基础组件，但具体决定和存储仍由应用注入。Android v1 支持启动时静态、同步 Bundle，并在独立 Host plugin realm 中把同步 Capability Middleware 接入同一 Broker；动态 replacement 仍不支持。Holonomy Kernel 始终拥有 Policy、Broker、资源、authority、generation 和终态安全，Cordis 只管理已准入 JavaScript 插件的 Context、依赖与 dispose。
 
 ## K.1 代码与包边界
 
@@ -10,14 +10,14 @@
 
 ```text
 packages/runtime              # Kernel + Cordis App
-packages/capability-*         # fs/network/device/system/process
-packages/plugin-*             # permission/audit 等可选基础插件
+packages/capabilities/*       # fs/network/device/system/process
+packages/plugins/*            # permission/audit 等可选基础插件
 adapters/*                    # Node/Desktop/Android Provider 与 Bridge
 tools/cli                     # 参数与 Host 请求入口
 tools/service                 # 配置、资源和 Runtime 长生命周期 owner
 ```
 
-`capability-*` 与 `plugin-*` 可以依赖 `runtime` 的公开 Host contract；`runtime` 不得反向依赖具体 capability/plugin。官方 Capability、Permission、Audit、接入方规则与自定义 Provider 都采用 JavaScript/Cordis plugin packaging。包名前缀只表达角色，不授予 authority。
+Capability 与 plugin 包可以依赖 `runtime` 的公开 Kernel contract；Capability Provider 实现不得进入 Runtime Kernel。当前 `@holonomyjs/runtime` 同时是默认组合入口，因此它显式依赖官方 Capability 包来生成内置 Registry 与 Facade；这是 composition dependency，不允许 Capability 包访问 Runtime App 实例或形成第二套生命周期。若接入方只需要叶子合同，可以直接导入 `@holonomyjs/runtime/kernel/*` 与对应 Capability 子路径。官方 Capability、Permission、Audit、接入方规则与自定义 Provider 都采用 JavaScript/Cordis plugin packaging。包名前缀只表达角色，不授予 authority。
 
 Native Host 不实现第二套插件 API。Android/Desktop Embedder 只负责加载资源字节、构造 Resource Manifest、提供 Native Bridge，并创建/停止 Runtime。Native 权限窗口等平台行为通过 Bridge service 暴露，由 JavaScript Permission plugin 调用。
 
@@ -35,7 +35,7 @@ holo-plugins:///<plugin-instance-id>/<relative-path>
 interface RuntimePluginFileV1 {
   readonly url: `holo-plugins:///${string}`
   readonly sha256: string
-  readonly bytes: Uint8Array
+  readonly source: string
 }
 
 interface RuntimePluginBundleV1 {
@@ -44,13 +44,15 @@ interface RuntimePluginBundleV1 {
   readonly rootUrl: `holo-plugins:///${string}/`
   readonly entryUrl: `holo-plugins:///${string}`
   readonly bundleSha256: string
-  readonly exportName?: string
+  readonly exportName: string
   readonly config: JsonValueV1
   readonly files: readonly RuntimePluginFileV1[]
 }
 ```
 
-`instanceId` 在一份配置内唯一且有界。Loader 必须验证所有 URL 位于 exact `rootUrl`、entry 属于 files、文件 URL 唯一、SHA-256 与 exact bytes 相符、模块图不逃逸 root。Runtime 只消费 Bundle，不识别 npm、pnpm、绝对路径或 symlink。
+`RuntimePluginBundleV1` v1 是严格 UTF-8 JavaScript source-only 合同，不承载任意二进制资源。`source` 必须是 Unicode scalar text，禁止未配对 surrogate；它编码后的 UTF-8 字节必须不超过 8 MiB，单个 Bundle 的全部 source 不超过 32 MiB，files 最多512项。`sha256` 对这份 exact UTF-8 bytes 计算；Host transport 使用 JSON string，不能再次 base64、换行归一化或替换非法字符。非 UTF-8 源文件在 Host source resolution 阶段稳定拒绝。
+
+`instanceId` 在一份配置内唯一且有界。Loader 必须验证所有 URL 位于 exact `rootUrl`、entry 属于 files、文件 URL 唯一、SHA-256 与 exact UTF-8 bytes 相符、模块图不逃逸 root。Runtime 只消费 Bundle，不识别 npm、pnpm、绝对路径或 symlink。若未来插件需要二进制资源，必须用新的 Bundle schemaVersion 和显式 binary discriminant，不能在 v1 中把 source 字符串解释为任意字节。
 
 ## K.3 Host 配置与来源解析
 
@@ -94,7 +96,11 @@ Kernel system controls
   → Guest entry
 ```
 
-系统 Policy、snapshot、authority、resource fencing 不是可装卸用户插件。配置插件运行在可信 Host plugin realm，Guest 无法取得 Cordis Context，也不能加载、枚举、排序或 dispose 插件。每个插件使用独立 Cordis child Context；注册必须通过 Context/effect 生命周期完成，ambient global side effect 不属于合规插件合同。
+系统 Policy、snapshot、authority、resource fencing 不是可装卸用户插件。配置插件运行在可信 Host plugin realm，Guest 无法取得 Cordis Context，也不能加载、枚举、排序或 dispose 插件。Host plugin realm 与 Guest realm 不共享 global、intrinsics 或模块实例；插件对 ambient global 的写入既不属于合规插件合同，也不得在 Guest 中可见。
+
+Node/Desktop v1 使用 generation-owned `HolonomyRuntimePluginAppV1`。每个插件获得独立 Cordis child Context；注册必须通过 Context/effect 生命周期完成，可以异步初始化。Runtime 把 Cordis Context 的 Holo interception service 绑定到该 generation 的 Capability graph，发布新 revision 时冻结 invocation snapshot，旧 revision drain 后才 dispose。官方 Permission/Audit 包只提供拦截协议、decider/sink 注入点和默认安全行为，弹窗、允许一次/长期允许、持久化和审计目的地都由接入应用决定。
+
+Android v1 使用独立、Host-owned 的 Javet/V8 plugin realm，并为每个静态插件创建新的 Cordis Context。它只允许同步初始化、同步 Middleware 和同步返回的 disposer；返回 Promise、注册 async Middleware 或其他异步初始化结果会使 generation 在 Guest entry 前稳定失败。Host plugin realm 在 Guest entry 前发布 revision 1 的冻结 Capability graph；真实 facade 调用通过该图进入同一 Broker，插件 global/intrinsics 不进入 Guest。Android v1 按整个 Host plugin realm 关闭插件，不提供 live graph replacement，也不能被描述为 Node/Desktop 完整 Cordis App 的平台等价实现。
 
 ## K.5 `watch` 模式
 
@@ -118,15 +124,18 @@ diff 以稳定 `id` 和数组顺序为准：
 
 v1 watch 只承诺配置与重新解析后的 Bundle diff，不承诺任意模块源码 HMR。若非 `plugins` 配置变化需要 Runtime restart，Service 必须明确报告，不能部分静默应用。
 
-Android v1 只支持启动时静态 Bundle：Native Host 在 Guest entry 前生成只读 plugin manifest，Runtime 使用同一 Cordis App 完成 install。Android 不接受动态 graph replacement，CLI 对 Android `--watch` 稳定拒绝；这不是第二套插件 API。
+Android v1 只支持启动时静态 Bundle：Native Host 在 Guest entry 前生成只读 plugin manifest，独立 Host plugin realm 按 K.4 的同步子集完成 install。Android 不接受动态 graph replacement，CLI 对 Android `--watch` 稳定拒绝；这不是第二套插件 API，也不允许回退为 Guest realm 插件。
 
 ## K.6 固定验收
 
 - package、相对路径、允许/拒绝的绝对路径产生等价 Bundle identity；Runtime 看不到 Host path；
-- `holo-plugins:///` root escape、重复 URL、错误 bytes digest、entry 缺失和 module graph escape 全部拒绝；
+- `holo-plugins:///` root escape、重复 URL、错误UTF-8 digest、非法UTF-8/未配对surrogate、byte limit、entry缺失和module graph escape全部拒绝；
 - 初始 plugin staging 失败时 Guest entry 副作用为零；
 - invalid JSON/Schema、重复 ID、config validation/import/apply 失败不改变 active revision；
 - add/remove/change/reorder/disable 只作用于预期实例，unchanged scope 不 reload；
 - in-flight invocation 使用旧 graph exactly once，新 invocation 使用新 graph，drain 后 dispose exactly once；
 - Runtime restart/stop 使所有 plugin graph revision、资源、callback 和 late result 失效；
-- Node/Desktop CLI watch 与 Android static Bundle 使用同一 loader vectors；不存在 Native plugin fallback。
+- Node/Desktop CLI watch 与 Android static Bundle 使用同一 loader vectors；不存在 Native plugin fallback；
+- Android Host plugin global/intrinsics 对 Guest 不可见，插件先于 Guest entry 安装；
+- Android 同步插件至少拦截一个真实 facade 调用，并保持 Policy、Provider authority 与 Guest 结果语义；
+- Android 插件返回 Promise/异步初始化时 generation 启动失败，Guest entry 副作用为零。

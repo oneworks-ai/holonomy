@@ -13,13 +13,14 @@ import {
 const fsLimits = {
   maxDirectoryEntries: 100,
   maxOpenHandles: 10,
+  maxQueuedEvents: 16,
   maxReadBytes: 1000,
   maxWatchers: 2,
   maxWriteBytes: 1000
 }
 const fs = (prefix: string[], rights: string[], maxReadBytes = 1000) => ({
   limits: { ...fsLimits, maxReadBytes },
-  roots: [{ pathPrefixSegments: prefix, rights, rootId: 'workspace' }]
+  roots: [{ pathPrefixSegments: prefix, rights, rootId: 'workspace', symlinks: 'withinRoot' }]
 })
 const networkLimits = {
   maxChunkBytes: 1024,
@@ -82,7 +83,12 @@ describe('capability definition and selection v1', () => {
       fs(['src'], ['read'])
     )).toEqual({
       limits: fsLimits,
-      roots: [{ pathPrefixSegments: ['src'], rights: ['read'], rootId: 'workspace' }]
+      roots: [{
+        pathPrefixSegments: ['src'],
+        rights: ['read'],
+        rootId: 'workspace',
+        symlinks: 'withinRoot'
+      }]
     })
   })
 
@@ -135,6 +141,7 @@ describe('capability definition and selection v1', () => {
     const device = (maxPrecision: string) => ({
       maxPrecision,
       maxPrivacyTier: 2,
+      maxQueuedEvents: 8,
       operations: ['device.connectivity.read']
     })
     const system = (maxPrecision: string) => ({
@@ -196,7 +203,12 @@ describe('capability definition and selection v1', () => {
     }], context)
     expect(selected?.bindings[0]?.constraints).toEqual({
       limits: fsLimits,
-      roots: [{ pathPrefixSegments: ['src'], rights: ['read'], rootId: 'workspace' }]
+      roots: [{
+        pathPrefixSegments: ['src'],
+        rights: ['read'],
+        rootId: 'workspace',
+        symlinks: 'withinRoot'
+      }]
     })
     expect(() => normalizeCapabilityRequirementV1({ anyOf: [] })).toThrow(CapabilityContractError)
     expect(() =>

@@ -59,20 +59,22 @@ test('runs the native.darwin-seatbelt-v1 Backend without PATH or native pid expo
     profile: 'process-profile-v1'
   }
 
-  await supervisor.start(capabilityRuntimeSession({
-    entryUrl,
-    hostPath: root,
-    moduleRootUrl,
-    processLimits: {
-      maxStdinBytes: 256 * 1024,
-      maxStdoutBytes: 1024,
-      maxTotalProcesses: 21
-    },
-    processProfile,
-    source: `
+  try {
+    await supervisor.start(capabilityRuntimeSession({
+      entryUrl,
+      hostPath: root,
+      moduleRootUrl,
+      processLimits: {
+        maxStdinBytes: 256 * 1024,
+        maxStdoutBytes: 1024,
+        maxTotalProcesses: 21
+      },
+      processProfile,
+      source: `
       import { childProcessEnvironment } from 'holo:runtime'
       import { exec, execFile, execFileSync, execSync, spawn, spawnSync } from 'node:child_process'
 
+      try {
       const sync = spawnSync('node-helper', ['-e', 'process.stdout.write("sync-ok")'], {
         [childProcessEnvironment]: { scope: 'processTree' }
       })
@@ -323,8 +325,21 @@ test('runs the native.darwin-seatbelt-v1 Backend without PATH or native pid expo
         totalLimitCode,
         unknownCode
       }))
+      } catch (error) {
+        console.log('CAPABILITY_PROCESS_M35_ERROR:' + JSON.stringify({
+          code: error?.code,
+          message: error?.message,
+          name: error?.name,
+          stack: error?.stack
+        }))
+        throw error
+      }
     `
-  }))
+    }))
+  } catch (error) {
+    t.diagnostic(logs.join('\n'))
+    throw error
+  }
 
   const result = JSON.parse(logs.find(value => value.startsWith('CAPABILITY_PROCESS_M35:')).slice(23))
   assert.equal(Buffer.from(result.sync.stdout).toString('utf8'), 'sync-ok')

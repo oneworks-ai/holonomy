@@ -187,6 +187,8 @@ enum class RuntimeTrustedBackendChannel(
     val wireName: String,
 ) {
     LINUX_FILESYSTEM("linuxFilesystem"),
+    LINUX_CAPABILITY("linuxCapability"),
+    LINUX_PROCESS_EXECUTION("linuxProcessExecution"),
     LINUX_PROCESS_NETWORK("linuxProcessNetwork"),
 }
 
@@ -205,9 +207,25 @@ fun interface RuntimeTrustedBackendHost {
 
 /** One trusted Backend instance owned by exactly one Runtime generation. */
 interface RuntimeTrustedBackend : AutoCloseable {
-    fun start(host: RuntimeTrustedBackendHost)
+    /** Starts the Backend and settles only after it can accept generation-owned work. */
+    fun start(host: RuntimeTrustedBackendHost): CompletableFuture<Unit>
 
+    /**
+     * Cancels startup and closes this generation. This operation is idempotent, may be called off
+     * the Runtime thread, and must settle an outstanding [start] future exceptionally.
+     */
     override fun close() = Unit
+}
+
+/** Atomically creates capability services that must share one Runtime generation. */
+data class RuntimeCapabilityServices(
+    val capabilityHost: RuntimeCapabilityHost,
+    val nativeHost: RuntimeNativeHost? = null,
+    val trustedBackend: RuntimeTrustedBackend? = null,
+)
+
+fun interface RuntimeCapabilityServicesFactory {
+    fun create(): RuntimeCapabilityServices
 }
 
 class FailClosedRuntimeNativeHost : RuntimeNativeHost {

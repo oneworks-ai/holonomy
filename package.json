@@ -7,13 +7,8 @@
   "description": "A capability-secure, platform-neutral JavaScript runtime for native hosts",
   "license": "MIT",
   "homepage": "https://github.com/oneworks-ai/holonomy#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/oneworks-ai/holonomy.git"
-  },
-  "bugs": {
-    "url": "https://github.com/oneworks-ai/holonomy/issues"
-  },
+  "repository": "github:oneworks-ai/holonomy",
+  "bugs": "https://github.com/oneworks-ai/holonomy/issues",
   "keywords": [
     "android",
     "embedded",
@@ -105,9 +100,7 @@
   },
   "files": [
     "!**/AGENTS.md",
-    "!tools/capability-contract-*.mjs",
-    "!tools/capability-operation-contract-artifacts.mjs",
-    "!tools/generate-capability-contracts.mjs",
+    "!tools/*capability*contract*.mjs",
     "!tools/probe-node-engine-capabilities.mjs",
     "!tools/service/vitest.config.mjs",
     ".oo/skills/*/SKILL.md",
@@ -115,6 +108,7 @@
     ".oo/skills/index.json",
     "adapters/android/build.gradle.kts",
     "adapters/android/e2e/build.gradle.kts",
+    "adapters/android/e2e/src/backendProbe",
     "adapters/android/e2e/src/main",
     "adapters/android/e2e/src/runtimeBootstrap",
     "adapters/android/e2e/src/runtimeFixtures",
@@ -136,10 +130,11 @@
     "adapters/android/v8-host/src/main",
     "adapters/node/README*.md",
     "adapters/node/src",
+    "conformance/capabilities",
     "dist",
+    "packages/runtime/src/kernel/machine/android-engine-hook-capability-v1.json",
+    "packages/runtime/src/kernel/machine/device-contract-v1.vectors.json",
     "src/**/*.ts",
-    "src/capability-runtime/machine/android-engine-hook-capability-v1.json",
-    "src/capability-runtime/machine/device-contract-v1.vectors.json",
     "tools/*.d.mts",
     "tools/*.mjs",
     "tools/README*.md",
@@ -151,7 +146,7 @@
     "android:device-test": "node tools/android-device-tests.mjs",
     "holonomy": "node tools/holonomy.mjs",
     "service": "node tools/service/entry.mjs",
-    "build": "node --input-type=module --eval \"import { rmSync } from 'node:fs'; rmSync('dist', { force: true, recursive: true })\" && tsc -p tsconfig.build.json",
+    "build": "node tools/build-workspace.mjs",
     "contracts:check": "pnpm run build && node tools/generate-capability-contracts.mjs --check && vitest run --config vitest.config.ts __tests__/js-runtime-kernel/capability-runtime/machine-artifacts.spec.ts",
     "contracts:generate": "pnpm run build && node tools/generate-capability-contracts.mjs",
     "docs:check": "node __tests__/verify-docs-layout.mjs && node --test __tests__/verify-docs-layout.test.mjs",
@@ -170,10 +165,19 @@
     "test:e2e:node": "node tools/holonomy.mjs test \"conformance/specs/**/*.test.mjs\" --target node --sandbox conformance/sandbox/restricted.json",
     "test:runtime": "pnpm run test:topology && vitest run --config vitest.config.ts __tests__/js-runtime-kernel",
     "test:service": "vitest run --config tools/service/vitest.config.mjs --no-cache",
-    "test:topology": "node __tests__/verify-test-topology.mjs",
+    "test:topology": "node __tests__/verify-test-topology.mjs && node __tests__/verify-workspace-layout.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit --pretty false"
   },
   "dependencies": {
+    "@holonomyjs/capability-device": "1.0.0-rc.3",
+    "@holonomyjs/capability-fs": "1.0.0-rc.3",
+    "@holonomyjs/capability-network": "1.0.0-rc.3",
+    "@holonomyjs/capability-process": "1.0.0-rc.3",
+    "@holonomyjs/capability-system": "1.0.0-rc.3",
+    "@holonomyjs/holouv": "1.0.0-rc.3",
+    "@holonomyjs/plugin-audit": "1.0.0-rc.3",
+    "@holonomyjs/plugin-permission": "1.0.0-rc.3",
+    "@holonomyjs/runtime": "1.0.0-rc.3",
     "acorn": "^8.18.0",
     "ajv": "^8.20.0",
     "cordis": "4.0.0-rc.8"

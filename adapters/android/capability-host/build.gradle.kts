@@ -23,5 +23,6 @@ kotlin {
 
 dependencies {
     api(project(":host-core"))
+    implementation(project(":network-host"))
     testImplementation("junit:junit:4.13.2")
 }

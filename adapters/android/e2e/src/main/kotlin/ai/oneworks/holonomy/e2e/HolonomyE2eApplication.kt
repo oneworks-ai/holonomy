@@ -1,7 +1,6 @@
 package ai.oneworks.holonomy.e2e
 
 import android.app.Application
-import ai.oneworks.holonomy.capability.AndroidCapabilityHost
 import ai.oneworks.holonomy.session.HolonomySessionServiceDependencies
 import ai.oneworks.holonomy.session.HolonomySessionServiceProvider
 import ai.oneworks.holonomy.session.SessionNativeHostFactory
@@ -10,14 +9,14 @@ import ai.oneworks.holonomy.session.SessionRuntimeInstance
 import ai.oneworks.holonomy.session.SessionSandboxNetworkAccess
 import ai.oneworks.holonomy.v8.AdbInspectorOptions
 import ai.oneworks.holonomy.v8.RuntimeEngineFactory
-import com.caoccao.javet.interop.options.V8RuntimeOptions
+import ai.oneworks.holonomy.v86.AndroidV86HostNetworkTransport
+import ai.oneworks.holonomy.v86.AndroidV86NetworkAddressResolver
+import ai.oneworks.holonomy.v86.AndroidV86NetworkTransport
+import ai.oneworks.holonomy.v86.AndroidV86RuntimeServicesFactory
+import java.net.InetAddress
+import org.json.JSONObject
 
 class HolonomyE2eApplication : Application(), HolonomySessionServiceProvider {
-    override fun onCreate() {
-        V8RuntimeOptions.V8_FLAGS.setCustomFlags(V86_V8_FLAGS)
-        super.onCreate()
-    }
-
     override fun createHolonomySessionServiceDependencies() = HolonomySessionServiceDependencies(
         runtimeFactory = SessionRuntimeFactory { context ->
             val inspector = context.spec.inspector?.let { spec ->
@@ -32,31 +31,20 @@ class HolonomyE2eApplication : Application(), HolonomySessionServiceProvider {
                 moduleResolver = context.moduleResolver,
                 nativeHostFactory = context.freshNativeHostFactory,
                 processHost = context.processHost,
-                capabilityHostFactory = context.capabilityRuntimeConfigurationJson?.let { configuration ->
-                    {
-                        AndroidCapabilityHost(
-                            applicationContext = this,
-                            configurationJson = configuration,
-                            processId = context.runtimeId.value,
-                            generation = context.generation,
-                            expectedNetworkProvider = if (
-                                context.spec.sandboxPolicy.network.access == SessionSandboxNetworkAccess.MOCK_ONLY
-                            ) {
-                                "host.network.mock"
-                            } else {
-                                "host.network"
-                            },
-                        )
-                    }
-                },
-                trustedBackendFactory = context.capabilityRuntimeConfigurationJson?.let {
-                    {
-                        if (assets.list(V86_ROOT).orEmpty().contains("v86.wasm")) {
-                            V86TrustedBackendProbe(assets, context.runtimeId.value, context.generation)
-                        } else {
-                            E2eTrustedBackend(context.runtimeId.value, context.generation)
-                        }
-                    }
+                capabilityServicesFactory = context.capabilityRuntimeConfigurationJson?.let { configuration ->
+                    AndroidV86RuntimeServicesFactory(
+                        applicationContext = this,
+                        configurationJson = configuration,
+                        processId = context.runtimeId.value,
+                        generation = context.generation,
+                        principal = context.principal,
+                        expectedNetworkProvider = if (
+                            context.spec.sandboxPolicy.network.access == SessionSandboxNetworkAccess.MOCK_ONLY
+                        ) "host.network.mock" else "host.network",
+                        capabilityDomains = setOf("device", "system"),
+                        backendDiagnostics = true,
+                        networkTransport = v86NetworkTransport(configuration),
+                    )
                 },
             )
             SessionRuntimeInstance(
@@ -67,9 +55,25 @@ class HolonomyE2eApplication : Application(), HolonomySessionServiceProvider {
         nativeHostFactory = SessionNativeHostFactory(::createE2eRuntimeNativeHost),
     )
 
+    private fun v86NetworkTransport(configuration: String): AndroidV86NetworkTransport? {
+        val process = JSONObject(configuration).getJSONObject("session")
+            .getJSONObject("runtimeCreation").getJSONObject("configuration")
+            .getJSONObject("sandboxPolicy").getJSONObject("process")
+        if (process.getString("access") != "sandboxed" ||
+            process.getJSONObject("network").getString("access") != "restricted"
+        ) return null
+        return AndroidV86HostNetworkTransport(
+            addressResolver = AndroidV86NetworkAddressResolver { hostname ->
+                if (hostname == V86_TEST_HOSTNAME) {
+                    listOf(InetAddress.getByName("127.0.0.1"))
+                } else {
+                    InetAddress.getAllByName(hostname).toList()
+                }
+            },
+        )
+    }
+
     private companion object {
-        private const val V86_ROOT = "runtime/process-backends/v86"
-        private const val V86_V8_FLAGS =
-            "--liftoff-only --no-wasm-tier-up --no-wasm-dynamic-tiering --wasm-num-compilation-tasks=1"
+        private const val V86_TEST_HOSTNAME = "android-v86.test"
     }
 }

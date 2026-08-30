@@ -41,6 +41,9 @@ class SessionRuntimePluginsTest {
         assertThrows(IllegalArgumentException::class.java) {
             pluginBundle(fileSha256 = "0".repeat(64))
         }
+        assertThrows(IllegalArgumentException::class.java) {
+            SessionRuntimePluginFile(PLUGIN_URL, "\uD800", "0".repeat(64))
+        }
     }
 
     private fun pluginBundle(

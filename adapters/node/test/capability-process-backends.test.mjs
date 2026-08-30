@@ -153,6 +153,7 @@ test('lets an installed WASM backend own shared and isolated environment scopes'
   )
   assert.deepEqual(value.environment, {
     allowedScopes: ['processTree', 'runtime'],
+    capabilityBridge: { domains: [] },
     defaultScope: 'runtime'
   })
   assert.deepEqual(value.executables[0].executable, {

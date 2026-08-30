@@ -135,6 +135,7 @@ export const policyV2 = (): SandboxPolicyV2 =>
     device: {
       defaultAccess: 'deny',
       maxEventsPerSecond: 10,
+      maxQueuedEvents: 8,
       maxSubscriptions: 1,
       operations: {
         'device.form-factor.read': { access: 'allow', maxPrecision: 'standard', maxPrivacyTier: 0 }
@@ -145,6 +146,7 @@ export const policyV2 = (): SandboxPolicyV2 =>
       limits: {
         maxDirectoryEntries: 32,
         maxOpenHandles: 8,
+        maxQueuedEvents: 4,
         maxReadBytes: 1024,
         maxWatchers: 2,
         maxWriteBytes: 1024

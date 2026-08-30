@@ -4,6 +4,7 @@ import { Buffer } from 'node:buffer'
 import { CapabilityInvocationError, trustedInvocationValueFromJsonV1 } from '../../../dist/capability-runtime/index.js'
 
 import { NODE_PROCESS_BACKEND_REGISTRY_V1 } from './capability-process-backend.mjs'
+import { authorizeNodeProcessDescendantV1 } from './capability-process-descendant.mjs'
 import { NodeProcessResourceManagerV1 } from './capability-process-resources.mjs'
 import { binary, exactEnvironment, nodeError } from './capability-process-support.mjs'
 import { assertNodeProcessAuthorityV1, assertNodeProcessNetworkAuthorityV1 } from './capability-provider-authority.mjs'
@@ -44,6 +45,17 @@ export class NodeProcessProviderV1 {
         invocationBindingDigest: authority.invocationBinding.invocationBindingDigest,
         semanticResourceDigest: resource.semanticResourceDigest
       }, 'result'))
+    }
+    if (context.member === 'authorizeDescendantProcess') {
+      return authorizeNodeProcessDescendantV1({
+        authority,
+        context,
+        manifest: this.#manifest,
+        policy: this.#policy,
+        profile: this.#profile,
+        resource,
+        resources: this.#resources
+      })
     }
     if (resource.kind === 'processExecutable') return this.#spawn(context, authority, resource)
     if (resource.kind !== 'processInstance') {
@@ -86,6 +98,7 @@ export class NodeProcessProviderV1 {
     const stdio = options.stdio ?? ['pipe', 'pipe', 'pipe']
     const launch = this.#backend.prepareLaunch({
       configuration: this.#profile.backend.configuration,
+      executables: this.#profile.executables,
       environmentScope: resource.environmentScope,
       executable: executable.executable,
       executableId,

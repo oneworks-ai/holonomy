@@ -15,7 +15,9 @@ import org.json.JSONObject
 internal class AndroidAssetModuleResolver(
     private val assets: AssetManager,
 ) {
-    private val manifestAssets: Map<String, ManifestAsset> = loadAndVerifyManifest()
+    private val manifest = loadAndVerifyManifest()
+    private val manifestAssets = manifest.assets
+    private val moduleAliases = manifest.moduleAliases
 
     fun resolve(specifier: String, referrerUrl: String?): RuntimeModuleSource {
         val resourceUrl = canonicalize(specifier, referrerUrl)
@@ -60,7 +62,7 @@ internal class AndroidAssetModuleResolver(
             .toString()
     }
 
-    private fun loadAndVerifyManifest(): Map<String, ManifestAsset> {
+    private fun loadAndVerifyManifest(): VerifiedManifest {
         try {
             val manifest = JSONObject(decodeUtf8(readBoundedAsset(MANIFEST_ASSET_PATH)))
             if (manifest.getInt("schemaVersion") != MANIFEST_SCHEMA_VERSION) throw IllegalArgumentException()
@@ -70,7 +72,7 @@ internal class AndroidAssetModuleResolver(
             for (index in 0 until sources.length()) {
                 val source = sources.getJSONObject(index)
                 val path = source.getString("path")
-                if (!path.startsWith("src/") || !sourcePaths.add(path)) throw IllegalArgumentException()
+                if (!path.isSafeTypescriptSourcePath() || !sourcePaths.add(path)) throw IllegalArgumentException()
                 requireDigest(source.getString("sha256"))
             }
 
@@ -96,7 +98,20 @@ internal class AndroidAssetModuleResolver(
                 if (sha256(readBoundedAsset(path)) != item.sha256) throw IllegalArgumentException()
                 if (item.guestReadable && item.kind != "fixture") throw IllegalArgumentException()
             }
-            return output.toMap()
+            val aliases = manifest.getJSONArray("moduleAliases")
+            if (aliases.length() == 0) throw IllegalArgumentException()
+            val moduleAliases = linkedMapOf<String, String>()
+            for (index in 0 until aliases.length()) {
+                val alias = aliases.getJSONObject(index)
+                val specifier = alias.getString("specifier")
+                val path = alias.getString("path")
+                if (
+                    !WORKSPACE_SPECIFIER.matches(specifier) ||
+                    output[path]?.kind != "runtime-output" ||
+                    moduleAliases.put(specifier, path) != null
+                ) throw IllegalArgumentException()
+            }
+            return VerifiedManifest(output.toMap(), moduleAliases.toMap())
         } catch (error: RuntimeEngineException) {
             throw error
         } catch (_: Throwable) {
@@ -128,6 +143,7 @@ internal class AndroidAssetModuleResolver(
                 specifier == "acorn" -> URI(ACORN_RESOURCE_URL)
                 specifier == "cordis" -> URI(CORDIS_RESOURCE_URL)
                 specifier == "cosmokit" -> URI(COSMOKIT_RESOURCE_URL)
+                moduleAliases.containsKey(specifier) -> URI("holonomy:///${moduleAliases.getValue(specifier)}")
                 URI(specifier).isAbsolute -> URI(specifier)
                 referrerUrl != null -> URI(referrerUrl).resolve(specifier)
                 else -> throw IllegalArgumentException("missing referrer")
@@ -164,6 +180,13 @@ internal class AndroidAssetModuleResolver(
             !startsWith('/') &&
             !contains('\\') &&
             split('/').none { segment -> segment.isEmpty() || segment == "." || segment == ".." }
+
+    private fun String.isSafeTypescriptSourcePath(): Boolean =
+        isSafeAssetPath() &&
+            (
+                startsWith("src/") ||
+                    (startsWith("packages/") && contains("/src/"))
+            )
 
     private fun readUtf8Asset(path: String): String {
         val bytes = readBoundedAsset(path)
@@ -207,7 +230,13 @@ internal class AndroidAssetModuleResolver(
         private const val MAX_MODULE_BYTES = 2 * 1024 * 1024
         private val MODULE_ASSET_KINDS = setOf("bootstrap", "runtime-output", "vendor")
         private val SHA256_PATTERN = Regex("^[0-9a-f]{64}$")
+        private val WORKSPACE_SPECIFIER = Regex("^@holonomyjs/[a-z0-9-]+(?:/[a-z0-9-]+)*$")
     }
+
+    private data class VerifiedManifest(
+        val assets: Map<String, ManifestAsset>,
+        val moduleAliases: Map<String, String>,
+    )
 
     private data class ManifestAsset(
         val guestReadable: Boolean,

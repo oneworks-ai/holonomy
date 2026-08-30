@@ -59,7 +59,7 @@ const deviceDescriptor = target => {
         supportLevel: supported ? 'required' : optional ? 'optional' : 'unsupported'
       }
     }),
-    providerVersion: '1.0.0-kernel-slice',
+    providerVersion: '1.0.0',
     schemaVersion: 1,
     target
   }

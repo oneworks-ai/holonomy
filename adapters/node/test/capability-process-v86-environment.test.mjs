@@ -5,13 +5,14 @@ import { once } from 'node:events'
 // eslint-disable-next-line test/no-import-node-test -- Adapter tests use Node's public runner.
 import test from 'node:test'
 
+import { encodeHoloUvCompletionPayloadV1 } from '@holonomyjs/holouv'
+
 // eslint-disable-next-line antfu/no-import-dist -- Adapter production code consumes the built contract.
 import {
   ProcessSupervisorFrameDecoderV1,
   encodeProcessSupervisorFrameV1,
   encodeProcessSupervisorReadyPayloadV1
 } from '../../../dist/capability-runtime/index.js'
-import { encodeCompletionPayload } from '../src/capability-process-supervisor-frames.mjs'
 import { createV86ProcessBackendV1 } from '../src/capability-process-v86-backend.mjs'
 import { createV86ProcessEnvironmentFactoryV1 } from '../src/capability-process-v86-environment.mjs'
 
@@ -36,10 +37,11 @@ const configuration = {
   },
   memoryBytes: 64 * 1024 * 1024,
   requiredKernelCapabilities: ['process'],
-  supervisor: { protocolVersion: 1 }
+  supervisor: { execGateTimeoutMs: 30_000, protocolVersion: 1 }
 }
 
 class FakeV86 {
+  configurationDecoder = new ProcessSupervisorFrameDecoderV1()
   listeners = new Map()
   sent = []
 
@@ -80,6 +82,20 @@ class FakeV86 {
 
   serial_send_bytes(index, bytes) {
     this.sent.push([index, Uint8Array.from(bytes)])
+    for (const item of this.configurationDecoder.push(bytes)) {
+      if (item.operation !== 'configure') continue
+      queueMicrotask(() => {
+        const acknowledgement = encodeProcessSupervisorFrameV1({
+          operation: 'ack',
+          payload: new Uint8Array(),
+          processId: 0,
+          requestId: item.requestId,
+          sequence: 0,
+          version: 1
+        })
+        for (const byte of acknowledgement) this.emit('serial1-output-byte', byte)
+      })
+    }
   }
 }
 
@@ -114,7 +130,7 @@ class SupervisorV86 extends FakeV86 {
         for (const operation of ['exit', 'close']) {
           this.output({
             operation,
-            payload: encodeCompletionPayload(4, null),
+            payload: encodeHoloUvCompletionPayloadV1(4, null),
             processId: 23,
             requestId: 0,
             sequence: 0,
@@ -147,7 +163,7 @@ class NetworkV86 extends SupervisorV86 {
           for (const operation of ['exit', 'close']) {
             this.output({
               operation,
-              payload: encodeCompletionPayload(0, null),
+              payload: encodeHoloUvCompletionPayloadV1(0, null),
               processId: 37,
               requestId: 0,
               sequence: 0,
@@ -193,7 +209,10 @@ test('loads digest-bound v86 assets and uses the public secondary serial API', a
   assert.equal(FakeV86.last.destroyed, true)
   assert.equal(FakeV86.last.sent[0][0], 1)
   const decoder = new ProcessSupervisorFrameDecoderV1()
-  assert.equal(decoder.push(FakeV86.last.sent[0][1])[0].operation, 'shutdown')
+  assert.deepEqual(
+    FakeV86.last.sent.flatMap(([, bytes]) => decoder.push(bytes).map(frame => frame.operation)),
+    ['configure', 'shutdown']
+  )
 })
 
 test('rejects a v86 artifact whose bytes do not match the Host manifest', async () => {

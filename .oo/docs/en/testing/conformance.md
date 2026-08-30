@@ -25,4 +25,12 @@ Ordinary `describe`/`it` cases define the cross-platform common denominator. A m
 
 Android instrumentation is Adapter integration evidence, not CLI E2E. Emulator evidence is labeled `emulator`; only an actual connected physical device execution can be labeled `physical`.
 
-The current common conformance covers Console, Timers, `node:path`, `node:buffer`, module URLs, Fetch JSON, and Fetch abort.
+Cases that require an explicit Host profile live under `conformance/capabilities/` and are not mixed into the default
+deny-all suite. For example, Node/Desktop and Android execute `process-v86.test.mjs` unchanged. The JavaScript case owns
+`node:child_process` results, callbacks, stdio, exit and public error semantics; Android instrumentation owns only asset
+packaging, startup, restart and the JavaScript runner terminal. Invoke it with the corresponding `--capability-runtime`
+request while the Host has the named Process profile installed.
+
+The default common conformance covers Console, Timers, `node:path`, `node:buffer`, module URLs, Fetch JSON, and Fetch
+abort. Explicit capability conformance additionally covers controlled v86 `node:child_process`, `/workspace` FUSE,
+TCP/UDP/DNS, Device/System projection, and descendant pre-execution admission.

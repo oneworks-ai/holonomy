@@ -19,7 +19,7 @@ android {
     }
 
     sourceSets.getByName("test").resources.srcDir(
-        repositoryRoot.resolve("src/capability-runtime/machine"),
+        repositoryRoot.resolve("packages/runtime/src/kernel/machine"),
     )
 }
 

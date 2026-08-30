@@ -75,6 +75,7 @@ type FilesystemRightV2 =
 
 interface FilesystemLimitsV2 {
   readonly maxOpenHandles: number
+  readonly maxQueuedEvents: number
   readonly maxReadBytes: number
   readonly maxWriteBytes: number
   readonly maxDirectoryEntries: number
@@ -100,6 +101,7 @@ interface DeviceSandboxV2 {
   >
   readonly maxSubscriptions: number
   readonly maxEventsPerSecond: number
+  readonly maxQueuedEvents: number
 }
 
 interface DeviceGrantCeilingV1 {
@@ -169,7 +171,6 @@ interface CapabilityBranchV1 {
 interface CapabilityRequirementV1 {
   readonly anyOf: readonly CapabilityBranchV1[]
 }
-
 interface CapabilityBindingV1 extends CapabilityRefV1 {
   readonly branchId: string
   readonly digest: string

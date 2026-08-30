@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer'
 import nodeFs from 'node:fs'
+import nodePath from 'node:path'
 
 // Built runtime contract: adapter production code must use the package payload, not TypeScript sources.
 import { CapabilityInvocationError, trustedInvocationValueFromJsonV1 } from '../../../dist/capability-runtime/index.js'
@@ -10,7 +11,8 @@ import {
   flagRights,
   inputData,
   output,
-  statSnapshot
+  statSnapshot,
+  watchQueueLimit
 } from './capability-fs-support.mjs'
 
 const positioned = (value, kind) => {
@@ -126,8 +128,12 @@ export class NodeFilesystemResourcesV1 {
         resource.semanticResourceDigest
       )
     }
+    const maxQueuedEvents = watchQueueLimit(context)
     const bindingId = `watch-${this.#nextWatcherId++}`
     const listeners = new Set()
+    const watchedDirectoryName = nodeFs.statSync(target).isDirectory()
+      ? nodePath.basename(target)
+      : undefined
     const emit = value => {
       for (const listener of listeners) listener(trustedInvocationValueFromJsonV1(value, 'result'))
     }
@@ -136,6 +142,7 @@ export class NodeFilesystemResourcesV1 {
       { persistent: context.arguments.options?.persistent !== false },
       (event, name) => {
         const filename = name == null ? null : String(name)
+        if (filename === watchedDirectoryName) return
         if (filename?.startsWith('.holonomy-') === true) return
         emit({ event: 'change', tuple: [event === 'change' ? 'change' : 'rename', filename] })
       }
@@ -149,7 +156,11 @@ export class NodeFilesystemResourcesV1 {
     const resourceType = context.module === 'node:fs/promises'
       ? 'filesystem.watch-iterator'
       : 'filesystem.watcher'
-    const facade = { binding: { bindingId, generation: context.runtime.generation }, resourceType }
+    const facade = {
+      binding: { bindingId, generation: context.runtime.generation },
+      maxQueuedEvents,
+      resourceType
+    }
     return authority.complete(trustedInvocationValueFromJsonV1(facade, 'result'), [{
       bindingId,
       close: () => this.#closeWatcher(bindingId),

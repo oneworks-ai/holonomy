@@ -1,6 +1,7 @@
 package ai.oneworks.holonomy.e2e.session.supervisor
 
 import android.os.SystemClock
+import android.util.Base64
 import ai.oneworks.holonomy.session.ControlRuntimeCommand
 import ai.oneworks.holonomy.session.DisposeRuntimeCommand
 import ai.oneworks.holonomy.session.RestartRuntimeCommand
@@ -24,6 +25,9 @@ import ai.oneworks.holonomy.e2e.E2eNativeHostDiagnostics
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.util.concurrent.TimeUnit
+import java.net.InetAddress
+import java.net.ServerSocket
+import kotlin.concurrent.thread
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -34,6 +38,139 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class SessionSupervisorInstrumentationTest {
+    @Test
+    fun capabilityNetworkRestrictedRealRequestUsesTheProductionTransport() {
+        val server = ServerSocket(REAL_NETWORK_PORT, 1, InetAddress.getByName("127.0.0.1"))
+        val serverThread = thread(name = "holonomy-real-network-e2e") {
+            server.use { socket ->
+                socket.accept().use { client ->
+                    val input = client.getInputStream().bufferedReader()
+                    while (!input.readLine().isNullOrEmpty()) Unit
+                    val body = "android-real-transport"
+                    client.getOutputStream().bufferedWriter().use { output ->
+                        output.write("HTTP/1.1 200 OK\r\n")
+                        output.write("Content-Type: text/plain\r\n")
+                        output.write("Content-Length: ${body.toByteArray().size}\r\n")
+                        output.write("Connection: close\r\n\r\n")
+                        output.write(body)
+                    }
+                }
+            }
+        }
+        val fixture = capabilityNetworkFixture(CAPABILITY_NETWORK_REAL_FIXTURE_ASSET)
+        val harness = SessionSupervisorInstrumentationHarness(targetContext())
+        val runtimeId = harness.runtimeId("network-real")
+        try {
+            assertTrue(harness.create(
+                runtimeId,
+                capabilityNetworkRuntimeSpec(
+                    fixture,
+                    runtimeId,
+                    initialControls = emptyList(),
+                    sandboxPolicy = realRestrictedPolicy(),
+                ),
+            ).ack.accepted)
+            assertTrue(harness.start(runtimeId).ack.accepted)
+            val output = harness.awaitOutput(runtimeId, "real capability network transport") { snapshot ->
+                snapshot.events.any { event -> event.chunk.contains(CAPABILITY_NETWORK_REAL_OUTPUT_MARKER) } &&
+                    networkDiagnostics(snapshot.events, 1L).any { event ->
+                        event.optString("type") == "responseReceived" && event.optString("source") == "real"
+                    }
+            }
+            val result = JSONObject(output.events.first { event ->
+                event.chunk.contains(CAPABILITY_NETWORK_REAL_OUTPUT_MARKER)
+            }.chunk.substringAfter(CAPABILITY_NETWORK_REAL_OUTPUT_MARKER).trim())
+            assertEquals(200, result.getInt("status"))
+            assertEquals("android-real-transport", result.getString("body"))
+        } finally {
+            harness.close()
+            runCatching { server.close() }
+            serverThread.join(TimeUnit.SECONDS.toMillis(5))
+            assertFalse("Real network fixture server did not terminate", serverThread.isAlive)
+        }
+    }
+
+    @Test
+    fun capabilityNetworkRedirectCloneBodyAndCancellationUseBrokerContinuations() {
+        val fixture = capabilityNetworkFixture()
+        val harness = SessionSupervisorInstrumentationHarness(targetContext())
+        val runtimeId = harness.runtimeId("network-continuations")
+        try {
+            val created = harness.create(
+                runtimeId,
+                capabilityNetworkRuntimeSpec(fixture, runtimeId),
+            )
+            assertTrue(created.ack.accepted)
+            assertTrue(harness.start(runtimeId).ack.accepted)
+            val output = harness.awaitOutput(runtimeId, "capability network continuations") { snapshot ->
+                snapshot.events.any { event -> event.chunk.contains(CAPABILITY_NETWORK_OUTPUT_MARKER) } &&
+                    networkDiagnostics(snapshot.events, 1L).any { event ->
+                        event.optString("type") == "responseReceived" &&
+                            event.optString("source") == "mock" &&
+                            event.optString("url") == "$MOCK_ORIGIN/redirected"
+                    } &&
+                    networkDiagnostics(snapshot.events, 1L).any { event ->
+                        event.optString("type") == "loadingFailed" &&
+                            event.optString("code") == "network.cancelled"
+                    }
+            }
+            val result = JSONObject(
+                output.events.first { event -> event.chunk.contains(CAPABILITY_NETWORK_OUTPUT_MARKER) }
+                    .chunk.substringAfter(CAPABILITY_NETWORK_OUTPUT_MARKER).trim(),
+            )
+            assertEquals("redirected", result.getString("first"))
+            assertEquals("redirected", result.getString("second"))
+            assertTrue(result.getBoolean("redirected"))
+            assertEquals("network.cancelled", result.getString("cancelCode"))
+            assertEquals("TypeError", result.getJSONObject("websocket").getString("name"))
+            assertEquals(
+                "Holonomy WebSocket is unsupported by SandboxPolicyV2",
+                result.getJSONObject("websocket").getString("message"),
+            )
+            val capturedBodies = networkDiagnostics(output.events, 1L)
+                .filter { event -> event.optString("type") == "dataReceived" && event.has("dataBase64") }
+                .map { event ->
+                    Base64.decode(event.getString("dataBase64"), Base64.DEFAULT).toString(Charsets.UTF_8)
+                }
+            assertTrue("redirected body was not captured in diagnostics", capturedBodies.contains("redirected"))
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
+    fun capabilityNetworkRejectsPrivateDnsAsPolicyDeniedBeforeTransport() {
+        val fixture = capabilityNetworkFixture(CAPABILITY_NETWORK_PRIVATE_FIXTURE_ASSET)
+        val harness = SessionSupervisorInstrumentationHarness(targetContext())
+        val runtimeId = harness.runtimeId("network-private-deny")
+        try {
+            val created = harness.create(
+                runtimeId,
+                capabilityNetworkRuntimeSpec(
+                    fixture,
+                    runtimeId,
+                    initialControls = emptyList(),
+                    sandboxPolicy = privateDenyPolicy(),
+                ),
+            )
+            assertTrue(created.ack.accepted)
+            assertTrue(harness.start(runtimeId).ack.accepted)
+            val output = harness.awaitOutput(runtimeId, "capability private DNS denial") { snapshot ->
+                snapshot.events.any { event -> event.chunk.contains(CAPABILITY_NETWORK_PRIVATE_OUTPUT_MARKER) }
+            }
+            val result = JSONObject(
+                output.events.first { event -> event.chunk.contains(CAPABILITY_NETWORK_PRIVATE_OUTPUT_MARKER) }
+                    .chunk.substringAfter(CAPABILITY_NETWORK_PRIVATE_OUTPUT_MARKER).trim(),
+            )
+            assertEquals("holo.policy_denied", result.getString("code"))
+            assertFalse(networkDiagnostics(output.events, 1L).any { event ->
+                event.optString("type") == "responseReceived"
+            })
+        } finally {
+            harness.close()
+        }
+    }
+
     @Test
     fun commandV2NetworkControlRestartAndLateEventFencingUseTheRealService() {
         E2eNativeHostDiagnostics.resetMockOnlyDispatches()
@@ -284,6 +421,37 @@ class SessionSupervisorInstrumentationTest {
         sandboxPolicy = sandboxPolicy,
     )
 
+    private fun capabilityNetworkFixture(
+        asset: String = CAPABILITY_NETWORK_FIXTURE_ASSET,
+    ): JSONObject = targetContext().assets
+        .open(asset)
+        .bufferedReader()
+        .use { JSONObject(it.readText()) }
+
+    private fun capabilityNetworkRuntimeSpec(
+        fixture: JSONObject,
+        runtimeId: ai.oneworks.holonomy.session.RuntimeId,
+        initialControls: List<SessionControlOperation> = listOf(
+            SessionControlOperation(NETWORK_RULES_REPLACE, capabilityContinuationRuleSet().toString()),
+        ),
+        sandboxPolicy: SessionSandboxPolicy = mockOnlyPolicy(),
+    ): SessionRuntimeSpec {
+        val capabilityRuntime = fixture.getJSONObject("capabilityRuntime").put("processId", runtimeId.value)
+        val entryUrl = fixture.getString("entryUrl")
+        val modules = fixture.getJSONArray("modules")
+        return SessionRuntimeSpec(
+            entryUrl = entryUrl,
+            modules = List(modules.length()) { index ->
+                val module = modules.getJSONObject(index)
+                SessionModuleSpec(module.getString("url"), module.getString("source"))
+            },
+            isolation = SessionIsolation.LOGICAL_RUNTIME,
+            initialControls = initialControls,
+            sandboxPolicy = sandboxPolicy,
+            capabilityRuntimeJson = capabilityRuntime.toString(),
+        )
+    }
+
     private fun mockOnlyPolicy() = SessionSandboxPolicy(
         network = SessionSandboxNetworkPolicy(
             access = SessionSandboxNetworkAccess.MOCK_ONLY,
@@ -299,6 +467,24 @@ class SessionSupervisorInstrumentationTest {
             allowedOrigins = setOf(MOCK_ORIGIN, "http://127.0.0.1:2"),
             allowedSchemes = setOf("http", "https"),
             allowPrivateNetwork = false,
+        ),
+    )
+
+    private fun privateDenyPolicy() = SessionSandboxPolicy(
+        network = SessionSandboxNetworkPolicy(
+            access = SessionSandboxNetworkAccess.RESTRICTED,
+            allowedOrigins = setOf(PRIVATE_DENY_ORIGIN),
+            allowedSchemes = setOf("http"),
+            allowPrivateNetwork = false,
+        ),
+    )
+
+    private fun realRestrictedPolicy() = SessionSandboxPolicy(
+        network = SessionSandboxNetworkPolicy(
+            access = SessionSandboxNetworkAccess.RESTRICTED,
+            allowedOrigins = setOf("http://127.0.0.1:$REAL_NETWORK_PORT"),
+            allowedSchemes = setOf("http"),
+            allowPrivateNetwork = true,
         ),
     )
 
@@ -349,6 +535,81 @@ class SessionSupervisorInstrumentationTest {
         queryMode = "subset",
         queryEntries = listOf("tag" to "alpha", "tag" to "beta"),
     )
+
+    private fun capabilityContinuationRuleSet() = JSONObject().apply {
+        put("mode", "failClosed")
+        put(
+            "rules",
+            JSONArray()
+                .put(
+                    JSONObject()
+                        .put("id", "redirect")
+                        .put("priority", 300)
+                        .put(
+                            "match",
+                            JSONObject()
+                                .put("method", "GET")
+                                .put("origin", MOCK_ORIGIN)
+                                .put("path", JSONObject().put("op", "exact").put("value", "/redirect")),
+                        )
+                        .put(
+                            "action",
+                            JSONObject()
+                                .put("type", "respond")
+                                .put("status", 302)
+                                .put(
+                                    "headers",
+                                    JSONArray().put(
+                                        JSONArray().put("location").put("$MOCK_ORIGIN/redirected"),
+                                    ),
+                                ),
+                        ),
+                )
+                .put(
+                    JSONObject()
+                        .put("id", "redirected")
+                        .put("priority", 200)
+                        .put(
+                            "match",
+                            JSONObject()
+                                .put("method", "GET")
+                                .put("origin", MOCK_ORIGIN)
+                                .put("path", JSONObject().put("op", "exact").put("value", "/redirected")),
+                        )
+                        .put(
+                            "action",
+                            JSONObject()
+                                .put("type", "respond")
+                                .put("status", 200)
+                                .put(
+                                    "headers",
+                                    JSONArray().put(JSONArray().put("content-type").put("text/plain")),
+                                )
+                                .put("body", JSONObject().put("kind", "utf8").put("value", "redirected")),
+                        ),
+                )
+                .put(
+                    JSONObject()
+                        .put("id", "slow")
+                        .put("priority", 100)
+                        .put(
+                            "match",
+                            JSONObject()
+                                .put("method", "GET")
+                                .put("origin", MOCK_ORIGIN)
+                                .put("path", JSONObject().put("op", "exact").put("value", "/slow")),
+                        )
+                        .put(
+                            "action",
+                            JSONObject()
+                                .put("type", "respond")
+                                .put("status", 200)
+                                .put("delayMs", 1_000)
+                                .put("body", JSONObject().put("kind", "utf8").put("value", "late")),
+                        ),
+                ),
+        )
+    }
 
     private fun networkRuleSet(
         body: String,
@@ -407,7 +668,21 @@ class SessionSupervisorInstrumentationTest {
         .mapNotNull { event -> runCatching { JSONObject(event.chunk).getString("type") }.getOrNull() }
         .toSet()
 
+    private fun networkDiagnostics(
+        events: List<SessionOutputEvent>,
+        generation: Long,
+    ): List<JSONObject> = events.asSequence()
+        .filter { event -> event.generation == generation && event.stream == SessionOutputStream.NETWORK }
+        .mapNotNull { event -> runCatching { JSONObject(event.chunk) }.getOrNull() }
+        .toList()
+
     private companion object {
+        private const val CAPABILITY_NETWORK_FIXTURE_ASSET = "runtime/capability-network-continuation-v1.json"
+        private const val CAPABILITY_NETWORK_OUTPUT_MARKER = "M3_NETWORK_ANDROID:"
+        private const val CAPABILITY_NETWORK_PRIVATE_FIXTURE_ASSET = "runtime/capability-network-private-deny-v1.json"
+        private const val CAPABILITY_NETWORK_PRIVATE_OUTPUT_MARKER = "M3_NETWORK_PRIVATE_ANDROID:"
+        private const val CAPABILITY_NETWORK_REAL_FIXTURE_ASSET = "runtime/capability-network-real-v1.json"
+        private const val CAPABILITY_NETWORK_REAL_OUTPUT_MARKER = "M3_NETWORK_REAL_ANDROID:"
         private const val ENTRY_URL = "fixture+session://runtime/entry.mjs"
         private const val MOCK_ORIGIN = "https://mock.example"
         private const val MOCK_PATH = "/session"
@@ -415,6 +690,8 @@ class SessionSupervisorInstrumentationTest {
         private const val LIVE_MOCK_URL = "$MOCK_ORIGIN$MOCK_PATH?tag=alpha&tag=beta&phase=live&extra=allowed"
         private const val MISSING_DUPLICATE_MOCK_URL = "$MOCK_ORIGIN$MOCK_PATH?tag=alpha&phase=live&extra=allowed"
         private const val NETWORK_RULES_REPLACE = "network.rules.replace"
+        private const val PRIVATE_DENY_ORIGIN = "http://ip6-localhost:2"
+        private const val REAL_NETWORK_PORT = 18_087
         private const val LIVE_RETRY_DELAY_MS = 50L
         private val LATE_OUTPUT_WINDOW_MS = TimeUnit.MILLISECONDS.toMillis(250)
     }

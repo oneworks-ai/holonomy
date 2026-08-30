@@ -104,14 +104,19 @@ export class NodeNetworkNativePort {
   }
 
   #openRequest(request, context, sink, resourceSink) {
+    const requestKeys = ['headers', 'method', 'url']
+    const capabilityRequestKeys = ['capabilityBindingId', ...requestKeys]
     if (
-      !hasExactKeys(request.args, ['headers', 'method', 'url']) || request.binary != null ||
+      !hasExactKeys(request.args, requestKeys) && !hasExactKeys(request.args, capabilityRequestKeys) ||
+      request.binary != null ||
       context.resources.length !== 0 || !Array.isArray(request.args.headers) ||
-      typeof request.args.method !== 'string' || typeof request.args.url !== 'string'
+      typeof request.args.method !== 'string' || typeof request.args.url !== 'string' ||
+      request.args.capabilityBindingId != null && typeof request.args.capabilityBindingId !== 'string'
     ) return rejectNetworkCall(sink, request.id, 'invalid_request')
     const providerToken = `node-network:${this.#nextResource++}`
     const exchange = {
       body: [],
+      capabilityBindingId: request.args.capabilityBindingId,
       headers: request.args.headers,
       method: request.args.method,
       ownerCallToken: context.callToken,
@@ -168,6 +173,7 @@ export class NodeNetworkNativePort {
       exchange.body = []
       const response = await this.#host.request({
         body,
+        capabilityBindingId: exchange.capabilityBindingId,
         headers: exchange.headers,
         method: exchange.method,
         signal: exchange.abort.signal,

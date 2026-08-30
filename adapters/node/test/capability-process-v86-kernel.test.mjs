@@ -8,14 +8,14 @@ import {
   V86_KERNEL_CONFIG_REQUIREMENTS_V1,
   parseLinuxKernelConfigV1,
   verifyV86KernelConfigV1
-} from '../backends/v86/kernel/kernel-config.mjs'
+} from '../../../backends/v86/kernel/kernel-config.mjs'
 
-const fragmentUrl = new URL('../backends/v86/kernel/holonomy-v86.fragment', import.meta.url)
+const fragmentUrl = new URL('../../../backends/v86/kernel/holonomy-v86.fragment', import.meta.url)
 
 test('freezes built-in v86 boot, filesystem and network Bridge kernel requirements', async () => {
   const source = await readFile(fragmentUrl, 'utf8')
   const manifest = JSON.parse(
-    await readFile(new URL('../backends/v86/kernel/linux-source.json', import.meta.url), 'utf8')
+    await readFile(new URL('../../../backends/v86/kernel/linux-source.json', import.meta.url), 'utf8')
   )
   const result = verifyV86KernelConfigV1(source)
   assert.deepEqual(manifest, {

@@ -65,11 +65,14 @@ test('authorizes every exact-IP v86 HTTP redirect with process attribution', asy
 })
 
 test('rejects DNS endpoints until a resolved-address evidence owner is installed', async () => {
+  let invoked = false
   const broker = new NodeV86ProcessNetworkBrokerV1({ fetch: globalThis.fetch }).bind(() => {
+    invoked = true
     throw new Error('must not authorize')
   })
   await assert.rejects(
     broker.fetch({ ...input, url: 'https://api.example/data' }),
     error => error.code === 'process.network_endpoint_unsupported'
   )
+  assert.equal(invoked, false)
 })

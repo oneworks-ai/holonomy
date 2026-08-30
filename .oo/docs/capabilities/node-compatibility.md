@@ -22,4 +22,4 @@ Holonomy 提供受限、冻结且不依赖 ambient Node global 的兼容模块�
 
 Guest 不获得宿主 `require`、真实宿主 `process`、真实宿主 `Buffer` 或系统 `fetch`。所有模块来自 Runtime 的 synthetic registry。
 
-权威细粒度矩阵位于源码 `src/node-compat/capabilities.ts` 与 `src/streams/capabilities.ts`；本页只维护用户需要的稳定摘要。
+权威细粒度矩阵位于源码 `packages/runtime/src/node-compat/capabilities.ts` 与 `packages/runtime/src/streams/capabilities.ts`；本页只维护用户需要的稳定摘要。

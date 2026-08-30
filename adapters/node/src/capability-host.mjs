@@ -53,6 +53,7 @@ const resolveBindings = (session, providers) => {
 }
 
 export class NodeCapabilityRuntimeHostV1 {
+  #abortControllers = new Map()
   #generation
   #kernel
   #providers
@@ -64,7 +65,10 @@ export class NodeCapabilityRuntimeHostV1 {
     const processBackendRuntime = session.providerConfiguration.processBackendInstallation == null
       ? undefined
       : createInstalledV86ProcessBackendRuntimeV1(
-        session.providerConfiguration.processBackendInstallation
+        session.providerConfiguration.processBackendInstallation,
+        {
+          capabilityBridge: session.providerConfiguration.processProfile?.environment.capabilityBridge
+        }
       )
     this.#providers = createNodeCapabilityProvidersV1(
       session,
@@ -89,6 +93,8 @@ export class NodeCapabilityRuntimeHostV1 {
   }
 
   async close(stale = false) {
+    for (const controller of this.#abortControllers.values()) controller.abort()
+    this.#abortControllers.clear()
     this.#kernel.close(stale)
     await Promise.allSettled(
       [...this.#providers.values()].map(provider => provider.close?.())
@@ -113,8 +119,30 @@ export class NodeCapabilityRuntimeHostV1 {
     })
   }
 
-  invoke(json, callback) {
-    void this.#kernel.invoke(json).then(callback)
+  invoke(json, cancellationId, initiallyAborted, callback) {
+    if (
+      typeof callback !== 'function' || typeof initiallyAborted !== 'boolean' ||
+      cancellationId != null && (
+          typeof cancellationId !== 'string' || !/^[A-Za-z0-9][\w.-]{0,127}$/u.test(cancellationId) ||
+          this.#abortControllers.has(cancellationId) || this.#abortControllers.size >= 4096
+        )
+    ) return false
+    const controller = cancellationId == null ? undefined : new AbortController()
+    if (controller != null) {
+      this.#abortControllers.set(cancellationId, controller)
+      if (initiallyAborted) controller.abort()
+    }
+    void this.#kernel.invoke(json, controller?.signal).then(callback).finally(() => {
+      if (cancellationId != null) this.#abortControllers.delete(cancellationId)
+    })
+    return true
+  }
+
+  abort(cancellationId) {
+    const controller = this.#abortControllers.get(cancellationId)
+    if (controller == null) return false
+    controller.abort()
+    return true
   }
 
   invokeImmediate(json) {
@@ -125,6 +153,15 @@ export class NodeCapabilityRuntimeHostV1 {
     return this.#kernel.invokeSync(json)
   }
 
+  networkResolution(bindingId, url) {
+    const module = this.#session.providerConfiguration.networkProvider
+    const provider = this.#providers.get(module)
+    if (typeof provider?.resolution !== 'function') {
+      throw Object.assign(new Error('Node capability network resolution is unavailable'), { code: 'dns_failed' })
+    }
+    return provider.resolution(bindingId, url)
+  }
+
   releaseResource(bindingId) {
     try {
       this.#kernel.releaseResource(bindingId)
@@ -132,6 +169,18 @@ export class NodeCapabilityRuntimeHostV1 {
     } catch {
       return false
     }
+  }
+
+  createPluginInterceptorScope(instanceId) {
+    return this.#kernel.createPluginInterceptorScope(instanceId)
+  }
+
+  publishPluginGraph(revision, scopes) {
+    this.#kernel.publishPluginGraph(revision, scopes)
+  }
+
+  drainPluginGraph(revision) {
+    return this.#kernel.drainPluginGraph(revision)
   }
 
   subscribeResource(bindingId, callback) {

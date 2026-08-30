@@ -37,6 +37,13 @@ const samples = [
     status: 'available',
     value: { charging: true, hasBattery: false, lowPowerMode: false, source: 'battery' }
   },
+  {
+    observedAt: 100,
+    precision: 'standard',
+    revision: 1,
+    status: 'available',
+    value: { connected: false, radio: 'unknown' }
+  },
   { options: { encoding: 'utf8' }, path: 'holo-fs://workspace/file.txt' }
 ]
 
@@ -55,5 +62,11 @@ describe('finite operation schema validator', () => {
 
   it('rejects an unknown schema keyword', () => {
     expect(validateFiniteJsonSchemaV1({ futureKeyword: true }, null)).toBe(false)
+  })
+
+  it('applies object keywords even when a subschema omits an explicit object type', () => {
+    const schema = { not: { required: ['signalPercent'] } }
+    expect(validateFiniteJsonSchemaV1(schema, { connected: false })).toBe(true)
+    expect(validateFiniteJsonSchemaV1(schema, { signalPercent: 25 })).toBe(false)
   })
 })

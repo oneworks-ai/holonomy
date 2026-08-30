@@ -6,17 +6,18 @@
 
 ## 平台与生命周期
 
-| 能力                               | Node/Desktop           | Android 模拟器     | Android 物理设备                            |
-| ---------------------------------- | ---------------------- | ------------------ | ------------------------------------------- |
-| `holonomy run` / `test`            | ✅                     | ✅                 | 🧪 同一实现路径，未用模拟器结果代替物理验收 |
-| 前台等待与 `--detach`              | ✅                     | ✅                 | 🧪                                          |
-| list/show/logs/stop/restart/remove | ✅                     | ✅                 | 🧪                                          |
-| Inspector 与 DevTools              | ✅                     | ✅                 | 🧪                                          |
-| Network Mock                       | ✅                     | ✅                 | 🧪                                          |
-| Runtime Plugin 启动时装载          | ✅                     | ✅                 | 🧪                                          |
-| Runtime Plugin `--watch`           | ✅                     | ⛔                 | ⛔                                          |
-| 多 Runtime                         | ✅ 独立 OS 子进程      | ✅ 同应用多逻辑 V8 | 🧪                                          |
-| `isolatedProcess`                  | 不适用：已是独立子进程 | ⛔                 | ⛔                                          |
+| 能力                               | Node/Desktop           | Android 模拟器         | Android 物理设备                            |
+| ---------------------------------- | ---------------------- | ---------------------- | ------------------------------------------- |
+| `holonomy run` / `test`            | ✅                     | ✅                     | 🧪 同一实现路径，未用模拟器结果代替物理验收 |
+| 前台等待与 `--detach`              | ✅                     | ✅                     | 🧪                                          |
+| list/show/logs/stop/restart/remove | ✅                     | ✅                     | 🧪                                          |
+| Inspector 与 DevTools              | ✅                     | ✅                     | 🧪                                          |
+| Network Mock                       | ✅                     | ✅                     | 🧪                                          |
+| Runtime Plugin 启动时装载          | ✅ 完整 Cordis App     | 🟡 静态同步 Host realm | 🧪 同一实现路径，未用模拟器替代物理验收     |
+| Runtime Plugin Capability 拦截     | ✅ graph/drain         | 🟡 静态同步 graph      | 🧪 同一实现路径，未用模拟器替代物理验收     |
+| Runtime Plugin `--watch`           | ✅ last-known-good     | ⛔                     | ⛔                                          |
+| 多 Runtime                         | ✅ 独立 OS 子进程      | ✅ 同应用多逻辑 V8     | 🧪                                          |
+| `isolatedProcess`                  | 不适用：已是独立子进程 | ⛔                     | ⛔                                          |
 
 ## JavaScript Runtime
 
@@ -34,20 +35,22 @@
 
 ## 安全能力
 
-| 能力                              | Node/Desktop | Android 模拟器 | 说明                                                                                                                     |
-| --------------------------------- | ------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 默认网络拒绝                      | ✅           | ✅             | `network=none` 时不安装 Fetch Provider                                                                                   |
-| Mock-only 网络                    | ✅           | ✅             | 未命中 fail closed，原生传输零调用                                                                                       |
-| Restricted 网络                   | ✅           | ✅             | canonical origin/scheme、私网和资源上限                                                                                  |
-| 运行中规则 revision               | ✅           | ✅             | generation 与 `If-Match` 双重保护                                                                                        |
-| Capability Runtime `kernel-slice` | 🟡           | 🟡             | 原子 Context/Policy/Middleware/Provider、旧代隔离                                                                        |
-| 受控 workspace 文件读写           | 🟡           | 🟡             | 仅 `holo-fs://workspace/` 的有限 `node:fs` sync/callback/promise                                                         |
-| Host System / Device 切片         | 🟡           | 🟡             | `os.arch`、form factor；Android 另验证 power                                                                             |
-| 完整生产 sandbox filesystem v1    | ⛔           | ⛔             | 尚未完成全部 exports、handles、watch 与平台矩阵                                                                          |
-| 受控 `node:child_process` profile | 🟡           | ⛔             | macOS `process-profile-v1` + `native.darwin-seatbelt-v1` 是显式 opt-in；Android 当前未安装兼容 Backend                   |
-| 实验 v86 Linux Backend            | 🧪           | 🧪             | Node/Desktop 已支持 Host 私有安装并通过正式 Runtime E2E；模拟器仍只有 instrumentation；任意 TCP/UDP/DNS 与完整 FS 未完成 |
+| 能力                              | Node/Desktop | Android 模拟器 | 说明                                                                                                                             |
+| --------------------------------- | ------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 默认网络拒绝                      | ✅           | ✅             | `network=none` 时不安装 Fetch Provider                                                                                           |
+| Mock-only 网络                    | ✅           | ✅             | 未命中 fail closed，原生传输零调用                                                                                               |
+| Restricted 网络                   | ✅           | ✅             | canonical origin/scheme、私网和资源上限                                                                                          |
+| 运行中规则 revision               | ✅           | ✅             | generation 与 `If-Match` 双重保护                                                                                                |
+| Capability Runtime `provider-v1`  | ✅           | ✅             | 附录 H、D.3、System 与 Network v1 的声明范围及安全插件图已完成 M3 平台验收                                                       |
+| Sandbox filesystem v1             | ✅           | ✅             | 共享 Guest conformance 覆盖附录 H、watch overflow、quota、Abort 与 atomic；平台 restart E2E 覆盖旧 generation resource 与 TOCTOU |
+| Host System Projection v1         | ✅           | ✅             | Host 逐字段选择 real/synthetic/redacted/unavailable；默认不泄漏宿主信息                                                          |
+| target-required Device Provider   | ✅ Headless  | ✅             | Node/Desktop当前发布Headless Node descriptor；Android required读数、真实change、revision/resync与fencing闭合                     |
+| Network Broker continuation v1    | ✅           | ✅             | real/mock、redirect 每跳、DNS/private-IP、Response body/clone、取消、诊断与 Rules revision                                       |
+| 受控 `node:child_process` profile | 🟡           | 🧪             | macOS Native profile 是显式 opt-in Stable；Android 可选 v86 AAR 为 Experimental                                                  |
+| 实验 v86 Linux Backend            | 🧪           | 🧪             | 两端生产模块均有 Runtime E2E：`/workspace` FUSE、TCP/UDP/DNS、Device/System、stdio、restart；Android 证据仅来自模拟器            |
+| v86 后代执行前准入                | 🧪           | 🧪             | 两端均验证内核暂停、Host allow/deny、PATH-resolved target 与未知/相对路径拒绝；受限 `execveat` 同样进入 gate                     |
 
-`kernel-slice` 是可执行的跨平台安全内核证据，不是完整 Provider 声明。调用顺序和精确边界见[安全能力内核](../concepts/capability-runtime.md)。
+`provider-v1` 只声明附录 H、D.3、System Projection 与 Network v1 已列出的范围，不等于完整 Node.js 或物理 Android 支持。调用顺序和精确边界见[安全能力内核](../concepts/capability-runtime.md)。
 
 ## 控制面
 

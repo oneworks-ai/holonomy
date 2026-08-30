@@ -4,6 +4,7 @@ import {
   CapabilityContractError,
   DEVICE_OPERATIONS_V1,
   compileDeviceProviderDescriptorV1,
+  createGuestDeviceSubscriptionV1,
   normalizeDeviceEventV1,
   normalizeDeviceReadingV1,
   normalizeDeviceSubscriptionOptionsV1,
@@ -142,6 +143,71 @@ describe('holo:device v1 machine contract', () => {
     })).toEqual(expect.objectContaining({ dropped: 3, kind: 'overflow', resyncRequired: true }))
     expect(normalizeDeviceSubscriptionOptionsV1({ kinds: ['thermal', 'connectivity'], maxQueuedEvents: 8 }))
       .toEqual({ kinds: ['connectivity', 'thermal'], maxQueuedEvents: 8 })
+  })
+
+  it('bounds subscription queues and requires getter revisions before resync', async () => {
+    let closes = 0
+    const subscription = createGuestDeviceSubscriptionV1({
+      generation: 7,
+      kinds: ['connectivity', 'thermal'],
+      maxQueuedEvents: 2,
+      onClose: () => {
+        closes++
+      },
+      startSequence: 0
+    })
+    const event = (kind: 'connectivity' | 'thermal', revision: number, sequence: number, phase = 'change') => ({
+      kind,
+      observedAt: 100 + sequence,
+      phase,
+      reading: kind === 'connectivity'
+        ? {
+          ...reading({
+            captivePortal: 'unknown',
+            metered: false,
+            online: true,
+            quality: 'good',
+            roaming: false,
+            transports: ['wifi'],
+            validated: true
+          }),
+          revision
+        }
+        : { ...reading({ state: 'nominal' }), revision },
+      schemaVersion: 1,
+      sequence
+    })
+    subscription.accept(event('connectivity', 1, 1, 'snapshot'))
+    subscription.accept(event('thermal', 1, 2, 'snapshot'))
+    subscription.accept(event('connectivity', 2, 3))
+    const overflow = await subscription.resource.next()
+    expect(overflow.value).toMatchObject({
+      dropped: 3,
+      kind: 'overflow',
+      requiredRevisions: { connectivity: 2, thermal: 1 },
+      sequence: 3
+    })
+    subscription.accept(event('connectivity', 3, 4))
+    subscription.accept(event('thermal', 2, 5))
+    await expect(subscription.resource.acknowledgeResync({ connectivity: 4, thermal: 1 }))
+      .rejects.toMatchObject({ code: 'holo.invalid_arguments' })
+    await expect(subscription.resource.acknowledgeResync({ connectivity: 2 }))
+      .rejects.toMatchObject({ code: 'holo.invalid_arguments' })
+    await subscription.resource.acknowledgeResync({ connectivity: 2, thermal: 1 })
+    await expect(subscription.resource.next()).resolves.toMatchObject({
+      done: false,
+      value: { kind: 'connectivity', reading: { revision: 3 }, sequence: 4 }
+    })
+    await expect(subscription.resource.next()).resolves.toMatchObject({
+      done: false,
+      value: { kind: 'thermal', reading: { revision: 2 }, sequence: 5 }
+    })
+    const pending = subscription.resource.next()
+    await subscription.resource.close()
+    await expect(pending).resolves.toEqual({ done: true, value: undefined })
+    await subscription.resource.close()
+    subscription.accept(event('connectivity', 4, 6))
+    expect(closes).toBe(1)
   })
 
   it.each(

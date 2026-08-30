@@ -1,0 +1,101 @@
+{
+  "profiles": [
+    {
+      "executables": [],
+      "id": "minimal",
+      "packages": [],
+      "rootfs": "empty"
+    },
+    {
+      "executables": [
+        {
+          "executableId": "busybox",
+          "path": "/bin/busybox",
+          "shell": false
+        },
+        {
+          "executableId": "cat",
+          "path": "/bin/cat",
+          "shell": false
+        },
+        {
+          "executableId": "hoholo",
+          "path": "/usr/bin/hoholo",
+          "shell": false
+        },
+        {
+          "executableId": "shell",
+          "path": "/bin/sh",
+          "shell": true
+        }
+      ],
+      "id": "base",
+      "packages": [],
+      "rootfs": "alpine"
+    },
+    {
+      "executables": [
+        {
+          "executableId": "busybox",
+          "path": "/bin/busybox",
+          "shell": false
+        },
+        {
+          "executableId": "cat",
+          "path": "/bin/cat",
+          "shell": false
+        },
+        {
+          "executableId": "curl",
+          "path": "/usr/bin/curl",
+          "shell": false
+        },
+        {
+          "executableId": "git",
+          "path": "/usr/bin/git",
+          "shell": false
+        },
+        {
+          "executableId": "hoholo",
+          "path": "/usr/bin/hoholo",
+          "shell": false
+        },
+        {
+          "executableId": "jq",
+          "path": "/usr/bin/jq",
+          "shell": false
+        },
+        {
+          "executableId": "nc",
+          "path": "/usr/bin/nc",
+          "shell": false
+        },
+        {
+          "executableId": "shell",
+          "path": "/bin/sh",
+          "shell": true
+        },
+        {
+          "executableId": "ssh",
+          "path": "/usr/bin/ssh",
+          "shell": false
+        },
+        {
+          "executableId": "timeout",
+          "path": "/usr/bin/timeout",
+          "shell": false
+        }
+      ],
+      "id": "agent",
+      "packages": [
+        "ca-certificates",
+        "curl",
+        "git",
+        "jq",
+        "openssh-client-default"
+      ],
+      "rootfs": "alpine"
+    }
+  ],
+  "schemaVersion": 1
+}

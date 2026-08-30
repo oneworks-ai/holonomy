@@ -2,7 +2,7 @@
 
 [简体中文](../../capabilities/process.md)
 
-M3.5 publishes one explicit opt-in Process profile, not a passthrough to host `child_process`. The current Stable combination is `process-profile-v1` with `native.darwin-seatbelt-v1` on macOS Node/Desktop. Node/Desktop also provides the Host-installable Experimental `experimental.v86-v1`, which boots controlled Linux inside Node V8 without shipping image assets in the default npm package. Android has no production Process Backend yet, and agentOS plus WASIX remain candidates.
+M3.5 publishes one explicit opt-in Process profile, not a passthrough to host `child_process`. The current Stable combination is `process-profile-v1` with `native.darwin-seatbelt-v1` on macOS Node/Desktop. Node/Desktop provides the Host-installed Experimental `experimental.v86-v1`; Android now has an optional production-AAR integration for the same Backend, still marked Experimental. Neither path ships Linux assets in the core package by default. agentOS and WASIX remain candidates.
 
 ## Inside the Runtime
 
@@ -113,7 +113,11 @@ The corresponding `process-profiles.json` uses guest paths and pins every asset 
             "wasm": { "artifactId": "v86.wasm", "sha256": "<64-hex>" }
           },
           "memoryBytes": 134217728,
-          "requiredKernelCapabilities": ["process", "fuse"],
+          "requiredKernelCapabilities": [
+            "process",
+            "fuse",
+            "seccompUserNotification"
+          ],
           "supervisor": { "protocolVersion": 1 }
         }
       },
@@ -142,23 +146,41 @@ The current Process profile requires Inspector to be disabled. Backend configura
 
 Every Backend reuses the same `node:child_process` facade, Broker, Process resource, Backend Registry, and Symbol scope rather than creating another public API. A Host profile selects an installed implementation by `backendId` and controls image/rootfs, mounts, network, device/system bridges, quotas, and writeback. Runtime code selects only an allowed `runtime` or `processTree` lifetime.
 
+Four responsibilities remain separate. Holo Process Runtime owns Node-compatible semantics. The shared Environment Host Runtime owns profiles, artifacts, environments, process/stdio resources, lifecycle, and the Capability Bridge. A Backend Driver owns boot and low-level transport only. A Guest System Adapter owns OS semantics such as paths, argv, shells, signals, process trees, and error translation. This lets v86, agentOS, and WASIX reuse most security and resource logic without exposing device, Worker, or SDK protocols through the public facade.
+
+A v86 Host cannot directly call Linux `fork`, `execve`, `waitpid`, pipes, or signals, so its image needs one long-lived Backend Guest Agent that translates structured spawn, stdio, signal, and terminal frames into Linux Process APIs. It is not a shell or a universal component required by every Backend. The Native Backend uses host process APIs directly, while agentOS and WASIX should adapt structured process APIs already exposed by their SDKs.
+
+The Host artifact manifest, not Runtime options, chooses software and tools in a virtual environment. Independently deliverable image layers may include `minimal` with only the Guest Agent, `base` with BusyBox and `/bin/sh`, `agent` with common tools such as `curl`, `git`, `ssh`, and `jq`, and a developer digest-bound `custom` layer. A common `imageProfile` configuration field is not frozen yet; each Backend continues to use its own Host-only manifest until that selection contract is implemented. Production assets do not contain conformance self-test fixtures.
+
+Ordinary `spawn()` and `execFile()` directly launch an authorized executable. Only `exec()` and `spawn(..., { shell: true })` enter the shell selected by the Host profile. The shell, PATH, tool set, mounts, networking, and credentials must be explicit profile and authority inputs rather than ambient escape hatches inside the virtual environment.
+
+### Root calls and descendant processes
+
+Native Darwin and v86 solve different problems. A Host may install both profiles, but Runtime code cannot switch Backends by itself:
+
+| Backend       | Executable boundary                                                  | Current root-call boundary                                                        | Current descendant boundary                                                                                                                          |
+| ------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Native Darwin | macOS Mach-O binaries and system tools admitted by the Host manifest | Every call first crosses Process Policy, CanonicalResource, and Cordis Middleware | A Seatbelt profile applies static constraints to the complete process tree; there is no Host callback before every descendant `exec`                 |
+| v86 Linux     | Linux x86-32 ELF and shell tools admitted by the image manifest      | Every call first crosses the same Process pipeline                                | Node/Desktop and Android perform Host admission before descendant `execve` or supported `execveat` continues through Linux seccomp user-notification |
+
+Selecting v86 therefore enables deeper control of Linux descendants but cannot run macOS programs. A Host continues to select Native Darwin when macOS tools are required. Even without per-descendant callbacks, the Native profile still applies its precompiled filesystem, network, and system restrictions to descendants through Seatbelt. A future privileged Darwin process observation/admission integration would ship as a separate Host/System profile and could not borrow v86 evidence.
+
+A later descriptor revision will distinguish static containment, observation-only, and pre-execution authorization. Native Darwin currently declares only static containment. v86 now has experimental pre-execution authorization: the root process's first execution consumes the authority already admitted by the Broker, while descendants inheriting the seccomp listener pause before every later `execve` or `execveat`. The Guest Agent sends `linuxPid`, `parentLinuxPid`, absolute path, `argv`, and `cwd`; the Host maps the path to a profile `executableId` and invokes `holo:runtime.authorizeDescendantProcess` through the same Policy, CanonicalResource, Middleware, and Provider-revalidation path. Linux continues only after allow; an unknown executable, Middleware denial, disconnect, generation close, or decision timeout returns `EPERM`.
+
+This boundary remains Experimental. Absolute `execve`, absolute `execveat(AT_FDCWD, flags=0)`, and manifest-known absolute targets resolved through PATH are eligible. Relative dirfd, `AT_EMPTY_PATH`, relative executables, and unknown targets return `EPERM`. The Host-only Backend profile controls a 1–120000 ms gate deadline with a 30-second default. Image construction resolves and validates executable symlinks and startup assets are digest-bound. A Process launch permits only one authorized `/workspace` mount, which cannot shadow `/bin`, `/sbin`, `/usr/bin`, or `/usr/sbin`; mutable executable replacement therefore fails closed in v1. Node/Desktop and Android use the same C supervisor and operation 16/17 Host channel.
+
+Real Node `22.22.2` / V8 `12.4` / v86 / Linux E2E proves Host allow/deny, unknown-path rejection, and generation cleanup. Shared Android JavaScript conformance additionally proves a manifest-known absolute target, an executable resolved through PATH, unknown-target denial, and relative-target denial through the standard facade. Both platforms settle the Host decision before Linux continues.
+
 The shared Registry/SPI reserves independently packaged registration paths for each candidate. Without a Host installation manifest, an Experimental Backend does not enter the Registry or borrow evidence from another Backend:
 
-- [v86](https://github.com/copy/v86) now has a Node/Desktop Experimental implementation wired into the production Node Runtime and Service Host configuration. A Node `22.22.2` / V8 `12.4` E2E reaches real Linux `6.8.12` through the standard `node:child_process` facade and verifies supervisor/stdio/exit, Capability-Broker FUSE I/O, exactly authorized HTTP carrying Linux PID and executable context, and resource cleanup before stop. Arbitrary TCP/UDP/DNS, the complete FS surface, a 64-bit kernel, and multicore remain unsupported.
+- [v86](https://github.com/copy/v86) now has an Experimental implementation wired into the production Node/Desktop Runtime, Service Host, and optional Android production module. Real Linux `6.8.12` E2E proves supervisor/stdio/exit, the `/workspace` FUSE directory surface, TCP/UDP/DNS with Linux PID and executable attribution, Host Device/System projections, descendant pre-execution allow/deny, and resource cleanup before stop/restart. It does not claim POSIX filesystem access outside `/workspace`, a 64-bit kernel, multicore, physical Android, or true VM snapshot/restore.
 - [agentOS](https://github.com/rivet-dev/agentos) desktop probing verifies processes, stdio, VM FS, a Host-directory bridge, and both environment scopes. Linux-workload networking still fails and the distributed sidecar has no Android artifact, so it is not registered as a Holo Backend.
 - [WASIX](https://wasix.org/docs/explanation/extensions-to-wasi) is suitable only for recompiled WASI/WASIX workloads. SDK `0.10.0` currently has a module-serialization regression on Node/V8; a compatibility version verifies stdio/exit/virtual FS but not process-tree control, termination cleanup, networking, snapshots, or an Android Host. It is not a Reference Backend.
 
-Javet/V8 on the Android emulator has also booted v86, Linux, and the same supervisor. One trusted-Backend E2E runtime
-now verifies process/stdio/exit, FUSE request/response, and attributed filesystem I/O through the production Capability
-Runtime and `AndroidCapabilityHost`. A second Linux process then issues an HTTP request; the Host authorizes
-`process.network.connect` with Linux PID, synthetic-process, and executable context before accessing an exactly
-allowed loopback endpoint. This is still instrumentation evidence and is not installed in the default Android Backend
-Registry. It also does not claim arbitrary TCP/UDP/DNS support. A physical device is not a gate for this experimental
-track; it requires separate acceptance only before a physical-device support claim is published.
+Android `process-backend-v86` is a production source module, not a test-private Provider. An embedding Host includes the optional AAR and digest-bound assets, then supplies `AndroidV86RuntimeServicesFactory` while constructing the Runtime. A Process Policy of `none` reads no Linux assets and creates no second V8. When the Host selects `experimental.v86-v1` with `sandboxed` Process access, the factory automatically installs the required V8 flags, validates assets and kernel capabilities, and creates one Backend per generation. Runtime code performs no manual registration.
 
-Linux file access must map an authorized `holo-fs` root. DNS/TCP/TLS from `curl` or `git` uses Process Network
-authority instead of pretending to be JS Fetch. The Holo Capability Broker middleware currently executes the secure
-invocation; the Cordis App owns plugin assembly, disposal, and watch reload. Moving the general invocation protocol
-onto Cordis must preserve the same Policy, authority, generation, and Provider re-authorization invariants. Each
-Experimental Backend needs its own descriptor probe, binary boundary, file/network bridge, and real E2E before it
-enters the default Registry.
+The current `agent` evidence asset set has raw `packageBytes` of about 37.9 MiB; the debug AAR grows by about 2.9 MiB compressed compared with an asset-disabled build. Embedders opt in with `-Pholonomy.v86.assetsDir=<trusted-directory>` or `HOLO_V86_ANDROID_ASSET_ROOT`. Without that setting, the AAR contains only about 53 KiB of bridge scripts plus an unavailable manifest. The asset set must contain digest-matched v86 WASM, BIOS, Holonomy FUSE/TUN kernel, production `agent` initramfs, and runtime driver.
+
+The emulator E2E now crosses the standard `node:child_process` facade, production Runtime Kernel, Android Provider, dedicated trusted Javet/V8, and v86/Linux/supervisor. It verifies stdio/exit, pre-spawn stdin, Linux-PID-attributed FUSE directory operations, TCP/UDP/DNS, Device/System projection, descendant allow/deny, and a new VM after generation restart. Android instrumentation APK launches the test, but the implementation under test comes from the production AAR. Backend failure closes current-generation resources; a normal Runtime restart creates a new VM rather than silently recovering inside the same generation. Physical-device support is not yet claimed.
+
+Linux file access maps exactly one authorized `holo-fs` root to `/workspace`; other Guest mounts are rejected before launch. DNS/TCP/TLS from `curl` or `git` uses Process Network authority instead of pretending to be JS Fetch. The Holo Capability Broker middleware currently executes the secure invocation; the Cordis App owns plugin assembly, disposal, and watch reload. Moving the general invocation protocol onto Cordis must preserve the same Policy, authority, generation, and Provider re-authorization invariants. Each Experimental Backend needs its own descriptor probe, binary boundary, file/network bridge, and real E2E before it enters the default Registry.

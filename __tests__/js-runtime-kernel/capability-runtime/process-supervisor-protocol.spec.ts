@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  LinuxProcessExecutionCapabilityBridgeV1,
+  decodeProcessSupervisorExecRequestV1,
+  decodeProcessSupervisorExecResponseV1,
+  encodeProcessSupervisorExecRequestV1,
+  encodeProcessSupervisorExecResponseV1
+} from '../../../src/capability-runtime/process-supervisor-exec.js'
+import {
   ProcessSupervisorFrameDecoderV1,
   decodeProcessSupervisorReadyPayloadV1,
   encodeProcessSupervisorFrameV1,
@@ -58,6 +65,26 @@ describe('process supervisor frame protocol', () => {
     ).not.toThrow()
     expect(() =>
       encodeProcessSupervisorFrameV1({
+        operation: 'configure',
+        payload: Uint8Array.of(1, 0, 0, 0),
+        processId: 0,
+        requestId: 1,
+        sequence: 0,
+        version: 1
+      })
+    ).not.toThrow()
+    expect(() =>
+      encodeProcessSupervisorFrameV1({
+        operation: 'configure',
+        payload: Uint8Array.of(1, 0, 0, 0),
+        processId: 1,
+        requestId: 1,
+        sequence: 0,
+        version: 1
+      })
+    ).toThrow(TypeError)
+    expect(() =>
+      encodeProcessSupervisorFrameV1({
         ...frame,
         operation: 'filesystemRequest',
         requestId: 3,
@@ -72,5 +99,66 @@ describe('process supervisor frame protocol', () => {
     )).toEqual(['process', 'fuse', 'networkNamespaces'])
     expect(() => encodeProcessSupervisorReadyPayloadV1(['fuse'])).toThrow(TypeError)
     expect(() => decodeProcessSupervisorReadyPayloadV1(Uint8Array.of(0, 0, 0, 0x81))).toThrow(TypeError)
+  })
+
+  it('round-trips bounded descendant exec requests and decisions', () => {
+    const request = {
+      argv: ['/bin/tool', '--version'],
+      cwd: '/workspace',
+      linuxPid: 91,
+      parentLinuxPid: 41,
+      path: '/bin/tool'
+    }
+    expect(decodeProcessSupervisorExecRequestV1(encodeProcessSupervisorExecRequestV1(request))).toEqual(request)
+    expect(decodeProcessSupervisorExecResponseV1(encodeProcessSupervisorExecResponseV1(true))).toBe(true)
+    expect(decodeProcessSupervisorExecResponseV1(encodeProcessSupervisorExecResponseV1(false))).toBe(false)
+    expect(() => encodeProcessSupervisorExecRequestV1({ ...request, path: 'relative' })).toThrow(TypeError)
+    expect(() => decodeProcessSupervisorExecResponseV1(Uint8Array.of(2))).toThrow(TypeError)
+  })
+
+  it('preserves the admitted Linux child pid in descendant authorization arguments', async () => {
+    let invocation: Readonly<Record<string, unknown>> | undefined
+    const bridge = new LinuxProcessExecutionCapabilityBridgeV1().bind(input => {
+      invocation = input
+      return Promise.resolve({
+        authorized: true,
+        generation: 1,
+        invocationBindingDigest: '1'.repeat(64),
+        semanticResourceDigest: '2'.repeat(64)
+      })
+    })
+    await bridge.authorize({
+      argv: ['/bin/tool', '--version'],
+      cwd: '/workspace',
+      environmentId: 'environment-1',
+      executableId: 'tool',
+      linuxPid: 91,
+      parentLinuxPid: 41,
+      path: '/bin/tool',
+      policy: {
+        access: 'sandboxed',
+        environment: { allowedNames: [], maxValueBytes: 1 },
+        executables: [{ argumentBytes: 4096, executableId: 'tool' }],
+        limits: {
+          maxConcurrentProcesses: 1,
+          maxExecutionTimeMs: 1000,
+          maxOpenPipes: 3,
+          maxProcessTreeDepth: 2,
+          maxStderrBytes: 4096,
+          maxStdinBytes: 4096,
+          maxStdoutBytes: 4096,
+          maxTotalProcesses: 4,
+          maxWritableRootfsBytes: 4096
+        },
+        mounts: [],
+        network: { access: 'none' },
+        shell: { access: 'none' }
+      },
+      processId: 7,
+      processResourceId: 'process-1',
+      rootLinuxPid: 40,
+      scope: 'runtime'
+    })
+    expect(invocation?.arguments).toMatchObject({ linuxPid: 91, parentLinuxPid: 41 })
   })
 })

@@ -1,33 +1,8 @@
 import vm from 'node:vm'
 
+import { pluginIdentity, resolveRuntimeModuleSpecifier } from './module-graph-specifier.mjs'
 import { createContextValue } from './runtime-context.mjs'
-
-const pluginIdentity = (url, bundleSha256) => {
-  const identity = new URL(url)
-  identity.searchParams.set('holo-bundle', bundleSha256)
-  return identity.href
-}
-
-const resolveSpecifier = (specifier, parentUrl) => {
-  if (specifier.startsWith('node:')) return specifier
-  if (/^[A-Za-z][A-Za-z\d+.-]*:/u.test(specifier)) {
-    try {
-      const url = new URL(specifier)
-      if (url.href !== specifier || url.hash !== '') throw new TypeError('Non-canonical URL')
-      return url.href
-    } catch {
-      throw new TypeError('Invalid Node Runtime module specifier')
-    }
-  }
-  if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
-    throw new TypeError('Bare module specifiers are unavailable in Node Runtime')
-  }
-  try {
-    return new URL(specifier, parentUrl).href
-  } catch {
-    throw new TypeError('Invalid Node Runtime module specifier')
-  }
-}
+import { isTrustedRuntimePluginLibrary, resolveRuntimeWorkspaceSpecifier } from './runtime-workspace-specifier.mjs'
 
 export class SessionModuleGraph {
   #context
@@ -128,7 +103,7 @@ export class SessionModuleGraph {
     if (definition == null) throw new TypeError(`Node Runtime module is outside the session graph: ${url}`)
     const module = new vm.SourceTextModule(definition.source, {
       context: this.#context,
-      identifier: definition.url,
+      identifier: url,
       importModuleDynamically: async (specifier, importer) => {
         const target = this.#link(specifier, importer)
         if (target.status === 'unlinked') await target.link((nested, from) => this.#link(nested, from))
@@ -170,12 +145,16 @@ export class SessionModuleGraph {
       ? 'holonomy:///runtime/vendor/cordis.mjs'
       : specifier === 'cosmokit' && importer.identifier === 'holonomy:///runtime/vendor/cordis.mjs'
       ? 'holonomy:///runtime/vendor/cosmokit.mjs'
-      : resolveSpecifier(specifier, importer.identifier)
+      : (importerDefinition?.kind === 'runtime' ||
+          (importerDefinition?.kind === 'plugin' && isTrustedRuntimePluginLibrary(specifier))) &&
+          resolveRuntimeWorkspaceSpecifier(specifier) != null
+      ? resolveRuntimeWorkspaceSpecifier(specifier)
+      : resolveRuntimeModuleSpecifier(specifier, importer.identifier)
     if (
       importerDefinition?.kind === 'plugin' && targetUrl.startsWith('holo-plugins:') &&
       !new URL(targetUrl).searchParams.has('holo-bundle')
     ) {
-      const publicUrl = resolveSpecifier(specifier, importerDefinition.url)
+      const publicUrl = resolveRuntimeModuleSpecifier(specifier, importerDefinition.url)
       targetUrl = pluginIdentity(publicUrl, importerDefinition.bundleSha256)
     }
     if (importerDefinition?.kind === 'user' && targetUrl.startsWith('holonomy:')) {
@@ -190,6 +169,13 @@ export class SessionModuleGraph {
       if (targetUrl.startsWith('holo-plugins:') && !publicTarget.href.startsWith(importerDefinition.rootUrl)) {
         throw new TypeError('Runtime plugins cannot import another plugin instance')
       }
+      const targetDefinition = this.#definitions.get(targetUrl)
+      if (
+        !targetUrl.startsWith('holo-plugins:') &&
+        targetUrl !== 'holonomy:///runtime/vendor/cordis.mjs' &&
+        targetUrl !== 'holonomy:///runtime/vendor/cosmokit.mjs' &&
+        targetDefinition?.kind !== 'runtime'
+      ) throw new TypeError('Runtime plugins cannot import Guest modules')
     }
     return this.#getModule(targetUrl)
   }

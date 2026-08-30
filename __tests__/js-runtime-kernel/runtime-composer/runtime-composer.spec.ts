@@ -57,6 +57,9 @@ describe('runtime composer', () => {
     expect(Object.keys(runtime.syntheticModules)).toContain('node:stream/web')
     expect(Object.keys(runtime.syntheticModules)).toContain('node:buffer')
     expect(runtime.globals.ReadableStream).toBeDefined()
+    expect(() => new (runtime.globals.WebSocket as new(url: string) => object)('wss://example.test')).toThrow(
+      new TypeError('Holonomy WebSocket is unsupported by SandboxPolicyV2')
+    )
     expect(runtime.getSnapshot().disposed).toBe(false)
     await runtime.dispose()
     expect(runtime.getSnapshot().disposed).toBe(true)

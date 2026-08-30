@@ -11,7 +11,7 @@ const exact = (value, keys) => {
 const identifier = value => typeof value === 'string' && /^[A-Za-z0-9][\w.-]{0,127}$/u.test(value) ? value : invalid()
 
 const normalizeProcessEnvironment = (value, backendScopes) => {
-  const input = exact(value, ['allowedScopes', 'defaultScope'])
+  const input = exact(value, ['allowedScopes', 'capabilityBridge', 'defaultScope'])
   if (
     !Array.isArray(input.allowedScopes) || input.allowedScopes.length === 0 ||
     input.allowedScopes.some(scope => !['processTree', 'runtime'].includes(scope)) ||
@@ -20,7 +20,19 @@ const normalizeProcessEnvironment = (value, backendScopes) => {
     !input.allowedScopes.includes(input.defaultScope)
   ) return invalid()
   const allowedScopes = [...input.allowedScopes].sort()
-  return Object.freeze({ allowedScopes: Object.freeze(allowedScopes), defaultScope: input.defaultScope })
+  const bridge = input.capabilityBridge == null
+    ? Object.freeze({ domains: Object.freeze([]) })
+    : exact(input.capabilityBridge, ['domains'])
+  if (
+    !Array.isArray(bridge.domains) || bridge.domains.length > 2 ||
+    bridge.domains.some(domain => !['device', 'system'].includes(domain)) ||
+    new Set(bridge.domains).size !== bridge.domains.length
+  ) return invalid()
+  return Object.freeze({
+    allowedScopes: Object.freeze(allowedScopes),
+    capabilityBridge: Object.freeze({ domains: Object.freeze([...bridge.domains].sort()) }),
+    defaultScope: input.defaultScope
+  })
 }
 
 export const normalizeNodeProcessProfileV1 = (

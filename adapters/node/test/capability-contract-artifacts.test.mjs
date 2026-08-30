@@ -26,7 +26,7 @@ import {
 
 const artifact = name =>
   JSON.parse(readFileSync(
-    new URL(`../../../src/capability-runtime/machine/${name}`, import.meta.url),
+    new URL(`../../../packages/runtime/src/kernel/machine/${name}`, import.meta.url),
     'utf8'
   ))
 

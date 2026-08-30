@@ -1,6 +1,7 @@
 package ai.oneworks.holonomy.v8
 
 import ai.oneworks.holonomy.host.RuntimeCapabilityHost
+import ai.oneworks.holonomy.host.RuntimeCapabilityServices
 import ai.oneworks.holonomy.host.RuntimeNativeHost
 import ai.oneworks.holonomy.host.RuntimeTrustedBackend
 import java.lang.ref.WeakReference
@@ -45,6 +46,14 @@ internal class RuntimeTrustedBackendGenerationSource private constructor(
         fun oneGeneration(backend: RuntimeTrustedBackend) = RuntimeTrustedBackendGenerationSource({ backend }, false)
         fun restartable(factory: () -> RuntimeTrustedBackend) = RuntimeTrustedBackendGenerationSource(factory, true)
     }
+}
+
+internal class RuntimeCapabilityServicesGenerationSource(
+    factory: () -> RuntimeCapabilityServices,
+) {
+    private val delegate = GenerationSource(factory, true, "RuntimeCapabilityServices")
+
+    fun create(): RuntimeCapabilityServices = delegate.create()
 }
 
 private class GenerationSource<T : Any>(

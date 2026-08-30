@@ -1,0 +1,6 @@
+allowBuilds:
+  '@google/genai': false
+  better-sqlite3: false
+  isolated-vm: false
+  koffi: false
+  protobufjs: false

@@ -58,6 +58,18 @@ internal class JavetRuntimeAdapter(
 ) : RuntimeAdapter {
     private val assetResolver = AndroidAssetModuleResolver(assets)
     private val runtime: V8Runtime = V8Host.getV8Instance().createV8Runtime()
+    private val pluginHost = if (capabilityHost != null || processHost.configuration.runtimePluginsJson != "[]") {
+        AndroidRuntimePluginHost(
+            assets,
+            capabilityHost,
+            moduleResolver,
+            processHost,
+            host,
+            threadGuard,
+        )
+    } else {
+        null
+    }
     private val callbacks = HostCallbacks()
     private val diagnosticsExecutor = ThreadPoolExecutor(
         1,
@@ -119,6 +131,7 @@ internal class JavetRuntimeAdapter(
         threadGuard.checkAccess()
         if (started) return
         try {
+            pluginHost?.start()
             if (inspectorOptions?.waitForDebugger == true) {
                 requireNotNull(inspector).waitForDebugger()
             }
@@ -129,6 +142,24 @@ internal class JavetRuntimeAdapter(
             executeSourceModule(bootstrap.resourceUrl, bootstrap.source)
             checkpointRequested = true
             drainMicrotasks()
+            if (trustedBackend != null) {
+                val trustedDriver = runtime.globalObject.get<V8ValueFunction>(TRUSTED_BACKEND_DRIVER_GLOBAL)
+                    ?: throw RuntimeEngineException(
+                        RuntimeEngineErrorCode.INTERNAL,
+                        "The trusted Backend driver was not installed",
+                    )
+                val bridge = JavetTrustedBackendBridge(
+                    runtime = runtime,
+                    driver = trustedDriver,
+                    runtimeHost = host,
+                    driveRuntime = {
+                        checkpointRequested = true
+                        runHostTurn()
+                    },
+                )
+                trustedBackendBridge = bridge
+                trustedBackend.start(bridge).get()
+            }
             val runtimeReady = runtime.globalObject.get<V8ValueFunction>(READY_DRIVER_GLOBAL)
                 ?: throw RuntimeEngineException(
                     RuntimeEngineErrorCode.INTERNAL,
@@ -166,22 +197,6 @@ internal class JavetRuntimeAdapter(
                     "The runtime control driver was not installed",
                 )
             runtime.globalObject.delete(CONTROL_DRIVER_GLOBAL)
-            if (trustedBackend != null) {
-                val trustedDriver = runtime.globalObject.get<V8ValueFunction>(TRUSTED_BACKEND_DRIVER_GLOBAL)
-                    ?: throw RuntimeEngineException(
-                        RuntimeEngineErrorCode.INTERNAL,
-                        "The trusted Backend driver was not installed",
-                    )
-                trustedBackendBridge = JavetTrustedBackendBridge(
-                    runtime = runtime,
-                    driver = trustedDriver,
-                    runtimeHost = host,
-                    driveRuntime = {
-                        checkpointRequested = true
-                        runHostTurn()
-                    },
-                ).also(trustedBackend::start)
-            }
             runtime.globalObject.delete(TRUSTED_BACKEND_DRIVER_GLOBAL)
             runtime.globalObject.delete(HOST_GLOBAL)
             checkpointRequested = true
@@ -190,6 +205,8 @@ internal class JavetRuntimeAdapter(
         } catch (error: Throwable) {
             runCatching { trustedBackendBridge?.close() }
             trustedBackendBridge = null
+            runCatching { pluginHost?.close() }
+            runCatching { capabilityHost?.close() }
             runCatching { trustedBackend?.close() }
             processHost.write(RuntimeOutputStream.STDERR, "Android Runtime start failed: bootstrap_runtime\n")
             throw error
@@ -227,7 +244,9 @@ internal class JavetRuntimeAdapter(
     }
 
     override fun terminateExecution() {
-        runtime.terminateExecution()
+        val runtimeError = runCatching { runtime.terminateExecution() }.exceptionOrNull()
+        val backendError = runCatching { trustedBackend?.close() }.exceptionOrNull()
+        (runtimeError ?: backendError)?.let { throw it }
     }
 
     override fun close() {
@@ -236,9 +255,10 @@ internal class JavetRuntimeAdapter(
         diagnosticsExecutor.shutdownNow()
         runCatching { trustedBackendBridge?.close() }
         trustedBackendBridge = null
+        runCatching { pluginHost?.close() }
+        runCatching { capabilityHost?.close() }
         runCatching { trustedBackend?.close() }
         closeNativeHost()
-        runCatching { capabilityHost?.close() }
         runCatching { inspectorServer?.close() }
         runCatching { inspector?.close() }
         runCatching { turnDriver?.close() }
@@ -405,9 +425,10 @@ internal class JavetRuntimeAdapter(
             )
             return null
         }
+        val pluginLibraryRequest = referrerIsPlugin && resourceName in TRUSTED_PLUGIN_LIBRARIES
         val vendorRequest = resourceName == "cordis" && (referrerIsInternal || referrerIsPlugin) ||
             resourceName == "cosmokit" && referrerIsInternal
-        val internalRequest = referrerIsInternal && !resourceIsPlugin || vendorRequest
+        val internalRequest = referrerIsInternal && !resourceIsPlugin || vendorRequest || pluginLibraryRequest
         val module = try {
             if (internalRequest) {
                 assetResolver.resolve(resourceName, referrerUrl)
@@ -682,6 +703,18 @@ internal class JavetRuntimeAdapter(
         return RuntimeEvaluation(kind = kind, value = value)
     }
 
+    private fun validateCapabilityJson(value: String) {
+        require(value.toByteArray(Charsets.UTF_8).size <= MAX_CAPABILITY_JSON_BYTES)
+        JSONObject(value)
+    }
+
+    private fun validateCapabilityTerminal(value: String?): String {
+        val terminal = value ?: CAPABILITY_UNAVAILABLE_TERMINAL
+        require(terminal.toByteArray(Charsets.UTF_8).size <= MAX_CAPABILITY_JSON_BYTES)
+        JSONObject(terminal)
+        return terminal
+    }
+
     private inner class HostCallbacks {
         @V8Function
         fun architecture(): String = runtimeArchitecture
@@ -698,45 +731,78 @@ internal class JavetRuntimeAdapter(
         }
 
         @V8Function
+        fun capabilityInvoke(requestJson: String, initiallyAborted: Boolean): String {
+            validateCapabilityJson(requestJson)
+            return validateCapabilityTerminal(pluginHost?.invoke(requestJson, initiallyAborted))
+        }
+
+        @V8Function
+        fun capabilityInvokeImmediate(requestJson: String): String {
+            validateCapabilityJson(requestJson)
+            return validateCapabilityTerminal(pluginHost?.invokeImmediate(requestJson))
+        }
+
+        @V8Function
         fun capabilityInvokeSync(requestJson: String): String {
-            require(requestJson.toByteArray(Charsets.UTF_8).size <= MAX_CAPABILITY_JSON_BYTES)
-            JSONObject(requestJson)
-            val value = capabilityHost?.invokeSync(requestJson) ?: CAPABILITY_UNAVAILABLE_TERMINAL
-            require(value.toByteArray(Charsets.UTF_8).size <= MAX_CAPABILITY_JSON_BYTES)
-            JSONObject(value)
-            return value
+            validateCapabilityJson(requestJson)
+            return validateCapabilityTerminal(pluginHost?.invokeSync(requestJson))
+        }
+
+        @V8Function
+        fun capabilityInvokeFromSource(channel: String, requestJson: String): String {
+            validateCapabilityJson(requestJson)
+            return validateCapabilityTerminal(pluginHost?.invokeFromSource(channel, requestJson))
+        }
+
+        @V8Function
+        fun capabilityClose(): Boolean {
+            pluginHost?.closeCapabilityRuntime()
+            return pluginHost != null
         }
 
         @V8Function
         fun capabilityReleaseResource(bindingId: String): Boolean {
             require(CAPABILITY_BINDING_ID.matches(bindingId))
-            capabilityHost?.releaseResource(bindingId)
-            return capabilityHost != null
+            return pluginHost?.releaseResource(bindingId) == true
         }
 
         @V8Function
         fun capabilitySubscribeResource(bindingId: String, callback: V8ValueFunction): String? {
             require(CAPABILITY_BINDING_ID.matches(bindingId))
-            val capability = capabilityHost ?: return null
+            val capability = pluginHost ?: return null
             val persistent: V8ValueFunction = callback.toClone(true)
             val id = "capability-subscription-${nextCapabilitySubscriptionId++}"
+            val pending = ArrayDeque<String>()
+            val ready = AtomicBoolean(false)
+            fun deliver(eventJson: String) {
+                if (eventJson.toByteArray(Charsets.UTF_8).size > MAX_CAPABILITY_JSON_BYTES) return
+                synchronized(pending) {
+                    if (!ready.get()) {
+                        pending.addLast(eventJson)
+                        return
+                    }
+                }
+                host.requestRuntimeTask {
+                    if (closed.get() || !capabilitySubscriptions.containsKey(id)) return@requestRuntimeTask
+                    runCatching { JSONObject(eventJson) }.onSuccess {
+                        persistent.callVoid(runtime.globalObject, eventJson)
+                        repeat(8) { runtime.await(V8AwaitMode.RunNoWait) }
+                    }
+                }
+            }
             val native = capability.subscribeResource(
                 bindingId,
-                RuntimeCapabilityResourceEventSink { eventJson ->
-                    if (eventJson.toByteArray(Charsets.UTF_8).size > MAX_CAPABILITY_JSON_BYTES) return@RuntimeCapabilityResourceEventSink
-                    host.requestRuntimeTask {
-                        if (closed.get() || !capabilitySubscriptions.containsKey(id)) return@requestRuntimeTask
-                        runCatching { JSONObject(eventJson) }.onSuccess {
-                            persistent.callVoid(runtime.globalObject, eventJson)
-                            checkpointRequested = true
-                        }
-                    }
-                },
+                RuntimeCapabilityResourceEventSink(::deliver),
             ) ?: run {
                 persistent.close()
                 return null
             }
             capabilitySubscriptions[id] = CapabilitySubscription(persistent, native)
+            val buffered = synchronized(pending) {
+                ready.set(true)
+                pending.toList().also { pending.clear() }
+            }
+            buffered.forEach(::deliver)
             return id
         }
 
@@ -942,6 +1008,10 @@ internal class JavetRuntimeAdapter(
         private const val INTERNAL_SCHEME = "holonomy"
         private const val PLUGIN_SCHEME = "holo-plugins"
         private const val RUNTIME_PLUGIN_MANIFEST_URL = "holo-plugins:///manifest.mjs"
+        private val TRUSTED_PLUGIN_LIBRARIES = setOf(
+            "@holonomyjs/plugin-audit",
+            "@holonomyjs/plugin-permission",
+        )
         private const val EMPTY_RUNTIME_PLUGIN_MANIFEST_SOURCE =
             "export const runtimePluginNamespaces=Object.freeze({});"
         private const val HOLO_SCHEME = "holo"

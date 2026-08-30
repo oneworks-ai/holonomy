@@ -6,6 +6,9 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import java.net.URI
+import java.nio.CharBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
 import java.security.MessageDigest
 
 data class SessionRuntimePluginFile(
@@ -13,10 +16,12 @@ data class SessionRuntimePluginFile(
     val source: String,
     val sha256: String,
 ) {
+    internal val sourceByteLength = strictUtf8Bytes(source).size
+
     init {
         requirePluginUrl(url)
-        require(source.toByteArray(Charsets.UTF_8).size <= SessionProtocolLimits.MAX_MODULE_BYTES)
-        require(SHA256.matches(sha256) && digest(source.toByteArray(Charsets.UTF_8)) == sha256)
+        require(sourceByteLength <= SessionProtocolLimits.MAX_MODULE_BYTES)
+        require(SHA256.matches(sha256) && digest(strictUtf8Bytes(source)) == sha256)
     }
 }
 
@@ -37,6 +42,8 @@ data class SessionRuntimePluginBundle(
         require(entryUrl.startsWith(rootUrl) && canonicalUri(entryUrl) == entryUrl)
         require(SHA256.matches(bundleSha256))
         require(files.isNotEmpty() && files.size <= SessionProtocolLimits.MAX_PLUGIN_FILES)
+        require(files.sumOf(SessionRuntimePluginFile::sourceByteLength) <=
+            SessionProtocolLimits.MAX_PLUGIN_GRAPH_BYTES)
         require(files.map(SessionRuntimePluginFile::url).toSet().size == files.size)
         require(files.all { file -> file.url.startsWith(rootUrl) })
         require(files.any { file -> file.url == entryUrl })
@@ -224,6 +231,18 @@ private fun requirePluginUrl(value: String) {
 private fun digest(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
     .digest(bytes)
     .joinToString("") { byte -> "%02x".format(byte) }
+
+private fun strictUtf8Bytes(value: String): ByteArray {
+    val encoded = try {
+        Charsets.UTF_8.newEncoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+            .encode(CharBuffer.wrap(value))
+    } catch (error: CharacterCodingException) {
+        throw IllegalArgumentException("Runtime plugin source must be Unicode scalar text", error)
+    }
+    return ByteArray(encoded.remaining()).also(encoded::get)
+}
 
 private fun JsonObject.requireOnlyPluginKeys(vararg allowed: String) {
     val expected = allowed.toSet()

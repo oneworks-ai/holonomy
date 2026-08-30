@@ -1,0 +1,88 @@
+{
+  "artifact": {
+    "artifactKind": "npm",
+    "artifactVersion": "0.10.0",
+    "integritySha256": "4c1c40130a4a52a378edf14d92cd314093a1446e5a95ae384898e0a5082c3c42",
+    "license": "MIT",
+    "sourceRevision": "7e3a7a35f35f6fb15229b06a567ed838a97b7cca"
+  },
+  "backendId": "experimental.wasix-js-v1",
+  "host": {
+    "architecture": "arm64",
+    "engine": "node-v8",
+    "engineVersion": "12.4.254.21-node.39",
+    "platform": "darwin",
+    "runtimeVersion": "22.22.2"
+  },
+  "metrics": {
+    "bootDurationMs": 32,
+    "workloadDurationMs": 137
+  },
+  "observations": [
+    {
+      "capability": "installation",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "boot",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "workload",
+      "provenance": "behavioralProbe",
+      "reasonCode": "wasix.module_serialization_regression",
+      "status": "failed"
+    },
+    {
+      "capability": "stdio",
+      "provenance": "upstreamContract",
+      "reasonCode": "wasix.workload_not_started",
+      "status": "notRun"
+    },
+    {
+      "capability": "exit",
+      "provenance": "upstreamContract",
+      "reasonCode": "wasix.workload_not_started",
+      "status": "notRun"
+    },
+    {
+      "capability": "filesystem",
+      "provenance": "upstreamContract",
+      "reasonCode": "wasix.current_workload_failed",
+      "status": "notRun"
+    },
+    {
+      "capability": "network",
+      "provenance": "upstreamContract",
+      "reasonCode": "wasix.networking_incomplete",
+      "status": "unsupported"
+    },
+    {
+      "capability": "processTree",
+      "provenance": "upstreamContract",
+      "reasonCode": "wasix.termination_api_missing",
+      "status": "unsupported"
+    },
+    {
+      "capability": "runtime",
+      "provenance": "upstreamContract",
+      "reasonCode": "wasix.shared_environment_missing",
+      "status": "unsupported"
+    },
+    {
+      "capability": "snapshots",
+      "provenance": "upstreamContract",
+      "reasonCode": "wasix.snapshot_api_missing",
+      "status": "unsupported"
+    },
+    {
+      "capability": "androidPackaging",
+      "provenance": "profileStaticUnsupported",
+      "reasonCode": "android.worker_host_missing",
+      "status": "unsupported"
+    }
+  ],
+  "schemaVersion": 1
+}

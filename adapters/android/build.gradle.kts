@@ -12,6 +12,7 @@ tasks.register("testAdapterUnit") {
         ":capability-host:testDebugUnitTest",
         ":v8-host:testDebugUnitTest",
         ":network-host:testDebugUnitTest",
+        ":process-backend-v86:testDebugUnitTest",
         ":session-host:testDebugUnitTest",
     )
 }

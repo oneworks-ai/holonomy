@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative, resolve } from 'node:path'
@@ -96,6 +97,21 @@ describe('holonomy CLI module graph', () => {
         schemaVersion: 1
       })
       expect(JSON.stringify(prepared.bundles)).not.toContain(temporaryRoot)
+    } finally {
+      rmSync(temporaryRoot, { force: true, recursive: true })
+    }
+  })
+
+  it('rejects plugin modules that are not strict UTF-8 source', () => {
+    const temporaryRoot = mkdtempSync(join(tmpdir(), 'holonomy-plugin-invalid-utf8-'))
+    try {
+      writeFileSync(join(temporaryRoot, 'plugin.mjs'), Buffer.from([0x65, 0x78, 0xFF]))
+      writeFileSync(
+        join(temporaryRoot, 'holo.config.json'),
+        JSON.stringify({ plugins: [{ id: 'invalid', use: './plugin.mjs' }] })
+      )
+      expect(() => prepareHolonomyRuntimePlugins('./holo.config.json', { cwd: temporaryRoot }))
+        .toThrow('strict UTF-8 source')
     } finally {
       rmSync(temporaryRoot, { force: true, recursive: true })
     }

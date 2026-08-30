@@ -3,14 +3,25 @@ import { Buffer } from 'node:buffer'
 // eslint-disable-next-line test/no-import-node-test -- Adapter tests use Node's public runner.
 import test from 'node:test'
 
+import {
+  createHoloUvSupervisorEnvironmentFactoryV1,
+  decodeHoloUvCapabilityRequestV1,
+  decodeHoloUvCapabilityResponseV1,
+  encodeHoloUvCapabilityRequestV1,
+  encodeHoloUvCapabilityResponseV1,
+  encodeHoloUvCompletionPayloadV1,
+  encodeHoloUvEnvironmentConfigurationV1,
+  encodeHoloUvSpawnedPayloadV1
+} from '@holonomyjs/holouv'
+
 // eslint-disable-next-line antfu/no-import-dist -- Adapter production code consumes the built contract.
 import {
   ProcessSupervisorFrameDecoderV1,
+  decodeProcessSupervisorExecResponseV1,
+  encodeProcessSupervisorExecRequestV1,
   encodeProcessSupervisorFrameV1,
   encodeProcessSupervisorReadyPayloadV1
 } from '../../../dist/capability-runtime/index.js'
-import { createSupervisorProcessEnvironmentFactoryV1 } from '../src/capability-process-supervisor-environment.mjs'
-import { encodeCompletionPayload, encodeSpawnedPayload } from '../src/capability-process-supervisor-frames.mjs'
 
 const frame = (operation, values = {}) => ({
   operation,
@@ -34,9 +45,41 @@ test('maps framed supervisor commands to one environment process', async () => {
   const hostDecoder = new ProcessSupervisorFrameDecoderV1()
   const outbound = []
   const filesystemRequests = []
+  const executionRequests = []
+  const executionResponses = []
+  const capabilityRequests = []
+  const capabilityResponses = []
+  let settleLateExecution
   let settleLateFilesystem
   let callbacks
-  const factory = createSupervisorProcessEnvironmentFactoryV1({
+  const factory = createHoloUvSupervisorEnvironmentFactoryV1({
+    createConfiguration() {
+      return encodeHoloUvEnvironmentConfigurationV1({
+        execGateTimeoutMs: 30_000,
+        hosts: [{ address: '192.168.87.1', hostname: 'example.test' }],
+        version: 1
+      })
+    },
+    handleExecutionRequest(input) {
+      executionRequests.push(input)
+      if (input.path === '/bin/denied') throw new Error('denied')
+      if (input.path === '/bin/late') {
+        return new Promise(resolve => {
+          settleLateExecution = resolve
+        })
+      }
+    },
+    handleCapabilityRequest(input) {
+      capabilityRequests.push({
+        command: decodeHoloUvCapabilityRequestV1(input.payload).command,
+        executableId: input.executableId,
+        linuxPid: input.linuxPid,
+        processId: input.processId,
+        processResourceId: input.processResourceId,
+        requestId: input.requestId
+      })
+      return encodeHoloUvCapabilityResponseV1({ json: '{"arch":"x64"}', ok: true, version: 1 })
+    },
     handleFilesystemRequest(input) {
       filesystemRequests.push(input)
       if (input.payload[0] === 4) {
@@ -58,9 +101,20 @@ test('maps framed supervisor commands to one environment process', async () => {
         async write(bytes) {
           for (const item of hostDecoder.push(bytes)) {
             outbound.push(item.operation)
+            if (item.operation === 'execResponse') {
+              executionResponses.push(decodeProcessSupervisorExecResponseV1(item.payload))
+            }
+            if (item.operation === 'capabilityResponse') {
+              capabilityResponses.push(decodeHoloUvCapabilityResponseV1(item.payload))
+            }
+            if (item.operation === 'configure') {
+              input.onBytes(encodeProcessSupervisorFrameV1(frame('ack', {
+                requestId: item.requestId
+              })))
+            }
             if (item.operation === 'spawn') {
               input.onBytes(encodeProcessSupervisorFrameV1(frame('spawned', {
-                payload: encodeSpawnedPayload(901),
+                payload: encodeHoloUvSpawnedPayloadV1(901),
                 processId: 41,
                 requestId: item.requestId
               })))
@@ -103,22 +157,62 @@ test('maps framed supervisor commands to one environment process', async () => {
     processId: 41,
     requestId: 77
   })))
+  callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('execRequest', {
+    payload: encodeProcessSupervisorExecRequestV1({
+      argv: ['/bin/echo', 'allowed'],
+      cwd: '/workspace',
+      linuxPid: 902,
+      parentLinuxPid: 901,
+      path: '/bin/echo'
+    }),
+    processId: 41,
+    requestId: 79
+  })))
+  callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('capabilityRequest', {
+    payload: encodeHoloUvCapabilityRequestV1({ command: ['system', 'read', 'os.arch'], version: 1 }),
+    processId: 41,
+    requestId: 82
+  })))
+  callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('execRequest', {
+    payload: encodeProcessSupervisorExecRequestV1({
+      argv: ['/bin/denied'],
+      cwd: '/workspace',
+      linuxPid: 903,
+      parentLinuxPid: 901,
+      path: '/bin/denied'
+    }),
+    processId: 41,
+    requestId: 80
+  })))
+  await new Promise(resolve => setImmediate(resolve))
   await new Promise(resolve => setImmediate(resolve))
   callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('filesystemRequest', {
     payload: Uint8Array.of(4, 5, 6),
     processId: 41,
     requestId: 78
   })))
+  callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('execRequest', {
+    payload: encodeProcessSupervisorExecRequestV1({
+      argv: ['/bin/late'],
+      cwd: '/workspace',
+      linuxPid: 904,
+      parentLinuxPid: 901,
+      path: '/bin/late'
+    }),
+    processId: 41,
+    requestId: 81
+  })))
+  await new Promise(resolve => setImmediate(resolve))
   callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('stdout', {
     payload: Buffer.from('output'),
     processId: 41
   })))
   callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('exit', {
-    payload: encodeCompletionPayload(7, null),
+    payload: encodeHoloUvCompletionPayloadV1(7, null),
     processId: 41
   })))
   callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('close', {
-    payload: encodeCompletionPayload(7, null),
+    payload: encodeHoloUvCompletionPayloadV1(7, null),
     processId: 41
   })))
 
@@ -127,7 +221,62 @@ test('maps framed supervisor commands to one environment process', async () => {
     ['exit', 7, null],
     ['close', 7, null]
   ])
-  assert.deepEqual(outbound, ['spawn', 'stdin', 'stdinClose', 'filesystemResponse'])
+  assert.deepEqual(outbound, [
+    'configure',
+    'spawn',
+    'stdin',
+    'stdinClose',
+    'filesystemResponse',
+    'capabilityResponse',
+    'execResponse',
+    'execResponse'
+  ])
+  assert.deepEqual(capabilityRequests, [{
+    command: ['system', 'read', 'os.arch'],
+    executableId: 'echo',
+    linuxPid: 901,
+    processId: 41,
+    processResourceId: 'process-1',
+    requestId: 82
+  }])
+  assert.deepEqual(capabilityResponses, [{ json: '{"arch":"x64"}', ok: true, version: 1 }])
+  assert.deepEqual(
+    executionRequests.map(input => ({
+      argv: input.argv,
+      executableId: input.executableId,
+      linuxPid: input.linuxPid,
+      parentLinuxPid: input.parentLinuxPid,
+      path: input.path,
+      processResourceId: input.processResourceId,
+      rootLinuxPid: input.rootLinuxPid
+    })),
+    [{
+      argv: ['/bin/echo', 'allowed'],
+      executableId: 'echo',
+      linuxPid: 902,
+      parentLinuxPid: 901,
+      path: '/bin/echo',
+      processResourceId: 'process-1',
+      rootLinuxPid: 901
+    }, {
+      argv: ['/bin/denied'],
+      executableId: 'echo',
+      linuxPid: 903,
+      parentLinuxPid: 901,
+      path: '/bin/denied',
+      processResourceId: 'process-1',
+      rootLinuxPid: 901
+    }, {
+      argv: ['/bin/late'],
+      executableId: 'echo',
+      linuxPid: 904,
+      parentLinuxPid: 901,
+      path: '/bin/late',
+      processResourceId: 'process-1',
+      rootLinuxPid: 901
+    }]
+  )
+  assert.deepEqual(executionResponses, [true, false])
   assert.deepEqual(
     filesystemRequests.map(item => ({
       environmentId: item.environmentId,
@@ -154,7 +303,18 @@ test('maps framed supervisor commands to one environment process', async () => {
     }]
   )
   await environment.close('generation-stale')
+  settleLateExecution()
   settleLateFilesystem(Uint8Array.of(6, 5, 4))
   await new Promise(resolve => setImmediate(resolve))
-  assert.deepEqual(outbound, ['spawn', 'stdin', 'stdinClose', 'filesystemResponse', 'shutdown'])
+  assert.deepEqual(outbound, [
+    'configure',
+    'spawn',
+    'stdin',
+    'stdinClose',
+    'filesystemResponse',
+    'capabilityResponse',
+    'execResponse',
+    'execResponse',
+    'shutdown'
+  ])
 })

@@ -1,0 +1,82 @@
+{
+  "artifact": {
+    "artifactKind": "npm",
+    "artifactVersion": "0.2.15",
+    "integritySha256": "3508c0536189af7f7e6c6fc37447efff83fe20ab6f453f3a2231e1a4b597f70c",
+    "license": "Apache-2.0",
+    "sourceRevision": "36843a854ef7609a77d160bce1fd6bce2bb7ebd2"
+  },
+  "backendId": "experimental.agentos-v1",
+  "host": {
+    "architecture": "arm64",
+    "engine": "node-v8",
+    "engineVersion": "12.4.254.21-node.39",
+    "platform": "darwin",
+    "runtimeVersion": "22.22.2"
+  },
+  "metrics": {
+    "bootDurationMs": 2834,
+    "workloadDurationMs": 571
+  },
+  "observations": [
+    {
+      "capability": "installation",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "boot",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "workload",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "stdio",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "exit",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "filesystem",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "network",
+      "provenance": "behavioralProbe",
+      "reasonCode": "agentos.curl_not_packaged",
+      "status": "failed"
+    },
+    {
+      "capability": "processTree",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "runtime",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "snapshots",
+      "provenance": "upstreamContract",
+      "reasonCode": "agentos.snapshot_api_missing",
+      "status": "unsupported"
+    },
+    {
+      "capability": "androidPackaging",
+      "provenance": "upstreamContract",
+      "reasonCode": "agentos.android_artifact_missing",
+      "status": "unsupported"
+    }
+  ],
+  "schemaVersion": 1
+}

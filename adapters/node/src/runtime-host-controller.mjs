@@ -36,16 +36,19 @@ export class NodeRuntimeHostController {
     this.#graph = graph
     this.#runtimeContext = runtimeContext
     this.#session = session
-    this.#plugins = new NodeRuntimePluginHostV1(graph, session)
     this.#capabilityRuntime = session.capabilityRuntime == null
       ? undefined
       : new NodeCapabilityRuntimeHostV1({ generation, session: session.capabilityRuntime })
+    this.#plugins = new NodeRuntimePluginHostV1(this.#capabilityRuntime, generation, session)
     this.#userModules = new Map(session.userModules.map(module => [module.url, module.source]))
-    this.#nativePort = createNodeNetworkPort(session.sandboxPlan, this.#emitNetwork)
+    this.#nativePort = createNodeNetworkPort(session.sandboxPlan, this.#emitNetwork, {
+      capabilityResolution: (bindingId, url) => this.#capabilityRuntime?.networkResolution(bindingId, url)
+    })
     installRuntimeHostBridge(runtimeContext, this.#operations())
   }
 
   async dispose() {
+    await this.#plugins.close()
     await this.#capabilityRuntime?.close()
     clearTimeout(this.#eventLoopWakeup)
     for (const timer of this.#timers.values()) {
@@ -62,10 +65,12 @@ export class NodeRuntimeHostController {
     return this.#invoke(this.#ruleUpdater, [JSON.stringify(rules)])
   }
 
+  async startPlugins() {
+    await this.#plugins.start()
+  }
+
   async updatePlugins(runtimePlugins, expectedRevision, revision) {
-    return await this.#plugins.update(runtimePlugins, expectedRevision, revision, (callback, args) => (
-      this.#invoke(callback, args)
-    ))
+    return await this.#plugins.update(runtimePlugins, expectedRevision, revision)
   }
 
   #configuration() {
@@ -80,11 +85,16 @@ export class NodeRuntimeHostController {
 
   #operations() {
     return Object.freeze({
+      capabilityAbort: cancellationId => this.#capabilityRuntime?.abort(cancellationId) ?? false,
       capabilityConfiguration: () => this.#capabilityRuntime?.configuration() ?? null,
-      capabilityInvoke: (json, callback) => {
+      capabilityInvoke: (json, cancellationId, initiallyAborted, callback) => {
         if (this.#capabilityRuntime == null || typeof callback !== 'function') return null
-        this.#capabilityRuntime.invoke(json, terminal => this.#invoke(callback, [terminal]))
-        return true
+        return this.#capabilityRuntime.invoke(
+          json,
+          cancellationId,
+          initiallyAborted,
+          terminal => this.#invoke(callback, [terminal])
+        )
       },
       capabilityInvokeImmediate: json => this.#capabilityRuntime?.invokeImmediate(json) ?? null,
       capabilityInvokeSync: json => this.#capabilityRuntime?.invokeSync(json) ?? null,
@@ -136,9 +146,6 @@ export class NodeRuntimeHostController {
       registerDispose: callback => {
         this.#disposeGuest = callback
         return true
-      },
-      registerPluginUpdater: callback => {
-        return this.#plugins.register(callback)
       },
       registerRuleUpdater: callback => {
         this.#ruleUpdater = callback

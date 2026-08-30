@@ -27,6 +27,7 @@ const headerObject = entries => {
 
 export class NodeHttpNetworkHost {
   #authority
+  #capabilityResolution
   #checkServerIdentity
   #httpRequest
   #httpsRequest
@@ -38,6 +39,7 @@ export class NodeHttpNetworkHost {
 
   constructor({
     authority,
+    capabilityResolution,
     checkServerIdentity = tls.checkServerIdentity,
     httpRequest = http.request,
     httpsRequest = https.request,
@@ -54,6 +56,7 @@ export class NodeHttpNetworkHost {
       throw new TypeError('Invalid Node network response limit')
     }
     this.#authority = authority
+    this.#capabilityResolution = capabilityResolution
     this.#checkServerIdentity = checkServerIdentity
     this.#httpRequest = httpRequest
     this.#httpsRequest = httpsRequest
@@ -71,13 +74,15 @@ export class NodeHttpNetworkHost {
     this.#notify({ id, kind: 'request', method: request.method, url: request.url.href })
     try {
       const decision = this.#authority.authorizeRequest(request)
-      const selected = await resolvePinnedAddress({
-        authority: this.#authority,
-        decision,
-        hostname,
-        request,
-        resolve: this.#resolve
-      })
+      const selected = request.capabilityBindingId == null
+        ? await resolvePinnedAddress({
+          authority: this.#authority,
+          decision,
+          hostname,
+          request,
+          resolve: this.#resolve
+        })
+        : this.#capabilityAddress(request, decision)
       const response = await this.#send(id, request, selected, hostname)
       this.#notify({ bytes: response.body.byteLength, id, kind: 'response', status: response.status })
       return Object.freeze({ ...response, address: selected.address, url: request.url.href })
@@ -85,6 +90,15 @@ export class NodeHttpNetworkHost {
       this.#notify({ code: error?.code ?? 'request_failed', id, kind: 'error' })
       throw error?.code == null ? requestError('request_failed') : error
     }
+  }
+
+  #capabilityAddress(request, decision) {
+    if (typeof this.#capabilityResolution !== 'function') throw requestError('dns_failed')
+    const addresses = this.#capabilityResolution(request.capabilityBindingId, request.url.href)
+    if (!Array.isArray(addresses) || addresses.length < 1 || addresses.length > 64) throw requestError('dns_failed')
+    const normalized = addresses.map(address => ({ address, family: address.includes(':') ? 6 : 4 }))
+    for (const address of normalized) this.#authority.authorizeAddress({ ...address, decision, url: request.url })
+    return normalized[0]
   }
 
   #send(id, request, selected, hostname) {

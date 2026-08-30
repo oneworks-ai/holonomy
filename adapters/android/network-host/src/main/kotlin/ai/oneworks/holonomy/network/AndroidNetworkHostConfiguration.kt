@@ -59,12 +59,14 @@ class AndroidNetworkHostConfiguration(
     internal fun authorizeAddresses(host: String, addresses: List<InetAddress>): List<ByteArray> {
         require(addresses.isNotEmpty() && addresses.size <= MAX_RESOLVED_ADDRESSES)
         if (privateNetwork == PrivateNetworkPolicy.DENY) {
-            require(host != "localhost" && !host.endsWith(".localhost"))
+            if (host == "localhost" || host.endsWith(".localhost")) throw PrivateNetworkDeniedException()
         }
         return addresses.map { address ->
             val bytes = address.address.copyOf()
             require(bytes.size == 4 || bytes.size == 16)
-            if (privateNetwork == PrivateNetworkPolicy.DENY) require(isPublicAddress(bytes))
+            if (privateNetwork == PrivateNetworkPolicy.DENY && !isPublicAddress(bytes)) {
+                throw PrivateNetworkDeniedException()
+            }
             bytes
         }
     }
@@ -182,6 +184,8 @@ class AndroidNetworkHostConfiguration(
         )
     }
 }
+
+internal class PrivateNetworkDeniedException : IllegalArgumentException()
 
 internal data class AuthorizedNetworkUrl(
     val host: String,

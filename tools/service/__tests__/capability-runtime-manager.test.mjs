@@ -19,6 +19,7 @@ const context = () => ({
 const limits = {
   maxDirectoryEntries: 32,
   maxOpenHandles: 8,
+  maxQueuedEvents: 0,
   maxReadBytes: 4096,
   maxWatchers: 0,
   maxWriteBytes: 4096
@@ -28,6 +29,7 @@ const capabilityPolicy = network => ({
   device: {
     defaultAccess: 'deny',
     maxEventsPerSecond: 1,
+    maxQueuedEvents: 0,
     maxSubscriptions: 0,
     operations: {
       'device.form-factor.read': { access: 'allow', maxPrecision: 'standard', maxPrivacyTier: 0 },
@@ -172,6 +174,15 @@ describe('service capability Runtime launch manager', () => {
     }
   })
 
+  it('admits the production within-root symlink mode without widening the workspace root', () => {
+    const policy = capabilityPolicy()
+    policy.filesystem.roots[0].symlinks = 'withinRoot'
+    const manager = createServiceCapabilityRuntimeManagerV1()
+    const admitted = manager.admit(request(policy), processInput())
+    assert.equal(admitted.sandboxPolicy.filesystem.roots[0].rootId, 'workspace')
+    assert.equal(admitted.sandboxPolicy.filesystem.roots[0].symlinks, 'withinRoot')
+  })
+
   it.skipIf(process.platform !== 'darwin')(
     'rejects only the Process profile when Android has no compatible installed Backend',
     () => {
@@ -211,7 +222,7 @@ describe('service capability Runtime launch manager', () => {
       },
       environment: { allowedScopes: ['processTree'], defaultScope: 'processTree' },
       executables: [{
-        executable: { kind: 'guestPath', path: '/holo-selftest' },
+        executable: { kind: 'guestPath', path: '/usr/bin/true' },
         executableId: 'fixture-tool',
         fixedArgs: [],
         shell: false

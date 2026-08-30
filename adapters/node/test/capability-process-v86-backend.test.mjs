@@ -51,6 +51,52 @@ test('declares the filesystem Bridge only when the Host installs its handler', (
   })
   assert.equal(backend.descriptor.features.filesystemBridge, true)
   assert.equal(V86_PROCESS_BACKEND_DESCRIPTOR_V1.features.filesystemBridge, false)
+  const launch = {
+    configuration: backend.normalizeConfiguration(configuration),
+    environmentScope: 'processTree',
+    executable: backend.normalizeExecutable({ kind: 'guestPath', path: '/bin/cat' }),
+    executableId: 'cat',
+    generation: 1,
+    operation: 'process.program.spawn',
+    runtimeArgs: []
+  }
+  assert.doesNotThrow(() =>
+    backend.prepareLaunch({
+      ...launch,
+      policy: {
+        access: 'sandboxed',
+        mounts: [{ guestPath: '/workspace', rights: ['read'], rootId: 'workspace' }]
+      }
+    })
+  )
+  for (const guestPath of ['/bin', '/sbin', '/usr', '/usr/bin', '/usr/sbin', '/workspace/nested']) {
+    assert.throws(() =>
+      backend.prepareLaunch({
+        ...launch,
+        policy: {
+          access: 'sandboxed',
+          mounts: [{ guestPath, rights: ['read'], rootId: 'workspace' }]
+        }
+      }), TypeError)
+  }
+})
+
+test('rejects mounts when the v86 filesystem Bridge is not installed', () => {
+  const backend = createV86ProcessBackendV1({ environmentFactory })
+  assert.throws(() =>
+    backend.prepareLaunch({
+      configuration: backend.normalizeConfiguration(configuration),
+      environmentScope: 'processTree',
+      executable: backend.normalizeExecutable({ kind: 'guestPath', path: '/bin/cat' }),
+      executableId: 'cat',
+      generation: 1,
+      operation: 'process.program.spawn',
+      policy: {
+        access: 'sandboxed',
+        mounts: [{ guestPath: '/workspace', rights: ['read'], rootId: 'workspace' }]
+      },
+      runtimeArgs: []
+    }), TypeError)
 })
 
 test('declares the network Bridge only when the Host installs its handler', () => {
@@ -69,12 +115,14 @@ test('keeps artifact paths Host-owned and exposes only guest executable paths', 
   const normalized = backend.normalizeConfiguration(configuration)
   assert.equal(normalized.artifacts.kernel.artifactId, 'holo-linux')
   assert.equal('path' in normalized.artifacts.kernel, false)
+  assert.equal(normalized.supervisor.execGateTimeoutMs, 30_000)
   assert.deepEqual(backend.normalizeExecutable({ kind: 'guestPath', path: '/usr/bin/curl' }), {
     kind: 'guestPath',
     path: '/usr/bin/curl'
   })
   assert.throws(() => backend.normalizeExecutable({ kind: 'hostPath', path: '/usr/bin/curl' }), TypeError)
   assert.throws(() => backend.normalizeExecutable({ kind: 'guestPath', path: '/usr/../bin/curl' }), TypeError)
+  assert.throws(() => backend.normalizeExecutable({ kind: 'guestPath', path: '/workspace/tool' }), TypeError)
 })
 
 test('rejects incomplete or oversized v86 machine declarations', () => {
@@ -85,6 +133,18 @@ test('rejects incomplete or oversized v86 machine declarations', () => {
       ...configuration,
       artifacts: { ...configuration.artifacts, kernel: { artifactId: 'kernel', sha256: 'bad' } }
     }), TypeError)
+  assert.throws(() =>
+    backend.normalizeConfiguration({
+      ...configuration,
+      supervisor: { execGateTimeoutMs: 0, protocolVersion: 1 }
+    }), TypeError)
+  assert.equal(
+    backend.normalizeConfiguration({
+      ...configuration,
+      supervisor: { execGateTimeoutMs: 1500, protocolVersion: 1 }
+    }).supervisor.execGateTimeoutMs,
+    1500
+  )
 })
 
 test('negotiates atomic truncation because Host open owns O_TRUNC', async () => {

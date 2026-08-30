@@ -24,9 +24,20 @@ const networkLimits: Record<NetworkLimitNameV2, number> = Object.freeze({
   socketTimeoutMs: 30_000
 })
 
-const filesystemLimits = Object.freeze({
+const filesystemLimits: Readonly<
+  Record<
+    | 'maxDirectoryEntries'
+    | 'maxOpenHandles'
+    | 'maxQueuedEvents'
+    | 'maxReadBytes'
+    | 'maxWatchers'
+    | 'maxWriteBytes',
+    number
+  >
+> = Object.freeze({
   maxDirectoryEntries: 1000,
   maxOpenHandles: 32,
+  maxQueuedEvents: 32,
   maxReadBytes: 1_048_576,
   maxWatchers: 8,
   maxWriteBytes: 1_048_576
@@ -41,6 +52,7 @@ const enabledPolicy = () => ({
   device: {
     defaultAccess: 'deny',
     maxEventsPerSecond: 10,
+    maxQueuedEvents: 8,
     maxSubscriptions: 2,
     operations: {
       'device.connectivity.wifi.state.read': {
@@ -142,6 +154,22 @@ describe('sandbox policy v2 machine contract', () => {
 
     expect(validate(normalized)).toBe(true)
     expect(validate({ ...normalized, ambientNetwork: true })).toBe(false)
+  })
+
+  it('freezes the filesystem watch queue hard ceiling', () => {
+    const disabled = enabledPolicy()
+    disabled.filesystem.limits = { ...filesystemLimits, maxQueuedEvents: 0 }
+    expect(compileSandboxPolicyV2(disabled).policy.filesystem)
+      .toMatchObject({ limits: { maxQueuedEvents: 0 } })
+
+    const oversized = enabledPolicy()
+    oversized.filesystem.limits = { ...filesystemLimits, maxQueuedEvents: 4097 }
+    expect(() => compileSandboxPolicyV2(oversized)).toThrow(CapabilityContractError)
+
+    const missing = enabledPolicy()
+    const { maxQueuedEvents: _maxQueuedEvents, ...withoutQueueLimit } = filesystemLimits
+    missing.filesystem.limits = withoutQueueLimit as typeof missing.filesystem.limits
+    expect(() => compileSandboxPolicyV2(missing)).toThrow(CapabilityContractError)
   })
 
   it.each([

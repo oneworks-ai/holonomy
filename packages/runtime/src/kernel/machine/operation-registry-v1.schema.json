@@ -1,0 +1,7848 @@
+{
+  "$id": "https://oneworks.ai/holonomy/contracts/operation-registry-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "items": false,
+  "maxItems": 113,
+  "minItems": 113,
+  "prefixItems": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getCellularState"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.connectivity.cellular.state.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.connectivity.cellular.state.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getCellularState"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.connectivity.cellular.state.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.connectivity.cellular.state.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getConnectivity"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.connectivity.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.connectivity.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getConnectivity"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.connectivity.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.connectivity.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getWifiState"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.connectivity.wifi.state.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.connectivity.wifi.state.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getWifiState"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.connectivity.wifi.state.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.connectivity.wifi.state.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getDisplay"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.display.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.display.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getDisplay"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.display.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.display.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getFormFactor"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.form-factor.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.form-factor.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getFormFactor"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.form-factor.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.form-factor.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getInput"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.input.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.input.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getInput"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.input.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.input.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getLifecycle"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.lifecycle.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.lifecycle.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getLifecycle"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.lifecycle.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.lifecycle.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getMediaCapabilities"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.media.capabilities.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.media.capabilities.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getMediaCapabilities"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.media.capabilities.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.media.capabilities.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getPower"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.power.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.power.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getPower"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.power.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.power.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getSecurityCapabilities"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.security.capabilities.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.security.capabilities.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getSecurityCapabilities"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.security.capabilities.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.security.capabilities.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getSensorCapabilities"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.sensor.capabilities.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.sensor.capabilities.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getSensorCapabilities"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.sensor.capabilities.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.sensor.capabilities.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getSummary"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.summary.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "HoloDeviceSummaryV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.summary",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.summary"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getSummary"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.summary.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "HoloDeviceSummaryV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getThermal"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "holo:device"
+        },
+        "operation": {
+          "const": "device.thermal.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.thermal.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.state",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.state"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getThermal"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.thermal.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.thermal.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.device.sensitive",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.device.sensitive"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "getWifiIdentity"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.connectivity.wifi.identity.read"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceReadingV1.device.connectivity.wifi.identity.read"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "DeviceSubscriptionOptionsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "dynamic",
+            "schemaId": "DeviceEventKindsCapabilityRequirementV1"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "DeviceSubscriptionDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "subscribe"
+        },
+        "limitsOwner": {
+          "const": "DeviceSandboxV2"
+        },
+        "member": {
+          "const": "subscribe"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:device/promises"
+        },
+        "operation": {
+          "const": "device.events.subscribe"
+        },
+        "resourceSchemaId": {
+          "const": "DeviceFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "DeviceSubscriptionV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsReadFileSyncArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-read"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncVariantDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "readFileSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.file.read"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsReadResultV1"
+        },
+        "resultVariants": {
+          "const": [
+            {
+              "resultSchemaId": "RuntimeBufferV1",
+              "whenArgumentsSchemaId": "FsReadFileSyncBufferArgsV1"
+            },
+            {
+              "resultSchemaId": "string",
+              "whenArgumentsSchemaId": "FsReadFileSyncStringArgsV1"
+            }
+          ]
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId",
+        "resultVariants"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsReadFileAsyncArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-read"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "FsReadCallbackDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "readFile"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.file.read"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsReadResultV1"
+        },
+        "resultVariants": {
+          "const": [
+            {
+              "resultSchemaId": "RuntimeBufferV1",
+              "whenArgumentsSchemaId": "FsReadFileAsyncBufferArgsV1"
+            },
+            {
+              "resultSchemaId": "string",
+              "whenArgumentsSchemaId": "FsReadFileAsyncStringArgsV1"
+            }
+          ]
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId",
+        "resultVariants"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsReadFileAsyncArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-read"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseVariantDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "readFile"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.file.read"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsReadResultV1"
+        },
+        "resultVariants": {
+          "const": [
+            {
+              "resultSchemaId": "RuntimeBufferV1",
+              "whenArgumentsSchemaId": "FsReadFileAsyncBufferArgsV1"
+            },
+            {
+              "resultSchemaId": "string",
+              "whenArgumentsSchemaId": "FsReadFileAsyncStringArgsV1"
+            }
+          ]
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId",
+        "resultVariants"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsFileHandleReadArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-handle-read"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseVariantDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "FileHandle.readFile"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.file.read"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsReadResultV1"
+        },
+        "resultVariants": {
+          "const": [
+            {
+              "resultSchemaId": "RuntimeBufferV1",
+              "whenArgumentsSchemaId": "FsFileHandleReadBufferArgsV1"
+            },
+            {
+              "resultSchemaId": "string",
+              "whenArgumentsSchemaId": "FsFileHandleReadStringArgsV1"
+            }
+          ]
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId",
+        "resultVariants"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsWriteFileSyncArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-write"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "write"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "writeFileSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.file.write"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsWriteFileAsyncArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-write"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "CallbackVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "write"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "writeFile"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.file.write"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsWriteFileAsyncArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-write"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "write"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "writeFile"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.file.write"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsFileHandleWriteArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-handle-write"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "write"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "FileHandle.writeFile"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.file.write"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsOpenArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-flag-rights"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "open"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "openSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.file.open"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "VirtualFdV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsOpenArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-flag-rights"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "CallbackResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "open"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "open"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.file.open"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "VirtualFdV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsOpenArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-flag-rights"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "open"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "open"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.file.open"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FileHandleV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsCloseArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "close"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "closeSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.file.close"
+        },
+        "resourceSchemaId": {
+          "const": "OpaqueFileHandleResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsCloseArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "CallbackVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "close"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "close"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.file.close"
+        },
+        "resourceSchemaId": {
+          "const": "OpaqueFileHandleResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "close"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "FileHandle.close"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.file.close"
+        },
+        "resourceSchemaId": {
+          "const": "OpaqueFileHandleResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsStatArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-read"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "statSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.metadata.stat"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "VirtualStatsV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsStatArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-read"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "CallbackResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "stat"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.metadata.stat"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "VirtualStatsV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsStatArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-read"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "stat"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.metadata.stat"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "VirtualStatsV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsFileHandleStatArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-handle-read"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "FileHandle.stat"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.metadata.stat"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "VirtualStatsV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsStatArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-read"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "lstatSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.metadata.lstat"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "VirtualStatsV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsStatArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-read"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "CallbackResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "lstat"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.metadata.lstat"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "VirtualStatsV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsStatArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-read"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "lstat"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.metadata.lstat"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "VirtualStatsV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsReaddirArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-list"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncVariantDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "readdirSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.directory.read"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsReaddirResultV1"
+        },
+        "resultVariants": {
+          "const": [
+            {
+              "resultSchemaId": "FsReaddirNamesResultV1",
+              "whenArgumentsSchemaId": "FsReaddirNamesArgsV1"
+            },
+            {
+              "resultSchemaId": "FsReaddirDirentsResultV1",
+              "whenArgumentsSchemaId": "FsReaddirDirentsArgsV1"
+            }
+          ]
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId",
+        "resultVariants"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsReaddirArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-list"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "FsReaddirCallbackDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "readdir"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.directory.read"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsReaddirResultV1"
+        },
+        "resultVariants": {
+          "const": [
+            {
+              "resultSchemaId": "FsReaddirNamesResultV1",
+              "whenArgumentsSchemaId": "FsReaddirNamesArgsV1"
+            },
+            {
+              "resultSchemaId": "FsReaddirDirentsResultV1",
+              "whenArgumentsSchemaId": "FsReaddirDirentsArgsV1"
+            }
+          ]
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId",
+        "resultVariants"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsReaddirArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-list"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseVariantDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "readdir"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.directory.read"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsReaddirResultV1"
+        },
+        "resultVariants": {
+          "const": [
+            {
+              "resultSchemaId": "FsReaddirNamesResultV1",
+              "whenArgumentsSchemaId": "FsReaddirNamesArgsV1"
+            },
+            {
+              "resultSchemaId": "FsReaddirDirentsResultV1",
+              "whenArgumentsSchemaId": "FsReaddirDirentsArgsV1"
+            }
+          ]
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId",
+        "resultVariants"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsMkdirArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-create"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncVariantDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "mkdirSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.directory.create"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsMkdirResultV1"
+        },
+        "resultVariants": {
+          "const": [
+            {
+              "resultSchemaId": "void",
+              "whenArgumentsSchemaId": "FsMkdirNonRecursiveArgsV1"
+            },
+            {
+              "resultSchemaId": "FsMkdirRecursiveResultV1",
+              "whenArgumentsSchemaId": "FsMkdirRecursiveArgsV1"
+            }
+          ]
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId",
+        "resultVariants"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsMkdirArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-create"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "FsMkdirCallbackDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "mkdir"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.directory.create"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsMkdirResultV1"
+        },
+        "resultVariants": {
+          "const": [
+            {
+              "resultSchemaId": "void",
+              "whenArgumentsSchemaId": "FsMkdirNonRecursiveArgsV1"
+            },
+            {
+              "resultSchemaId": "FsMkdirRecursiveResultV1",
+              "whenArgumentsSchemaId": "FsMkdirRecursiveArgsV1"
+            }
+          ]
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId",
+        "resultVariants"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsMkdirArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-create"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseVariantDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "mkdir"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.directory.create"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsMkdirResultV1"
+        },
+        "resultVariants": {
+          "const": [
+            {
+              "resultSchemaId": "void",
+              "whenArgumentsSchemaId": "FsMkdirNonRecursiveArgsV1"
+            },
+            {
+              "resultSchemaId": "FsMkdirRecursiveResultV1",
+              "whenArgumentsSchemaId": "FsMkdirRecursiveArgsV1"
+            }
+          ]
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId",
+        "resultVariants"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsRenameArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-move"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "renameSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.entry.rename"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsRenameArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-move"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "CallbackVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "rename"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.entry.rename"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsRenameArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-move"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "rename"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.entry.rename"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsUnlinkArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-delete"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "unlinkSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.entry.unlink"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsUnlinkArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-delete"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "CallbackVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "unlink"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.entry.unlink"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsUnlinkArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-delete"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "unlink"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.entry.unlink"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsWatchArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-watch"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "FsWatcherDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "subscribe"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "watch"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.watch.subscribe"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsWatcherV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsWatchArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.fs",
+                    "version": 1
+                  }
+                ],
+                "branchId": "fs-watch"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "FsWatchIteratorDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "subscribe"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "watch"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs/promises"
+        },
+        "operation": {
+          "const": "filesystem.watch.subscribe"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "FsWatchIteratorV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "close"
+        },
+        "limitsOwner": {
+          "const": "FilesystemLimitsV2"
+        },
+        "member": {
+          "const": "FSWatcher.close"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:fs"
+        },
+        "operation": {
+          "const": "filesystem.watch.close"
+        },
+        "resourceSchemaId": {
+          "const": "FilesystemResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "NetworkInvocationSnapshotV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.network.mock",
+                    "version": 1
+                  }
+                ],
+                "branchId": "mock"
+              },
+              {
+                "allOf": [
+                  {
+                    "name": "host.network.http",
+                    "version": 1
+                  }
+                ],
+                "branchId": "real"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "NetworkSandboxV2"
+        },
+        "member": {
+          "const": "fetch"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "web:fetch"
+        },
+        "operation": {
+          "const": "network.fetch.request"
+        },
+        "resourceSchemaId": {
+          "const": "NetworkResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ResponseV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "NetworkRedirectInvocationV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseVoidDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "NetworkSandboxV2.limits.maxRedirects"
+        },
+        "member": {
+          "const": "followRedirect"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "web:fetch"
+        },
+        "operation": {
+          "const": "network.fetch.redirect"
+        },
+        "resourceSchemaId": {
+          "const": "NetworkResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "NetworkSandboxV2.limits"
+        },
+        "member": {
+          "const": "Response.metadata"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "web:fetch"
+        },
+        "operation": {
+          "const": "network.response.metadata.read"
+        },
+        "resourceSchemaId": {
+          "const": "NetworkResponseBodyBindingV1"
+        },
+        "resultSchemaId": {
+          "const": "NetworkResponseMetadataV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "NetworkSandboxV2.limits"
+        },
+        "member": {
+          "const": "Response.text"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "web:fetch"
+        },
+        "operation": {
+          "const": "network.response.body.read"
+        },
+        "resourceSchemaId": {
+          "const": "NetworkResponseBodyBindingV1"
+        },
+        "resultSchemaId": {
+          "const": "string"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "NetworkSandboxV2.limits"
+        },
+        "member": {
+          "const": "Response.json"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "web:fetch"
+        },
+        "operation": {
+          "const": "network.response.body.read"
+        },
+        "resourceSchemaId": {
+          "const": "NetworkResponseBodyBindingV1"
+        },
+        "resultSchemaId": {
+          "const": "JsonValueV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "NetworkSandboxV2.limits"
+        },
+        "member": {
+          "const": "Response.arrayBuffer"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "web:fetch"
+        },
+        "operation": {
+          "const": "network.response.body.read"
+        },
+        "resourceSchemaId": {
+          "const": "NetworkResponseBodyBindingV1"
+        },
+        "resultSchemaId": {
+          "const": "ArrayBuffer"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "NetworkSandboxV2.limits"
+        },
+        "member": {
+          "const": "Response.bytes"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "web:fetch"
+        },
+        "operation": {
+          "const": "network.response.body.read"
+        },
+        "resourceSchemaId": {
+          "const": "NetworkResponseBodyBindingV1"
+        },
+        "resultSchemaId": {
+          "const": "Uint8Array"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncResultDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "NetworkSandboxV2.limits"
+        },
+        "member": {
+          "const": "Response.clone"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "web:fetch"
+        },
+        "operation": {
+          "const": "network.response.body.read"
+        },
+        "resourceSchemaId": {
+          "const": "NetworkResponseBodyBindingV1"
+        },
+        "resultSchemaId": {
+          "const": "ResponseV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "NetworkWebSocketArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "unavailable"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SyncNeverDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "open"
+        },
+        "limitsOwner": {
+          "const": "SandboxPolicyV2"
+        },
+        "member": {
+          "const": "WebSocket"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "web:socket"
+        },
+        "operation": {
+          "const": "network.websocket.connect"
+        },
+        "resourceSchemaId": {
+          "const": "NetworkResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "never"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ProcessDescendantAuthorizationArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.process.execute",
+                    "version": 1
+                  }
+                ],
+                "branchId": "process-descendant-exec"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "open"
+        },
+        "limitsOwner": {
+          "const": "ProcessLimitsV2"
+        },
+        "member": {
+          "const": "authorizeDescendantProcess"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:runtime"
+        },
+        "operation": {
+          "const": "process.program.spawn"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessExecutableResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ProcessDescendantAuthorizationReceiptV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ProcessNetworkAuthorizationArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.process.network",
+                    "version": 1
+                  }
+                ],
+                "branchId": "process-network-connect"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "PromiseResultDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "open"
+        },
+        "limitsOwner": {
+          "const": "ProcessNetworkCapabilityConstraintsV1"
+        },
+        "member": {
+          "const": "authorizeProcessNetwork"
+        },
+        "modes": {
+          "const": [
+            "promise"
+          ]
+        },
+        "module": {
+          "const": "holo:runtime"
+        },
+        "operation": {
+          "const": "process.network.connect"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessNetworkEndpointResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ProcessNetworkAuthorizationReceiptV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ProcessProgramSpawnArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.process.execute",
+                    "version": 1
+                  }
+                ],
+                "branchId": "program-spawn"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "open"
+        },
+        "limitsOwner": {
+          "const": "ProcessLimitsV2"
+        },
+        "member": {
+          "const": "spawn"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.program.spawn"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessExecutableResourceV1→ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ChildProcessFacadeV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ProcessShellSpawnArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.process.execute",
+                    "version": 1
+                  },
+                  {
+                    "name": "host.process.shell",
+                    "version": 1
+                  }
+                ],
+                "branchId": "shell-spawn"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "open"
+        },
+        "limitsOwner": {
+          "const": "ProcessLimitsV2"
+        },
+        "member": {
+          "const": "spawnShell"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.shell.spawn"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessExecutableResourceV1→ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ChildProcessFacadeV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ProcessExecFileArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.process.execute",
+                    "version": 1
+                  }
+                ],
+                "branchId": "program-spawn"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessExecDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "open"
+        },
+        "limitsOwner": {
+          "const": "ProcessLimitsV2"
+        },
+        "member": {
+          "const": "execFile"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.program.spawn"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessExecutableResourceV1→ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ChildProcessFacadeV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ProcessExecArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.process.execute",
+                    "version": 1
+                  },
+                  {
+                    "name": "host.process.shell",
+                    "version": 1
+                  }
+                ],
+                "branchId": "shell-spawn"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessExecDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "open"
+        },
+        "limitsOwner": {
+          "const": "ProcessLimitsV2"
+        },
+        "member": {
+          "const": "exec"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.shell.spawn"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessExecutableResourceV1→ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ChildProcessFacadeV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ProcessProgramSpawnArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.process.execute",
+                    "version": 1
+                  }
+                ],
+                "branchId": "program-spawn"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "ProcessLimitsV2"
+        },
+        "member": {
+          "const": "spawnSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.program.spawn"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessExecutableResourceV1→ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ProcessSyncResultV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ProcessExecFileArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.process.execute",
+                    "version": 1
+                  }
+                ],
+                "branchId": "program-spawn"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "ProcessLimitsV2"
+        },
+        "member": {
+          "const": "execFileSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.program.spawn"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessExecutableResourceV1→ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ProcessSyncOutputV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ProcessExecArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.process.execute",
+                    "version": 1
+                  },
+                  {
+                    "name": "host.process.shell",
+                    "version": 1
+                  }
+                ],
+                "branchId": "shell-spawn"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "ProcessLimitsV2"
+        },
+        "member": {
+          "const": "execSync"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.shell.spawn"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessExecutableResourceV1→ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ProcessSyncOutputV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ProcessSignalV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.process.signal",
+                    "version": 1
+                  }
+                ],
+                "branchId": "process-signal"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "ProcessSignalCapabilityConstraintsV1"
+        },
+        "member": {
+          "const": "ChildProcess.kill"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.signal.send"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "boolean"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "FsDataV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessStdinDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "write"
+        },
+        "limitsOwner": {
+          "const": "stdinBytes/openPipes"
+        },
+        "member": {
+          "const": "ChildProcess.stdin.write"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.stdin.write"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "boolean"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessStdinEndDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "write"
+        },
+        "limitsOwner": {
+          "const": "stdin terminal"
+        },
+        "member": {
+          "const": "ChildProcess.stdin.end"
+        },
+        "modes": {
+          "const": [
+            "callback"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.stdin.end"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ChildProcessStdinFacadeV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "close"
+        },
+        "limitsOwner": {
+          "const": "idempotent"
+        },
+        "member": {
+          "const": "ChildProcess.stdin.destroy"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.stdio.destroy"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ChildProcessStdinFacadeV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "queue cap"
+        },
+        "member": {
+          "const": "stdout/stderr.pause"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.stdio.pause"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ChildProcessReadableFacadeV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "invoke"
+        },
+        "limitsOwner": {
+          "const": "sequence"
+        },
+        "member": {
+          "const": "stdout/stderr.resume"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.stdio.resume"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ChildProcessReadableFacadeV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "close"
+        },
+        "limitsOwner": {
+          "const": "idempotent"
+        },
+        "member": {
+          "const": "stdout/stderr.destroy"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.stdio.destroy"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ChildProcessReadableFacadeV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ChildProcessResourceStateV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessEventDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "subscribe"
+        },
+        "limitsOwner": {
+          "const": "stdout/stderr/event cap"
+        },
+        "member": {
+          "const": "ChildProcess.events"
+        },
+        "modes": {
+          "const": []
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.wait"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ChildProcessEventV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "ChildProcessReadableFacadeV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessReadableEventDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "subscribe"
+        },
+        "limitsOwner": {
+          "const": "stdout/stderr/queue cap"
+        },
+        "member": {
+          "const": "stdout/stderr.events"
+        },
+        "modes": {
+          "const": []
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.wait"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "ChildProcessReadableEventV1"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "kind": "inherited"
+          }
+        },
+        "deliverySchemaId": {
+          "const": "ProcessSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "systemOnly"
+        },
+        "kind": {
+          "const": "close"
+        },
+        "limitsOwner": {
+          "const": "idempotent"
+        },
+        "member": {
+          "const": "ChildProcess.finalizer"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:child_process"
+        },
+        "operation": {
+          "const": "process.resource.close"
+        },
+        "resourceSchemaId": {
+          "const": "ProcessInstanceResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "void"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.basic",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.basic"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.arch:throw"
+        },
+        "member": {
+          "const": "arch"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.arch.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.arch"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.version",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.version"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.machine:throw"
+        },
+        "member": {
+          "const": "machine"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.machine.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.machine"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.basic",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.basic"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.platform:throw"
+        },
+        "member": {
+          "const": "platform"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.platform.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.platform"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.basic",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.basic"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.type:throw"
+        },
+        "member": {
+          "const": "type"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.type.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.type"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.version",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.version"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.release:throw"
+        },
+        "member": {
+          "const": "release"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.release.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.release"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.version",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.version"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.version:throw"
+        },
+        "member": {
+          "const": "version"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.version.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.version"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.compute",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.compute"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.cpus:throw"
+        },
+        "member": {
+          "const": "cpus"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.cpus.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.cpus"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.compute",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.compute"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.availableParallelism:throw"
+        },
+        "member": {
+          "const": "availableParallelism"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.parallelism.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.availableParallelism"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.memory",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.memory"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.totalmem:throw"
+        },
+        "member": {
+          "const": "totalmem"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.memory.total.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.totalmem"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.memory",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.memory"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.freemem:throw"
+        },
+        "member": {
+          "const": "freemem"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.memory.free.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.freemem"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.runtime",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.runtime"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.uptime:throw"
+        },
+        "member": {
+          "const": "uptime"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.uptime.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.uptime"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.runtime",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.runtime"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.loadavg:throw"
+        },
+        "member": {
+          "const": "loadavg"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.loadavg.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.loadavg"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.identity",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.identity"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.hostname:throw"
+        },
+        "member": {
+          "const": "hostname"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.hostname.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.hostname"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.network-topology",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.network-topology"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.networkInterfaces:emptyObject"
+        },
+        "member": {
+          "const": "networkInterfaces"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.network-interfaces.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.networkInterfaces"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "SystemUserInfoArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.identity",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.identity"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.userInfo:throw"
+        },
+        "member": {
+          "const": "userInfo"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.user-info.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.userInfo"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.identity",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.identity"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.homedir:throw"
+        },
+        "member": {
+          "const": "homedir"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.home-directory.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.homedir"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.identity",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.identity"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.os.tmpdir:throw"
+        },
+        "member": {
+          "const": "tmpdir"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:os"
+        },
+        "operation": {
+          "const": "system.os.temp-directory.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.os.tmpdir"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.process-identity",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.process-identity"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.process.pid:throwOnRead"
+        },
+        "member": {
+          "const": "pid"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:process"
+        },
+        "operation": {
+          "const": "system.process.pid.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.process.pid"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.process-identity",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.process-identity"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.process.cwd:throwOnInvoke"
+        },
+        "member": {
+          "const": "cwd"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:process"
+        },
+        "operation": {
+          "const": "system.process.cwd.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.process.cwd"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.process-identity",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.process-identity"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.process.execPath:throwOnRead"
+        },
+        "member": {
+          "const": "execPath"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:process"
+        },
+        "operation": {
+          "const": "system.process.exec-path.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.process.execPath"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "argsSchemaId": {
+          "const": "EmptyArgsV1"
+        },
+        "capability": {
+          "const": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "name": "host.system.process-identity",
+                    "version": 1
+                  }
+                ],
+                "branchId": "host.system.process-identity"
+              }
+            ]
+          }
+        },
+        "deliverySchemaId": {
+          "const": "SystemSyncDeliveryV1"
+        },
+        "interception": {
+          "const": "host"
+        },
+        "kind": {
+          "const": "read"
+        },
+        "limitsOwner": {
+          "const": "SystemFieldValueMapV1.process.env:emptyObject"
+        },
+        "member": {
+          "const": "env"
+        },
+        "modes": {
+          "const": [
+            "sync"
+          ]
+        },
+        "module": {
+          "const": "node:process"
+        },
+        "operation": {
+          "const": "system.process.environment.read"
+        },
+        "resourceSchemaId": {
+          "const": "SystemInformationFieldResourceV1"
+        },
+        "resultSchemaId": {
+          "const": "SystemFieldValueMapV1.process.env"
+        }
+      },
+      "required": [
+        "argsSchemaId",
+        "capability",
+        "deliverySchemaId",
+        "interception",
+        "kind",
+        "limitsOwner",
+        "member",
+        "modes",
+        "module",
+        "operation",
+        "resourceSchemaId",
+        "resultSchemaId"
+      ],
+      "type": "object"
+    }
+  ],
+  "type": "array"
+}

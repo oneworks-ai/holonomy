@@ -1,0 +1,29 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@wasmer/sdk':
+        specifier: 0.10.0
+        version: 0.10.0
+
+packages:
+
+  '@wasmer/sdk@0.10.0':
+    resolution: {integrity: sha512-YQ+s5tGag6P/I8kp9BTH+XhjoS9UFvWiZJvnWEEovClHffhYToKhprWr4UJG7wLP7c/2HQpGkF7ZrjoUvKjdmA==, tarball: https://registry.npmjs.org/@wasmer/sdk/-/sdk-0.10.0.tgz}
+
+  web-worker@1.5.0:
+    resolution: {integrity: sha512-RiMReJrTAiA+mBjGONMnjVDP2u3p9R1vkcGz6gDIrOMT3oGuYwX2WRMYI9ipkphSuE5XKEhydbhNEJh4NY9mlw==, tarball: https://registry.npmjs.org/web-worker/-/web-worker-1.5.0.tgz}
+
+snapshots:
+
+  '@wasmer/sdk@0.10.0':
+    dependencies:
+      web-worker: 1.5.0
+
+  web-worker@1.5.0: {}

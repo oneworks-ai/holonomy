@@ -13,31 +13,35 @@ Read [`.oo/rules/project-identity.md`](.oo/rules/project-identity.md) before cha
 
 ## Entry points
 
-- `src/event-loop/runtime-event-loop.ts`: task, next-tick, timer, native completion, liveness and shutdown state machine.
-- `src/event-loop/types.ts`: minimal host port and public event-loop contracts.
-- `src/git/`: authorized `host.git` v1 provider contract, opaque-repository JS facade and machine-readable support matrix.
-- `src/child-process/`: restricted callback-only `node:child_process` facade that maps two literal `git` argv forms to `GitFacade`; it owns the first cancellation/timeout terminal and late repository close, accepts only genuine captured platform AbortSignals, and swallows callback throws to prevent internal unhandled rejections. It never spawns processes or interprets a shell.
-- `src/http-server/`: bounded inbound `node:http` / `ws` server facade, NativePort contract and virtual-host provider.
-- `src/event-loop/errors.ts`: stable runtime error codes.
-- `src/crypto/`: bounded synchronous engine-internal crypto intrinsic port, guarded provider installation, `node:crypto` synthetic module, Web crypto installer and precise capability matrix.
-- `src/module-loader/holonomy-module-loader.ts`: canonical resolution, verified source loading, graph planning and module cache ownership.
-- `src/module-loader/source-analysis.ts`: Acorn AST dependency/export analysis; do not replace it with regex or a private lexer.
-- `src/module-loader/types.ts`: platform-neutral host port plus `ModulePlan` and engine-facing require/cache contracts.
-- `src/module-loader/errors.ts`: stable resolution, integrity, package and evaluation-boundary error codes.
-- `src/node-compat/`: bounded pure-JS Node Core v1 shims, immutable host snapshots, capability matrix and synthetic-module registry.
-- `src/node-test/`: the sequential `node:test`/`node:assert/strict` conformance runner and Holonomy platform-case extension.
-- `src/native-port/native-bridge.ts`: atomic admission, request/stream cancellation, Event Loop integration and quota owner.
-- `src/native-port/native-resource.ts`: guest-opaque cross-request resource handle identity.
-- `src/native-port/types.ts`: platform-neutral request, event, authority and credit contracts.
-- `src/streams/`: memory-only Web and Node stream state machines, explicit bare-V8 globals, capability matrix and synthetic-module registry.
-- `src/node-fs/`: virtual `holonomy-fs://` authorities, the intentionally partial
+- `packages/runtime/`: real source owner for the Runtime Kernel, Cordis App and platform-neutral JavaScript runtime leaves. Read its nearest `AGENTS.md` before changing shared runtime behavior.
+- `packages/holouv/`: Backend-neutral process environment lifecycle, scope reuse and generation fencing shared by Native, v86 and future Backends. It does not own Host I/O or public `node:child_process` semantics.
+- `packages/capabilities/`: real source owner for FS, Device, System, Network and Process Capability packages. Old top-level `src/*` locations are compatibility re-exports only.
+- `backends/`: environment Backend family assets and probes. `backends/v86/` owns the shared Linux kernel/supervisor assets; adapters retain platform process, packaging and engine integration.
+- `packages/runtime/src/event-loop/runtime-event-loop.ts`: task, next-tick, timer, native completion, liveness and shutdown state machine.
+- `packages/runtime/src/event-loop/types.ts`: minimal host port and public event-loop contracts.
+- `packages/runtime/src/git/`: authorized `host.git` v1 provider contract, opaque-repository JS facade and machine-readable support matrix.
+- `packages/capabilities/process/src/legacy/`: restricted callback-only `node:child_process` facade that maps two literal `git` argv forms to `GitFacade`; it owns the first cancellation/timeout terminal and late repository close, accepts only genuine captured platform AbortSignals, and swallows callback throws to prevent internal unhandled rejections. It never spawns processes or interprets a shell.
+- `packages/runtime/src/http-server/`: bounded inbound `node:http` / `ws` server facade, NativePort contract and virtual-host provider.
+- `packages/runtime/src/event-loop/errors.ts`: stable runtime error codes.
+- `packages/runtime/src/crypto/`: bounded synchronous engine-internal crypto intrinsic port, guarded provider installation, `node:crypto` synthetic module, Web crypto installer and precise capability matrix.
+- `packages/runtime/src/module-loader/holonomy-module-loader.ts`: canonical resolution, verified source loading, graph planning and module cache ownership.
+- `packages/runtime/src/module-loader/source-analysis.ts`: Acorn AST dependency/export analysis; do not replace it with regex or a private lexer.
+- `packages/runtime/src/module-loader/types.ts`: platform-neutral host port plus `ModulePlan` and engine-facing require/cache contracts.
+- `packages/runtime/src/module-loader/errors.ts`: stable resolution, integrity, package and evaluation-boundary error codes.
+- `packages/runtime/src/node-compat/`: bounded pure-JS Node Core v1 shims, immutable host snapshots, capability matrix and synthetic-module registry.
+- `packages/runtime/src/node-test/`: the sequential `node:test`/`node:assert/strict` conformance runner and Holonomy platform-case extension.
+- `packages/runtime/src/native-port/native-bridge.ts`: atomic admission, request/stream cancellation, Event Loop integration and quota owner.
+- `packages/runtime/src/native-port/native-resource.ts`: guest-opaque cross-request resource handle identity.
+- `packages/runtime/src/native-port/types.ts`: platform-neutral request, event, authority and credit contracts.
+- `packages/runtime/src/streams/`: memory-only Web and Node stream state machines, explicit bare-V8 globals, capability matrix and synthetic-module registry.
+- `packages/capabilities/fs/src/node/`: virtual `holonomy-fs://` authorities, the intentionally partial
   `node:fs` facade and the conformance-only in-memory `NativePort` provider.
-- `src/storage/`: authorized binary KV, asynchronous SQLite and opaque credential-handle contracts over `NativeBridge`.
-- `src/runtime-console/`: bounded accessor-free JavaScript diagnostic formatting with a host output sink; full `util.inspect` object expansion is intentionally outside this partial console surface.
-- `src/timers/`: JavaScript timer handles/callback records over a native monotonic scheduler.
-- `src/web-network/index.ts`: fetch/WebSocket shim, network authority, versioned operations and scripted provider.
-- `src/index.ts`: public package exports.
-- `src/runtime/`: M2 unified runtime composer. It owns one Bridge created from a caller-owned Event Loop and NativePort, composes only explicitly enabled reviewed leaves, and never installs globals into ambient `globalThis`.
+- `packages/runtime/src/storage/`: authorized binary KV, asynchronous SQLite and opaque credential-handle contracts over `NativeBridge`.
+- `packages/runtime/src/runtime-console/`: bounded accessor-free JavaScript diagnostic formatting with a host output sink; full `util.inspect` object expansion is intentionally outside this partial console surface.
+- `packages/runtime/src/timers/`: JavaScript timer handles/callback records over a native monotonic scheduler.
+- `packages/capabilities/network/src/web/index.ts`: fetch/WebSocket shim, network authority, versioned operations and scripted provider.
+- `src/index.ts`: compatibility exports for the unscoped `holonomy` package; new implementation belongs in the scoped workspace packages.
+- `packages/runtime/src/app/`: M2 unified runtime composer. It owns one Bridge created from a caller-owned Event Loop and NativePort, composes only explicitly enabled reviewed leaves, and never installs globals into ambient `globalThis`.
   After disposal its operational facades, including all module-loader operations, reject `runtime_composer.disposed`; immutable loader limits/root URL and runtime module/global/capability/snapshot inspection remain available.
 - `adapters/android/v8-host/`: Javet Android runtime binding, host-resolved guest ESM execution and opt-in V8 Inspector transport.
 - `adapters/android/network-host/`: authorized `host.network` HTTP(S) provider over an address-pinned, bounded HTTP/1.1 transport; it owns cancellable DNS, socket/TLS and body-stream work and never implements Fetch-visible semantics or connection pooling.
@@ -78,9 +82,9 @@ Read [`.oo/rules/project-identity.md`](.oo/rules/project-identity.md) before cha
 ## Boundaries
 
 - Do not import Android, JNI, Javet, V8, Node core shims or runtime protocol packages here.
-- `src/http-server/` owns inbound virtual listener, request/response and accepted WebSocket state only. Native providers own sockets and TLS; the memory provider is conformance-only.
+- `packages/runtime/src/http-server/` owns inbound virtual listener, request/response and accepted WebSocket state only. Native providers own sockets and TLS; the memory provider is conformance-only.
 - The host supplies a monotonic clock, the performance-sensitive native timer queue/runtime-thread wakeup, a microtask checkpoint and termination. JavaScript retains public timer API semantics and callback/argument ownership.
-- Module loading and native port implementations belong in their own leaf directories and must not move scheduling state out of `src/event-loop/`.
+- Module loading and native port implementations belong in their own leaf directories and must not move scheduling state out of `packages/runtime/src/event-loop/`.
 - Stream shims reuse the frozen `EventEmitter` and `Buffer` implementations, own no host I/O, and expose their separate synthetic-module bindings for loader composition.
 - Web Stream constructors are never read from ambient globals; mobile hosts explicitly inject `createWebStreamsGlobals()` into the engine context.
 - Android DevTools uses a device local-abstract socket and Service-owned `adb forward`; do not add a second JavaScript executor or device TCP listener. The Inspector transport itself needs no network permission; the E2E application declares `INTERNET` only for the separately authorized HTTP provider. `AdbInspectorOptions` stays configurable, while the machine-level Service allocates collision-free desktop ports and generation-bound Inspector leases. Adapter close/terminate owns Inspector session and socket cleanup. In the normal running state, Javet Inspector commands are queued through `RuntimeAdapterHost.requestRuntimeTask` on the generation-bound runtime thread. While V8 is blocked in its wait-for-debugger or paused message loop, the control thread must instead use Javet's documented thread-safe Inspector request queue so `runIfWaitingForDebugger`, resume and step commands can make progress. The Electron host remains a view-only client with Node integration disabled; it must not become the Runtime, Service or ADB lifecycle owner.
@@ -88,7 +92,7 @@ Read [`.oo/rules/project-identity.md`](.oo/rules/project-identity.md) before cha
 - The Javet adapter transports versioned `NativePort` calls asynchronously. Java providers may do blocking platform work only on their own bounded executor, and every completion, stream chunk and revoke returns through the generation-bound runtime task queue. Direct `Uint8Array` copies are bounded on both sides; platform exceptions never enter guest events.
 - `holonomy:///runtime/*` is reserved for manifest-verified adapter assets. Guest module identity is the absolute URL returned by the injected `RuntimeModuleResolver`; never rewrite a guest scheme to `holonomy:`. `node:*` is resolved only from the composer's frozen synthetic registry and is materialized as a real V8 synthetic module before guest evaluation.
 - Device acceptance is a distinct gate from TypeScript and JVM tests. Keep instrumentation serial-agnostic, report emulator versus physical evidence explicitly, and use `pnpm android:device-test --all-devices` for sequential batches. Never claim physical-device coverage from an emulator run.
-- `src/node-fs/` never accepts a guest principal, capability or provider root id.
+- `packages/capabilities/fs/src/node/` never accepts a guest principal, capability or provider root id.
   It sends versioned `host.fs` operations only; providers re-authorize the
   bridge-injected authority and use V4 opaque resource bindings for file
   handles. The memory provider is test-only, not an Android implementation.
@@ -99,7 +103,7 @@ Read [`.oo/rules/project-identity.md`](.oo/rules/project-identity.md) before cha
 
 ## Storage contract
 
-- `src/storage/` composes Native Bridge v4; it never creates a second request, cancellation, deadline, quota or resource controller.
+- `packages/runtime/src/storage/` composes Native Bridge v4; it never creates a second request, cancellation, deadline, quota or resource controller.
 - `host.storage` v1 sends only bounded binary KV, asynchronous SQLite and credential-handle operations. Principal, capabilities and provider namespace allocation travel out-of-band; providers re-authorize before each operation.
 - Credential material is never enumerated or serialized. Bridge-issued `storage.credential` handles expose only `withBytes`; its temporary callback copy is zeroed best effort after use.
 - Providers own per-database FIFO scheduling and transaction exclusivity; every failed or cancelled transaction rolls back. This leaf has no Android/JNI/Room/Keystore/SQLite wiring, persistence implementation, SQL parser, migrations, synchronous `node:sqlite`, shell or native paths.
@@ -118,11 +122,11 @@ Read [`.oo/rules/project-identity.md`](.oo/rules/project-identity.md) before cha
 ## Crypto contract
 
 - `CryptoPrimitivePort` is the only synchronous engine-internal crypto intrinsic boundary. It includes a CSPRNG/entropy contract, does not use `NativeBridge`, and never admits guest-directed filesystem, network, Binder or Keystore I/O.
-- `src/crypto/primitive-port.ts` remains the only public context/state lifecycle owner; `primitive-*.ts`, the AES/GCM leaves and the Node facade leaves are private stateless operation or algorithm responsibilities and must not become alternate public ports.
+- `packages/runtime/src/crypto/primitive-port.ts` remains the only public context/state lifecycle owner; `primitive-*.ts`, the AES/GCM leaves and the Node facade leaves are private stateless operation or algorithm responsibilities and must not become alternate public ports.
 - The port owns strict bound-once provider snapshots, internal-slot byte preflight, copied admission/output, opaque context identity, per-context and aggregate quotas, provider non-reentrancy poisoning, stable redacted errors, context cleanup and adapter-wide `dispose()` backstop.
 - The trusted provider must complete every operation in the current call stack and must never construct or return a Promise or thenable. A violating host owns observing every rejection before return; runtime detection remains fail-closed and does not inspect an arbitrary `then` getter. Android integration therefore exposes a synchronous JCA adapter on the runtime thread rather than futures, callbacks or asynchronous wrappers.
 - Provider installation must pass the required-now primitive self-test before module namespaces, Web globals or capability descriptors are created. The leaf does not claim Android/JCA wiring; Android entropy warm-up, `RuntimeThreadGuard` and JCA installation remain host responsibilities.
-- The deterministic pure-JS provider and AES implementation are testing-only internal files and are not exported by `src/crypto/index.ts` or the package root. They are never production entropy or crypto providers.
+- The deterministic pure-JS provider and AES implementation are testing-only internal files and are not exported by `packages/runtime/src/crypto/index.ts` or the package root. They are never production entropy or crypto providers.
 - Crypto shims reuse `RuntimeBuffer` and the package encoding boundary; they never depend on ambient `Buffer`, `TextEncoder` or `crypto` globals.
 - Temporary key, IV, AAD and tag copies are zeroed on a best-effort basis after synchronous provider admission; the runtime does not claim cleanup after fatal OOM or engine termination.
 - `CRYPTO_CAPABILITY_MATRIX` is a static contract, not a wiring advertisement. Successful installation emits semver `1.0.0` descriptors with `host.crypto` supported primitives and `node.crypto` / `web.crypto` mapped to `host.crypto`; plugin requirements must explicitly set `acceptHostMapped`.

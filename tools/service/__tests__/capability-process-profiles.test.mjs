@@ -38,6 +38,7 @@ describe('service Process profile manifest', () => {
         const profiles = await readServiceProcessProfilesV1(path)
         assert.deepEqual(profiles.developer.environment, {
           allowedScopes: ['processTree'],
+          capabilityBridge: { domains: [] },
           defaultScope: 'processTree'
         })
         assert.equal(profiles.developer.backend.backendId, 'native.darwin-seatbelt-v1')
@@ -111,8 +112,8 @@ describe('service Process profile manifest', () => {
                 defaultScope: 'runtime'
               },
               executables: [{
-                executable: { kind: 'guestPath', path: '/holo-selftest' },
-                executableId: 'selftest',
+                executable: { kind: 'guestPath', path: '/usr/bin/cat' },
+                executableId: 'cat',
                 fixedArgs: [],
                 shell: false
               }],
@@ -129,7 +130,7 @@ describe('service Process profile manifest', () => {
         processBackendRegistry: backends.registry
       })
       assert.equal(profiles.linux.backend.backendId, 'experimental.v86-v1')
-      assert.equal(profiles.linux.executables[0].executable.path, '/holo-selftest')
+      assert.equal(profiles.linux.executables[0].executable.path, '/usr/bin/cat')
 
       await writeFile(join(directory, 'kernel'), 'tampered', { mode: 0o600 })
       await assert.rejects(

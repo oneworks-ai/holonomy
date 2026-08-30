@@ -11,13 +11,15 @@ import {
 import type {
   HostEventLoopPort,
   HostEventLoopTermination,
+  NativeBridge,
   NativeCallToken,
   NativeDispatchContext,
   NativePort,
   NativePortEventSink,
   NativePortRequest,
   NativePortResourceEventSink,
-  NativeProviderToken
+  NativeProviderToken,
+  NativeResult
 } from '../../../src/index.js'
 import type { ScriptedHttpExchange } from '../../../src/web-network/scripted-provider.js'
 import type { NetworkLimits } from '../../../src/web-network/types.js'
@@ -99,12 +101,15 @@ describe('web network fetch v1 over Native Bridge v4', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('x-test')).toBe('yes')
     expect(response.bodyUsed).toBe(false)
-    expect(() => response.clone()).toThrow(/not supported/u)
+    const clone = response.clone()
 
     const text = response.text()
+    const clonedText = clone.text()
     await flush(test.loop)
     await expect(text).resolves.toBe('abcd')
+    await expect(clonedText).resolves.toBe('abcd')
     expect(response.bodyUsed).toBe(true)
+    expect(clone.bodyUsed).toBe(true)
     expect(test.provider.grantedCredits.map(entry => entry.credits)).toEqual([1, 1, 1])
     expect(new Set(test.provider.seenCallTokens).size).toBeGreaterThan(2)
   })
@@ -216,6 +221,58 @@ describe('web network fetch v1 over Native Bridge v4', () => {
     controller.abort()
     await flush(loop)
     await expect(aborted).rejects.toMatchObject({ code: 'network.cancelled' })
+  })
+
+  it('selects cancellation immediately and closes a late Bridge result', async () => {
+    let cancelled = 0
+    let closed = 0
+    let resolveRequest!: (result: NativeResult) => void
+    const bridge: NativeBridge = {
+      cancel() {
+        cancelled += 1
+        return false
+      },
+      dispose() {},
+      get isDisposed() {
+        return false
+      },
+      getSnapshot: () => ({
+        inFlightBinaryBytes: 0,
+        inFlightBinaryHandles: 0,
+        openHandles: 0,
+        openResources: 0,
+        outstandingCredits: 0,
+        pendingRequests: 1
+      }),
+      request: () =>
+        new Promise(resolve => {
+          resolveRequest = resolve
+        }),
+      revokeResource: () => false,
+      stream: () => {
+        throw new TypeError('stream must not be opened')
+      }
+    }
+    const runtime = createFetchRuntime({ authority, bridge })
+    const controller = new runtime.AbortController()
+    const pending = runtime.fetch('https://api.example/late', { signal: controller.signal })
+    controller.abort()
+
+    await expect(pending).rejects.toMatchObject({ code: 'network.cancelled' })
+    expect(cancelled).toBe(1)
+
+    resolveRequest({
+      resources: [{
+        close: () => {
+          closed += 1
+          return true
+        },
+        type: 'network.http'
+      }],
+      value: null
+    })
+    await Promise.resolve()
+    expect(closed).toBe(1)
   })
 
   it('documents exactly the supported and deferred capability surface', () => {

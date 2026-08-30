@@ -90,8 +90,8 @@ const assertKernelCapabilities = (policy, processProfileId, target, profiles, ba
     const root = policy.filesystem.roots[0]
     if (
       policy.filesystem.roots.length !== 1 || root?.rootId !== 'workspace' ||
-      root.virtualUrl !== 'holo-fs://workspace/' || root.symlinks !== 'deny'
-    ) unsupported('The M3 filesystem Provider requires one deny-symlink workspace root')
+      root.virtualUrl !== 'holo-fs://workspace/' || !['deny', 'withinRoot'].includes(root.symlinks)
+    ) unsupported('The M3 filesystem Provider requires one bounded workspace root')
   }
   if (JSON.stringify(policy.diagnostics) !== JSON.stringify(DEFAULT_SANDBOX_POLICY_V2.diagnostics)) {
     unsupported('Runtime observers and source readers are unavailable in the M2.5 kernel slice')

@@ -22,4 +22,4 @@ Holonomy provides a restricted, frozen compatibility surface that does not depen
 
 Guest code does not receive the host `require`, the real host `process`, the real host `Buffer`, or the system `fetch`. Every module comes from the Runtime synthetic registry.
 
-The authoritative fine-grained matrices live in `src/node-compat/capabilities.ts` and `src/streams/capabilities.ts`. This page keeps only the stable user-facing summary.
+The authoritative fine-grained matrices live in `packages/runtime/src/node-compat/capabilities.ts` and `packages/runtime/src/streams/capabilities.ts`. This page keeps only the stable user-facing summary.

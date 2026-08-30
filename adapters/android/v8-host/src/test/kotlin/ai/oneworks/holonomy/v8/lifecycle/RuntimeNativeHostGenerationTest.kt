@@ -92,7 +92,8 @@ class RuntimeNativeHostGenerationTest {
     @Test
     fun `restartable trusted Backend factory rejects an already issued identity`() {
         val backend = object : RuntimeTrustedBackend {
-            override fun start(host: ai.oneworks.holonomy.host.RuntimeTrustedBackendHost) = Unit
+            override fun start(host: ai.oneworks.holonomy.host.RuntimeTrustedBackendHost) =
+                java.util.concurrent.CompletableFuture.completedFuture(Unit)
         }
         val source = RuntimeTrustedBackendGenerationSource.restartable { backend }
 

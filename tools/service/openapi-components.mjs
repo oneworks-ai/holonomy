@@ -100,7 +100,7 @@ export const OPENAPI_COMPONENTS = {
         activeOperationId: { type: 'string' },
         capabilityContextDigest: { pattern: '^[0-9a-f]{64}$', type: 'string' },
         capabilityPolicyDigest: { pattern: '^[0-9a-f]{64}$', type: 'string' },
-        capabilityRuntimeState: { const: 'kernel-slice' },
+        capabilityRuntimeState: { const: 'provider-v1' },
         cleanupPending: { type: 'boolean' },
         createdAt: { minimum: 0, type: 'integer' },
         deviceId: { type: 'string' },
