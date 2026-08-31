@@ -1,6 +1,1 @@
-export { CRYPTO_CAPABILITY_MATRIX } from './capabilities.js'
-export type { CryptoCapabilityDescriptor } from './capabilities.js'
-export * from './errors.js'
-export * from './primitive-port.js'
-export * from './runtime-install.js'
-export * from './types.js'
+export * from '@holonomyjs/runtime/crypto/index'

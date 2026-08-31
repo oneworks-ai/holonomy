@@ -23,6 +23,7 @@ describe('child process environment symbol', () => {
   })
 
   it('accepts only the exported Symbol and a Host-allowed narrower scope', () => {
+    expect(childProcessEnvironmentV1).toBe(Symbol.for('holo.childProcessEnvironment'))
     const snapshot = snapshotChildProcessOptionsV1(
       {
         [childProcessEnvironmentV1]: { scope: 'processTree' }

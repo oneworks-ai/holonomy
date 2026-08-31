@@ -1,0 +1,5 @@
+export * from './kernel/filesystem-registry.js'
+export * from './kernel/guest-fs-facade.js'
+export * from './kernel/linux-filesystem-bridge.js'
+export * from './kernel/normalize-filesystem.js'
+export * from './node/index.js'

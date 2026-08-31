@@ -1,4 +1,4 @@
-import type { RuntimePluginBundleV1 } from '../src/runtime/plugin-types.js'
+import type { RuntimePluginBundleV1 } from '@holonomyjs/runtime/app/plugin-types'
 
 export interface PreparedHolonomyRuntimePlugins {
   readonly bundles: readonly RuntimePluginBundleV1[]

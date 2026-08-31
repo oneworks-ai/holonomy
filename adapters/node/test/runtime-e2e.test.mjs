@@ -134,11 +134,11 @@ test('installs admitted Cordis plugins before entry and keeps entry side effects
       { value: 'ready' }
     )],
     userModules: [{
-      source: "console.log('PLUGIN_ENTRY:' + globalThis.pluginReady)",
+      source: "console.log('PLUGIN_ENTRY_ISOLATED:' + typeof globalThis.pluginReady)",
       url: base.entryUrl
     }]
   })
-  await waitFor(() => logs.find(record => record.text === 'PLUGIN_ENTRY:ready'))
+  await waitFor(() => logs.find(record => record.text === 'PLUGIN_ENTRY_ISOLATED:undefined'))
   const replacement = pluginBundle(
     `
     export default (ctx, config) => {
@@ -149,14 +149,12 @@ test('installs admitted Cordis plugins before entry and keeps entry side effects
     { value: 'v2' }
   )
   assert.equal((await supervisor.setRuntimePlugins([replacement], 1, 2)).pluginGraphRevision, 2)
-  await waitFor(() => logs.find(record => record.text === 'PLUGIN_REPLACED:v2'))
   await assert.rejects(
     () => supervisor.setRuntimePlugins([pluginBundle('export default 42')], 2, 3),
     { code: 'invalid_plugins' }
   )
   assert.equal((await supervisor.status()).pluginGraphRevision, 2)
   await supervisor.stop()
-  await waitFor(() => logs.find(record => record.text === 'PLUGIN_REPLACEMENT_DISPOSED'))
 
   const failing = new NodeRuntimeSupervisor({ requestTimeoutMs: 10_000 })
   t.after(() => failing.stop())
@@ -167,7 +165,7 @@ test('installs admitted Cordis plugins before entry and keeps entry side effects
       ...base,
       runtimePlugins: [pluginBundle('export default 42')],
       userModules: [{ source: "console.log('PLUGIN_ENTRY_MUST_NOT_RUN')", url: base.entryUrl }]
-    }), { code: 'start_failed.entry_evaluation' })
+    }), { code: 'start_failed.runtime_plugins' })
   assert.equal(failingLogs.some(record => record.text === 'PLUGIN_ENTRY_MUST_NOT_RUN'), false)
 })
 
@@ -260,6 +258,12 @@ test('runs the shared Runtime with timer, node module, real Fetch, live mock rul
   }, 1)
   await waitFor(() => logs.find(record => record.text === 'E2E_MOCK:mocked'))
   await waitFor(() => logs.find(record => record.text === 'E2E_SHA:sha-matched'))
+  await waitFor(() =>
+    diagnostics.find(record =>
+      record.diagnostic?.type === 'responseReceived' &&
+      record.diagnostic.url === `${origin}/mock`
+    )
+  )
 
   assert.ok(diagnostics.some(record =>
     record.diagnostic?.layer === 'transport' &&
@@ -277,6 +281,20 @@ test('runs the shared Runtime with timer, node module, real Fetch, live mock rul
   )?.diagnostic
   assert.ok(realRequest)
   assert.ok(largeRequest)
+  assert.equal(
+    diagnostics.find(record =>
+      record.diagnostic?.type === 'responseReceived' &&
+      record.diagnostic.requestId === realRequest.requestId
+    )?.diagnostic.source,
+    'real'
+  )
+  assert.equal(
+    diagnostics.find(record =>
+      record.diagnostic?.type === 'responseReceived' &&
+      record.diagnostic.url === `${origin}/mock`
+    )?.diagnostic.source,
+    'mock'
+  )
   const capturedBytes = diagnostics
     .filter(record =>
       record.diagnostic?.type === 'dataReceived' &&

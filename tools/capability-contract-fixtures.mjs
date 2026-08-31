@@ -6,6 +6,7 @@ export const restrictedPolicyInput = Object.freeze({
     limits: {
       maxDirectoryEntries: 1000,
       maxOpenHandles: 32,
+      maxQueuedEvents: 32,
       maxReadBytes: 1048576,
       maxWatchers: 8,
       maxWriteBytes: 1048576

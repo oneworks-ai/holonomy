@@ -485,6 +485,7 @@ object SessionProtocolLimits {
     const val MAX_MODULE_GRAPH_BYTES = 48 * 1024 * 1024L
     const val MAX_MODULES = 512
     const val MAX_MODULE_BYTES = 8 * 1024 * 1024
+    const val MAX_PLUGIN_GRAPH_BYTES = 32 * 1024 * 1024
     const val MAX_PLUGIN_FILES = 512
     const val MAX_RUNTIME_PLUGINS = 128
     const val MAX_URL_BYTES = 4 * 1024

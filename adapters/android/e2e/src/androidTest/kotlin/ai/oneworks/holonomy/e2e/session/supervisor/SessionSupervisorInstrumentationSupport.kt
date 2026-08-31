@@ -48,9 +48,12 @@ internal class SessionSupervisorInstrumentationHarness(
         return reply
     }
 
-    fun start(runtimeId: RuntimeId): SessionCommandReply {
+    fun start(
+        runtimeId: RuntimeId,
+        timeoutSeconds: Long = INSTRUMENTATION_TIMEOUT_SECONDS,
+    ): SessionCommandReply {
         val generation = activeGenerations.getValue(runtimeId)
-        val reply = execute(StartRuntimeCommand(runtimeId, commandId(), generation))
+        val reply = awaitReply(submit(StartRuntimeCommand(runtimeId, commandId(), generation)), timeoutSeconds)
         if (reply.ack.accepted) activeGenerations[runtimeId] = reply.ack.generation
         return reply
     }
@@ -67,15 +70,23 @@ internal class SessionSupervisorInstrumentationHarness(
 
     fun execute(command: SessionCommandV2): SessionCommandReply = awaitReply(submit(command))
 
-    fun awaitReply(commandId: CommandId): SessionCommandReply = await(
+    fun execute(command: SessionCommandV2, timeoutSeconds: Long): SessionCommandReply =
+        awaitReply(submit(command), timeoutSeconds)
+
+    fun awaitReply(
+        commandId: CommandId,
+        timeoutSeconds: Long = INSTRUMENTATION_TIMEOUT_SECONDS,
+    ): SessionCommandReply = await(
         description = "reply for $commandId",
         read = { ingress.readReply(commandId) },
         predicate = { true },
+        timeoutSeconds = timeoutSeconds,
     )
 
     fun awaitOutput(
         runtimeId: RuntimeId,
         description: String,
+        timeoutSeconds: Long = INSTRUMENTATION_TIMEOUT_SECONDS,
         predicate: (SessionOutputSnapshot) -> Boolean,
     ): SessionOutputSnapshot = await(
         description = description,
@@ -90,6 +101,7 @@ internal class SessionSupervisorInstrumentationHarness(
         },
         predicate = predicate,
         pollIntervalMs = OUTPUT_POLL_INTERVAL_MS,
+        timeoutSeconds = timeoutSeconds,
     )
 
     fun awaitState(
@@ -128,9 +140,10 @@ internal class SessionSupervisorInstrumentationHarness(
         read: () -> T?,
         predicate: (T) -> Boolean,
         pollIntervalMs: Long = INSTRUMENTATION_POLL_INTERVAL_MS,
+        timeoutSeconds: Long = INSTRUMENTATION_TIMEOUT_SECONDS,
     ): T {
         val deadline = SystemClock.elapsedRealtime() +
-            TimeUnit.SECONDS.toMillis(INSTRUMENTATION_TIMEOUT_SECONDS)
+            TimeUnit.SECONDS.toMillis(timeoutSeconds)
         var value = read()
         while ((value == null || !predicate(value)) && SystemClock.elapsedRealtime() < deadline) {
             SystemClock.sleep(pollIntervalMs)

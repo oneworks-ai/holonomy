@@ -20,6 +20,18 @@ const configuration = {
   supervisor: { protocolVersion: 1 }
 }
 
+const fuseRequest = (opcode, nodeId, body = new Uint8Array()) => {
+  const payload = new Uint8Array(40 + body.byteLength)
+  const view = new DataView(payload.buffer)
+  view.setUint32(0, payload.byteLength, true)
+  view.setUint32(4, opcode, true)
+  view.setBigUint64(8, 1n, true)
+  view.setBigUint64(16, nodeId, true)
+  view.setUint32(32, 42, true)
+  payload.set(body, 40)
+  return payload
+}
+
 const environmentFactory = {
   async open() {
     return {
@@ -51,6 +63,52 @@ test('declares the filesystem Bridge only when the Host installs its handler', (
   })
   assert.equal(backend.descriptor.features.filesystemBridge, true)
   assert.equal(V86_PROCESS_BACKEND_DESCRIPTOR_V1.features.filesystemBridge, false)
+  const launch = {
+    configuration: backend.normalizeConfiguration(configuration),
+    environmentScope: 'processTree',
+    executable: backend.normalizeExecutable({ kind: 'guestPath', path: '/bin/cat' }),
+    executableId: 'cat',
+    generation: 1,
+    operation: 'process.program.spawn',
+    runtimeArgs: []
+  }
+  assert.doesNotThrow(() =>
+    backend.prepareLaunch({
+      ...launch,
+      policy: {
+        access: 'sandboxed',
+        mounts: [{ guestPath: '/workspace', rights: ['read'], rootId: 'workspace' }]
+      }
+    })
+  )
+  for (const guestPath of ['/bin', '/sbin', '/usr', '/usr/bin', '/usr/sbin', '/workspace/nested']) {
+    assert.throws(() =>
+      backend.prepareLaunch({
+        ...launch,
+        policy: {
+          access: 'sandboxed',
+          mounts: [{ guestPath, rights: ['read'], rootId: 'workspace' }]
+        }
+      }), TypeError)
+  }
+})
+
+test('rejects mounts when the v86 filesystem Bridge is not installed', () => {
+  const backend = createV86ProcessBackendV1({ environmentFactory })
+  assert.throws(() =>
+    backend.prepareLaunch({
+      configuration: backend.normalizeConfiguration(configuration),
+      environmentScope: 'processTree',
+      executable: backend.normalizeExecutable({ kind: 'guestPath', path: '/bin/cat' }),
+      executableId: 'cat',
+      generation: 1,
+      operation: 'process.program.spawn',
+      policy: {
+        access: 'sandboxed',
+        mounts: [{ guestPath: '/workspace', rights: ['read'], rootId: 'workspace' }]
+      },
+      runtimeArgs: []
+    }), TypeError)
 })
 
 test('declares the network Bridge only when the Host installs its handler', () => {
@@ -69,12 +127,14 @@ test('keeps artifact paths Host-owned and exposes only guest executable paths', 
   const normalized = backend.normalizeConfiguration(configuration)
   assert.equal(normalized.artifacts.kernel.artifactId, 'holo-linux')
   assert.equal('path' in normalized.artifacts.kernel, false)
+  assert.equal(normalized.supervisor.execGateTimeoutMs, 30_000)
   assert.deepEqual(backend.normalizeExecutable({ kind: 'guestPath', path: '/usr/bin/curl' }), {
     kind: 'guestPath',
     path: '/usr/bin/curl'
   })
   assert.throws(() => backend.normalizeExecutable({ kind: 'hostPath', path: '/usr/bin/curl' }), TypeError)
   assert.throws(() => backend.normalizeExecutable({ kind: 'guestPath', path: '/usr/../bin/curl' }), TypeError)
+  assert.throws(() => backend.normalizeExecutable({ kind: 'guestPath', path: '/workspace/tool' }), TypeError)
 })
 
 test('rejects incomplete or oversized v86 machine declarations', () => {
@@ -85,6 +145,18 @@ test('rejects incomplete or oversized v86 machine declarations', () => {
       ...configuration,
       artifacts: { ...configuration.artifacts, kernel: { artifactId: 'kernel', sha256: 'bad' } }
     }), TypeError)
+  assert.throws(() =>
+    backend.normalizeConfiguration({
+      ...configuration,
+      supervisor: { execGateTimeoutMs: 0, protocolVersion: 1 }
+    }), TypeError)
+  assert.equal(
+    backend.normalizeConfiguration({
+      ...configuration,
+      supervisor: { execGateTimeoutMs: 1500, protocolVersion: 1 }
+    }).supervisor.execGateTimeoutMs,
+    1500
+  )
 })
 
 test('negotiates atomic truncation because Host open owns O_TRUNC', async () => {
@@ -97,4 +169,35 @@ test('negotiates atomic truncation because Host open owns O_TRUNC', async () => 
   const response = new DataView(output.buffer, output.byteOffset, output.byteLength)
   assert.equal(response.getInt32(4, true), 0)
   assert.equal(response.getUint32(28, true) & (1 << 3), 1 << 3)
+})
+
+test('isolates FUSE inode and handle state between v86 environments', async () => {
+  const bridge = new V86FuseBridgeV1(async input => {
+    assert.equal(input.operation, 'lookup')
+    return { kind: 'file', size: 3 }
+  })
+  const attributed = environmentId => ({
+    environmentId,
+    executableId: 'fixture',
+    generation: 1,
+    linuxPid: 42,
+    policy: {},
+    processId: 1,
+    processResourceId: 'process-1',
+    requestId: 1,
+    scope: 'processTree',
+    signal: new AbortController().signal
+  })
+  const lookup = fuseRequest(1, 1n, new TextEncoder().encode('item\0'))
+
+  const created = await bridge.handle({ ...attributed('environment-a'), payload: lookup })
+  assert.equal(new DataView(created.buffer, created.byteOffset).getBigUint64(16, true), 2n)
+
+  const getattr = fuseRequest(3, 2n)
+  const isolated = await bridge.handle({ ...attributed('environment-b'), payload: getattr })
+  assert.equal(new DataView(isolated.buffer, isolated.byteOffset).getInt32(4, true), -2)
+
+  assert.equal(bridge.releaseEnvironment('environment-a'), true)
+  const released = await bridge.handle({ ...attributed('environment-a'), payload: getattr })
+  assert.equal(new DataView(released.buffer, released.byteOffset).getInt32(4, true), -2)
 })

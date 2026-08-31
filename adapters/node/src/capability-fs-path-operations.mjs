@@ -22,8 +22,8 @@ export class NodeFilesystemPathOperationsV1 {
     this.#resources = resources
   }
 
-  invoke(context, authority, resource) {
-    const target = this.#paths.target(resource, context.operation)
+  invoke(context, authority, resource, targets) {
+    const target = targets.target
     if (context.operation === 'filesystem.file.read') {
       const bytes = nodeFs.readFileSync(target)
       assertReadLimit(context, bytes.byteLength)
@@ -68,22 +68,22 @@ export class NodeFilesystemPathOperationsV1 {
       return authority.complete(trustedInvocationValueFromJsonV1(result, 'result'))
     }
     if (context.operation === 'filesystem.entry.rename') {
-      const destination = this.#paths.targetFromUrl(context.arguments.to, context.operation, resource.rootId)
-      const destinationSegments = context.arguments.to
-        .slice(`holo-fs://${resource.rootId}/`.length)
-        .split('/')
-      if (!selectedFilesystemRoot(authority, { ...resource, pathSegments: destinationSegments }, 'move')) {
+      if (
+        targets.destination == null || targets.destinationResource == null ||
+        !selectedFilesystemRoot(targets.destinationAuthority, targets.destinationResource, 'move')
+      ) {
         throw new CapabilityInvocationError(
           'capability.denied',
           context.operation,
           resource.semanticResourceDigest
         )
       }
-      nodeFs.renameSync(target, destination)
+      nodeFs.renameSync(target, targets.destination)
       return authority.complete(trustedInvocationValueFromJsonV1({}, 'result'))
     }
     if (context.operation === 'filesystem.entry.unlink') {
-      nodeFs.unlinkSync(target)
+      if (context.providerData?.kind === 'directoryRemove') nodeFs.rmdirSync(target)
+      else nodeFs.unlinkSync(target)
       return authority.complete(trustedInvocationValueFromJsonV1({}, 'result'))
     }
     if (context.operation === 'filesystem.watch.subscribe') {

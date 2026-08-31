@@ -16,6 +16,7 @@ export const createNodeNetworkPort = (sandboxPlan, emitNetwork, dependencies = {
   const authority = new NodeNetworkAuthority(networkRules(networkAuthority))
   const networkHost = createHost({
     authority,
+    capabilityResolution: dependencies.capabilityResolution,
     limits: networkAuthority.limits,
     maxResponseBytes: networkAuthority.limits.maxResponseBodyBytes,
     observer: event => emitNetwork({ layer: 'transport', ...event })

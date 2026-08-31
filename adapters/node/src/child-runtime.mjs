@@ -96,6 +96,8 @@ const start = async command => {
       runtimeContext,
       session
     })
+    stage = 'runtime_plugins'
+    await hostController.startPlugins()
     stage = 'inspector'
     const inspectorUrl = inspector.url()
     if (session.inspector.enabled && inspectorUrl != null) {

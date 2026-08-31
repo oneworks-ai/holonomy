@@ -64,6 +64,7 @@ interface DeviceCapabilityConstraintsV1 {
   readonly operations: readonly DeviceOperationV1[]
   readonly maxPrivacyTier: 0 | 1 | 2 | 3
   readonly maxPrecision: 'coarse' | 'standard' | 'exact'
+  readonly maxQueuedEvents: number
 }
 interface SystemCapabilityConstraintsV1 {
   readonly fields: readonly SystemInformationFieldV1[]

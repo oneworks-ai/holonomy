@@ -82,6 +82,18 @@ M2.5 不要求附录 H 的完整 FS exports、附录 D.3 的 target required Dev
 
 M3 不以 Process/Linux Backend 或逐次 Engine Gate 为完成条件。Plugin source watch v1 只观察配置及其资源解析结果，不承诺任意源码 HMR。每个 Provider 可独立回退到稳定 unsupported；不得保留 facade 后改走宿主 ambient API。
 
+### M3 内部交付检查点
+
+这些检查点是 G.4 Exit 的实施拆分，不建立新的公开里程碑编号；只有五项全部闭合，M3 才能从“进行中”变为“完成”。
+
+| 检查点               | 当前状态  | 范围                                                                                                              | 退出证据                                                                                             |
+| -------------------- | --------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| M3-R：Runtime Plugin | 已完成 v1 | `holo-plugins:///*` bundle、Host-only 资源装载、Cordis App、Capability graph/drain、CLI watch transaction         | Node/Desktop graph/drain/watch与Android独立Host realm静态同步Capability interception均通过平台E2E    |
+| M3-F：Filesystem     | 已完成 v1 | 附录 H/H.1 的 path、handle、directory、atomic write、watch、quota、AbortSignal、resolution/TOCTOU                 | 同一Guest conformance在Node/Desktop与Android跑完；旧resource、overflow、quota、Abort与TOCTOU反例闭合 |
+| M3-D：Device/System  | 已完成 v1 | 各发布 target required Device operation/event 与 Host System 四种投影；Host 自定义 Context 不代替这两类 authority | Android真实平台change、revision/resync与fencing及Node Headless descriptor、全System默认无泄漏E2E闭合 |
+| M3-N：Network        | 已完成 v1 | redirect 每跳、Response metadata/body/clone、DNS resolution、real/mock 与诊断 reader 的 Broker continuation       | Node/Desktop 与 Android 的 redirect/private-IP/body/clone/cancel/Rules-revision 共享反例             |
+| M3-X：汇合与发布     | 已完成 v1 | system-only continuation、resource token、Facade 兼容、双语文档、OpenAPI、Skills 与支持矩阵                       | 全门禁、跨平台真实 E2E、真实workspace tarball安装、独立审阅与逐Provider support declaration          |
+
 ## G.5 M3.5：可选 Process/Linux profile
 
 ### Entry
@@ -102,6 +114,38 @@ M3 不以 Process/Linux Backend 或逐次 Engine Gate 为完成条件。Plugin s
 ### 非目标与回滚
 
 不从零重写 Linux 用户态内核，也不要求所有 target 提供 Process。Backend 可从单个 target manifest 移除而不影响 M3 基础能力；平台未安装 Process Backend 不等于该平台整体 Disabled。
+
+### M3.5 完成后的 Process 增量检查点
+
+M3.5 以至少一个 Stable Backend 通过真实 E2E 为完成条件；下列检查点扩展 v86 的可用性与支持等级，但不反向把已完成的核心 M3.5 标记为未完成，也不建立新的正式里程碑编号：
+
+| 检查点               | 当前状态               | 目标                                                                                                                                                                                                                                                                                  | 退出证据                                                                                                                                                                                                                                                                 |
+| -------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M3.5-U：HoloUV 基础  | 已完成 v1              | 共享 Environment Runtime、Process Backend SPI 与 operation/resource/lifecycle 语义；JS 保持 Node-compatible facade，Backend 对齐 libuv 的 handle/request/loop/process/stream/FS/network 语义；v86 daemon 为 `/sbin/holo-uvd`，wire protocol 不暴露 `uv_*` 内存结构                    | Native Darwin 可直接实现同一 SPI，v86 使用 Host Driver + Guest System Adapter；两者共用 vectors；`holo-uvd` 的 spawn/stdio/signal/close/restart E2E；平台差异只出现在 Adapter                                                                                            |
+| M3.5-I：Linux 镜像   | 已完成 v1              | Host 选择摘要绑定的 `minimal`、`base`、`agent`、strict `custom` profile；`base` 包含 BusyBox、`/bin/sh`、`cat`，`agent` 包含 `curl`/CA、`git`、`ssh`、`jq`、`nc`、`timeout`；Runtime JS 不选择镜像和工具                                                                              | 可复现构建、artifact digest、SPDX SBOM、锁定依赖与 executable allowlist；真实 shell、管道、`cat`、`curl` E2E；生产镜像拒绝 selftest fixture，Runtime 启动不联网安装工具                                                                                                  |
+| M3.5-B：v86 能力桥接 | 已完成 Experimental v1 | 后代 exec 准入与 Host-only gate deadline；绝对 `execve`/`execveat`、PATH 绝对解析和 executable TOCTOU fail-closed；Linux FS、TCP/UDP/DNS 与 Host Device/System 投影通过版本化 Host↔Guest 通道进入同一 Broker；后代 socket 保留 Linux PID/PPID/starttime/已提交 executable attribution | Node/Desktop 与 Android emulator 的文件、网络、设备、后代 allow/deny、generation restart E2E；Guest gate 证明绝对 `execveat` allow 及相对/dirfd/`AT_EMPTY_PATH` deny；Process DNS 通过 canonical address set、TTL、resolver generation 与 rebinding resolution challenge |
+| M3.5-P：支持升级     | 保持 Experimental      | 已冻结 x86-32、单核、资产体积、摘要校验、启动取消、generation restart、失败清理和资源上限的当前证据；物理 Android、64-bit/multicore 与真正 VM snapshot/restore 只作为未来支持等级晋升条件                                                                                             | 只有新增声明范围取得独立平台证据、支持矩阵 diff、安装/卸载/损坏资产/回滚演练和双语发布材料后，才允许晋升                                                                                                                                                                 |
+
+当前活动范围只包含 Stable Native Darwin 与 Experimental v86。agentOS、WASIX、Windows Process/System Adapter 和非 V8 Desktop Engine 只保留研究证据或扩展点，不属于当前 M3/M3.5 排期；重新启用必须由新的设计决定和对应真实 E2E 建立支持声明。
+
+### 跨里程碑事项归属
+
+| 事项                                                           | 唯一归属     | 当前状态               | 对应退出边界                                                                                                 |
+| -------------------------------------------------------------- | ------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 普通 Runtime 的文件、设备与系统能力                            | M3-F / M3-D  | 已完成 v1              | 生产 Provider、发布目标 required descriptor、真实事件与默认无宿主信息泄漏                                    |
+| JS `fetch()`、redirect 与 Response continuation                | M3-N         | 已完成 v1              | real/mock、每跳重准入、DNS/private-IP、body/clone/cancel、Rules revision 跨平台 E2E                          |
+| 跨 Backend 的进程/流/handle/loop 与 OS 差异收敛                | M3.5-U       | 已完成 v1              | HoloUV 语义层、版本化 `holo-uvd` 协议、Host OS/Guest System Adapter 兼容与差异 vectors                       |
+| Linux 镜像和 `shell`、`cat`、`curl` 等工具                     | M3.5-I       | 已完成 v1              | `minimal/base/agent/custom` 可复现镜像、digest、SBOM、allowlist 与真实工具 E2E                               |
+| Linux 文件、TCP/UDP/DNS、Host Device/System 注入与后代执行准入 | M3.5-B       | 已完成 Experimental v1 | 全部重新进入同一 Broker；后代保留 PID/PPID/starttime/executable attribution；DNS token 固定 admitted address |
+| v86 从 Experimental 升级支持等级                               | M3.5-P       | 保持 Experimental      | 物理设备、64-bit/multicore 与真正 snapshot/restore 取得证据后才可晋升                                        |
+| agentOS、WASIX、Windows Adapter、非 V8 Desktop Engine          | 不在当前排期 | 仅保留研究/扩展点      | 只有新的设计决定、安装实现和独立平台 E2E 才能进入未来里程碑                                                  |
+
+- 普通 Runtime 的文件、网络、设备和系统能力分别由 M3-F、M3-N、M3-D 完成；把同一份 authority 延伸到 Linux environment，才属于 M3.5-B。不得在 v86 内另建一套 Policy。
+- HoloUV 是 M3.5-U 的公共执行抽象，不是只服务 `spawn()` 的临时 Supervisor。它统一环境生命周期、handle/request、stdio、process tree 与异步终态；Native Darwin 可以直接实现同一 Process Backend SPI，v86 则使用 Host Driver 与 Guest System Adapter，二者不要求复用同一底层系统调用代码。
+- `shell`、`cat`、`curl` 等是镜像软件，不是 Runtime 内置 API。它们归 M3.5-I：`base` 已交付 BusyBox、`/bin/sh`、`cat`，`agent` 已交付 `curl`/CA、`git`、`ssh`、`jq`、`nc`、`timeout`；生产镜像仍由 Host 显式安装，不随核心包默认发布。
+- Linux 内的 `curl`、`git` 和任意程序发起的连接归 M3.5-B 的 Process Network Bridge；JS `fetch()` 仍归 M3-N，两者共享 Network Policy owner，但不是同一个 operation。Experimental v1 已冻结 root 与任意后代 socket 的 environment、实际 PID/PPID/starttime 及已提交 executable attribution，不借用 root identity；新的进程归因范围必须继续提供 Guest gate 与 Host Broker 证据。
+- Host 设备与系统信息归 M3-D 的权威 projection；M3.5-B 只负责把 Host 已选择的字段、模式、精度和事件安全送入 Linux。Host 未提供的字段保持 unavailable，不从 Linux ambient `/proc`、虚拟硬件或默认值反向推断宿主隐私信息。
+- 32/64-bit、multicore、镜像体积、快照恢复、崩溃恢复、物理设备与支持等级归 M3.5-P。agentOS、WASIX、Windows Adapter 和非 V8 Desktop Engine 不进入这些当前检查点，除非另行重新启用。
 
 ## G.6 M4：逐次 Engine Gate
 

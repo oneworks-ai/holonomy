@@ -1,0 +1,950 @@
+{
+  "$defs": {
+    "admissionToken": {
+      "additionalProperties": false,
+      "properties": {
+        "challengeId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        "evidenceDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "expiresAtMonotonicMs": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "number"
+        },
+        "generation": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "invocationBindingDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "parentRequestId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        },
+        "requestedSemanticDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "resolvedSemanticDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "sequence": {
+          "maximum": 32,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "tokenId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "challengeId",
+        "evidenceDigest",
+        "expiresAtMonotonicMs",
+        "generation",
+        "invocationBindingDigest",
+        "parentRequestId",
+        "requestedSemanticDigest",
+        "resolvedSemanticDigest",
+        "sequence",
+        "tokenId"
+      ],
+      "type": "object"
+    },
+    "challenge": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "challengeId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "bindingId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                  "type": "string"
+                },
+                "evidenceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "networkAddress"
+                }
+              },
+              "required": [
+                "bindingId",
+                "evidenceDigest",
+                "kind"
+              ],
+              "type": "object"
+            },
+            "parentRequestId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            "reason": {
+              "const": "networkAddress"
+            },
+            "requested": {
+              "additionalProperties": false,
+              "properties": {
+                "display": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "schemaVersion": {
+                  "const": 1
+                },
+                "semanticId": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "semanticResourceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "network"
+                },
+                "method": {
+                  "maxLength": 32,
+                  "pattern": "^[A-Z]+$",
+                  "type": "string"
+                },
+                "origin": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "pathname": {
+                  "maxLength": 4096,
+                  "pattern": "^/",
+                  "type": "string"
+                },
+                "queryDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "display",
+                "kind",
+                "method",
+                "origin",
+                "pathname",
+                "schemaVersion",
+                "semanticId",
+                "semanticResourceDigest"
+              ],
+              "type": "object"
+            },
+            "resolved": {
+              "additionalProperties": false,
+              "properties": {
+                "display": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "schemaVersion": {
+                  "const": 1
+                },
+                "semanticId": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "semanticResourceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "network"
+                },
+                "method": {
+                  "maxLength": 32,
+                  "pattern": "^[A-Z]+$",
+                  "type": "string"
+                },
+                "origin": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "pathname": {
+                  "maxLength": 4096,
+                  "pattern": "^/",
+                  "type": "string"
+                },
+                "queryDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "display",
+                "kind",
+                "method",
+                "origin",
+                "pathname",
+                "schemaVersion",
+                "semanticId",
+                "semanticResourceDigest"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 32,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "challengeId",
+            "evidence",
+            "parentRequestId",
+            "reason",
+            "requested",
+            "resolved",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "challengeId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "bindingId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                  "type": "string"
+                },
+                "evidenceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "networkAddress"
+                }
+              },
+              "required": [
+                "bindingId",
+                "evidenceDigest",
+                "kind"
+              ],
+              "type": "object"
+            },
+            "parentRequestId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            "reason": {
+              "const": "networkAddress"
+            },
+            "requested": {
+              "additionalProperties": false,
+              "properties": {
+                "display": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "schemaVersion": {
+                  "const": 1
+                },
+                "semanticId": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "semanticResourceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "hostname": {
+                  "maxLength": 253,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "processNetworkEndpoint"
+                },
+                "port": {
+                  "maximum": 65535,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "transport": {
+                  "enum": [
+                    "tcp",
+                    "tls",
+                    "udp"
+                  ]
+                }
+              },
+              "required": [
+                "display",
+                "schemaVersion",
+                "semanticId",
+                "semanticResourceDigest",
+                "hostname",
+                "kind",
+                "port",
+                "transport"
+              ],
+              "type": "object"
+            },
+            "resolved": {
+              "additionalProperties": false,
+              "properties": {
+                "display": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "schemaVersion": {
+                  "const": 1
+                },
+                "semanticId": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "semanticResourceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "hostname": {
+                  "maxLength": 253,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "processNetworkEndpoint"
+                },
+                "port": {
+                  "maximum": 65535,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "transport": {
+                  "enum": [
+                    "tcp",
+                    "tls",
+                    "udp"
+                  ]
+                }
+              },
+              "required": [
+                "display",
+                "schemaVersion",
+                "semanticId",
+                "semanticResourceDigest",
+                "hostname",
+                "kind",
+                "port",
+                "transport"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 32,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "challengeId",
+            "evidence",
+            "parentRequestId",
+            "reason",
+            "requested",
+            "resolved",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "challengeId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "bindingId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                  "type": "string"
+                },
+                "evidenceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "filesystemTarget"
+                }
+              },
+              "required": [
+                "bindingId",
+                "evidenceDigest",
+                "kind"
+              ],
+              "type": "object"
+            },
+            "parentRequestId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            "reason": {
+              "const": "filesystemTarget"
+            },
+            "requested": {
+              "additionalProperties": false,
+              "properties": {
+                "display": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "schemaVersion": {
+                  "const": 1
+                },
+                "semanticId": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "semanticResourceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "filesystem"
+                },
+                "pathSegments": {
+                  "items": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 256,
+                  "type": "array"
+                },
+                "rootId": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                  "type": "string"
+                },
+                "virtualUrl": {
+                  "maxLength": 4096,
+                  "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "display",
+                "schemaVersion",
+                "semanticId",
+                "semanticResourceDigest",
+                "kind",
+                "pathSegments",
+                "rootId",
+                "virtualUrl"
+              ],
+              "type": "object"
+            },
+            "resolved": {
+              "additionalProperties": false,
+              "properties": {
+                "display": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "schemaVersion": {
+                  "const": 1
+                },
+                "semanticId": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "semanticResourceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "filesystem"
+                },
+                "pathSegments": {
+                  "items": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 256,
+                  "type": "array"
+                },
+                "rootId": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                  "type": "string"
+                },
+                "virtualUrl": {
+                  "maxLength": 4096,
+                  "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "display",
+                "schemaVersion",
+                "semanticId",
+                "semanticResourceDigest",
+                "kind",
+                "pathSegments",
+                "rootId",
+                "virtualUrl"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 32,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "challengeId",
+            "evidence",
+            "parentRequestId",
+            "reason",
+            "requested",
+            "resolved",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "challengeId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "bindingId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                  "type": "string"
+                },
+                "evidenceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "opaqueIdentity"
+                }
+              },
+              "required": [
+                "bindingId",
+                "evidenceDigest",
+                "kind"
+              ],
+              "type": "object"
+            },
+            "parentRequestId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            "reason": {
+              "const": "opaqueRebind"
+            },
+            "requested": {
+              "additionalProperties": false,
+              "properties": {
+                "display": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "schemaVersion": {
+                  "const": 1
+                },
+                "semanticId": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "semanticResourceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "bridgeIdentityDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "generation": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "opaqueHandle"
+                },
+                "resourceType": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                  "type": "string"
+                },
+                "rightsDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "display",
+                "schemaVersion",
+                "semanticId",
+                "semanticResourceDigest",
+                "bridgeIdentityDigest",
+                "generation",
+                "kind",
+                "resourceType",
+                "rightsDigest"
+              ],
+              "type": "object"
+            },
+            "resolved": {
+              "additionalProperties": false,
+              "properties": {
+                "display": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "schemaVersion": {
+                  "const": 1
+                },
+                "semanticId": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "semanticResourceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "bridgeIdentityDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "generation": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "opaqueHandle"
+                },
+                "resourceType": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                  "type": "string"
+                },
+                "rightsDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "display",
+                "schemaVersion",
+                "semanticId",
+                "semanticResourceDigest",
+                "bridgeIdentityDigest",
+                "generation",
+                "kind",
+                "resourceType",
+                "rightsDigest"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 32,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "challengeId",
+            "evidence",
+            "parentRequestId",
+            "reason",
+            "requested",
+            "resolved",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "evidence": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "addresses": {
+              "items": {
+                "maxLength": 64,
+                "minLength": 2,
+                "type": "string"
+              },
+              "maxItems": 64,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "expiresAtMonotonicMs": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "const": "networkAddress"
+            },
+            "resolverGeneration": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "addresses",
+            "expiresAtMonotonicMs",
+            "kind",
+            "resolverGeneration"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "ancestorIdentityDigests": {
+              "items": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "maxItems": 256,
+              "type": "array"
+            },
+            "kind": {
+              "const": "filesystemTarget"
+            },
+            "rootId": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "targetIdentityDigest": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "targetType": {
+              "enum": [
+                "directory",
+                "file",
+                "missing",
+                "symlink"
+              ]
+            }
+          },
+          "required": [
+            "ancestorIdentityDigests",
+            "kind",
+            "rootId",
+            "targetIdentityDigest",
+            "targetType"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "bridgeIdentityDigest": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "kind": {
+              "const": "opaqueIdentity"
+            },
+            "rightsDigest": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "bridgeIdentityDigest",
+            "generation",
+            "kind",
+            "rightsDigest"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$id": "https://oneworks.ai/holonomy/contracts/resource-resolution-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

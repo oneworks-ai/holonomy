@@ -1,0 +1,72 @@
+{
+  "architecture": "x86",
+  "kernel": {
+    "archivePath": "boot/vmlinuz-lts",
+    "sha256": "ca4d39b3035d6ba733416c82a44c8d636f3f544a13fea775a11583f482d16c78"
+  },
+  "modules": [
+    {
+      "archivePath": "lib/modules/6.18.48-0-lts/kernel/fs/fuse/fuse.ko.gz",
+      "dependencies": [],
+      "name": "fuse",
+      "sha256": "8561b87b373b7dd66e40e181b07ebb76aac2392deebb5133672733955edf1801"
+    },
+    {
+      "archivePath": "lib/modules/6.18.48-0-lts/kernel/net/core/failover.ko.gz",
+      "dependencies": [],
+      "name": "failover",
+      "sha256": "135b338c945719d43d73bd3920b882a049943ae4b0afa7a9a72d46891df1d3f6"
+    },
+    {
+      "archivePath": "lib/modules/6.18.48-0-lts/kernel/drivers/net/net_failover.ko.gz",
+      "dependencies": ["failover"],
+      "name": "net_failover",
+      "sha256": "782512d94e09d8015a5b6450b098948f9a59d0960616fca66831005d57639fb0"
+    },
+    {
+      "archivePath": "lib/modules/6.18.48-0-lts/kernel/drivers/virtio/virtio.ko.gz",
+      "dependencies": ["virtio_ring"],
+      "name": "virtio",
+      "sha256": "4e9fb944d63c3374fffbc1c0aead139b8b8827cf693e5208e10907a2d195d0ae"
+    },
+    {
+      "archivePath": "lib/modules/6.18.48-0-lts/kernel/drivers/net/virtio_net.ko.gz",
+      "dependencies": ["net_failover", "failover", "virtio", "virtio_ring"],
+      "name": "virtio_net",
+      "sha256": "f199cedd144a9886cfccd3350769b75058e10c31149a9f4a4811904bc19c9465"
+    },
+    {
+      "archivePath": "lib/modules/6.18.48-0-lts/kernel/drivers/virtio/virtio_pci.ko.gz",
+      "dependencies": ["virtio_pci_legacy_dev", "virtio_pci_modern_dev", "virtio", "virtio_ring"],
+      "name": "virtio_pci",
+      "sha256": "d9d23ba57402e245f6d097f8df5d6f2f0f5f43c6853cf39f74402eb05a4ff696"
+    },
+    {
+      "archivePath": "lib/modules/6.18.48-0-lts/kernel/drivers/virtio/virtio_pci_legacy_dev.ko.gz",
+      "dependencies": [],
+      "name": "virtio_pci_legacy_dev",
+      "sha256": "5e0048320b08aa0e19d462c060cabed25cc0eb9d0e034b918121df8cee43f4fb"
+    },
+    {
+      "archivePath": "lib/modules/6.18.48-0-lts/kernel/drivers/virtio/virtio_pci_modern_dev.ko.gz",
+      "dependencies": [],
+      "name": "virtio_pci_modern_dev",
+      "sha256": "e056245c670577d8dd89fb556f6bdd5d492d57c400a60859157f226ce8892a97"
+    },
+    {
+      "archivePath": "lib/modules/6.18.48-0-lts/kernel/drivers/virtio/virtio_ring.ko.gz",
+      "dependencies": [],
+      "name": "virtio_ring",
+      "sha256": "5b2a7e789f6ef3c2a54844afb65733824a3cd993002685cc5c7811512c9fb7a3"
+    }
+  ],
+  "package": {
+    "license": "GPL-2.0-only",
+    "name": "linux-lts",
+    "sha256": "e38f9fc5960fbd03abe471aacc77f33a113591b3aa5b28d78c4fbd5943277e02",
+    "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86/linux-lts-6.18.48-r0.apk",
+    "version": "6.18.48-r0"
+  },
+  "release": "6.18.48-0-lts",
+  "schemaVersion": 1
+}

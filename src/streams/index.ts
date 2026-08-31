@@ -1,5 +1,1 @@
-export * from './capabilities.js'
-export * from './errors.js'
-export * from './node-streams.js'
-export * from './registry.js'
-export * from './web-streams.js'
+export * from '@holonomyjs/runtime/streams/index'

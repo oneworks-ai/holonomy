@@ -1,0 +1,83 @@
+{
+  "artifact": {
+    "artifactKind": "npm",
+    "artifactVersion": "0.9.0",
+    "integritySha256": "9cd2b0d1b4b3b2dd2c0a8743a9f9904dd6e5022db4c373b4a05d91d3ad3343e4",
+    "license": "MIT"
+  },
+  "backendId": "experimental.wasix-js-v1",
+  "host": {
+    "architecture": "arm64",
+    "engine": "node-v8",
+    "engineVersion": "12.4.254.21-node.39",
+    "platform": "darwin",
+    "runtimeVersion": "22.22.2"
+  },
+  "metrics": {
+    "bootDurationMs": 31,
+    "workloadDurationMs": 46
+  },
+  "observations": [
+    {
+      "capability": "installation",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "boot",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "workload",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "stdio",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "exit",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "filesystem",
+      "provenance": "behavioralProbe",
+      "status": "passed"
+    },
+    {
+      "capability": "network",
+      "provenance": "upstreamContract",
+      "reasonCode": "wasix.networking_incomplete",
+      "status": "unsupported"
+    },
+    {
+      "capability": "processTree",
+      "provenance": "upstreamContract",
+      "reasonCode": "wasix.subprocess_probe_not_reconstructed",
+      "status": "notRun"
+    },
+    {
+      "capability": "runtime",
+      "provenance": "behavioralProbe",
+      "reasonCode": "wasix.runtime_cleanup_leaked",
+      "status": "failed"
+    },
+    {
+      "capability": "snapshots",
+      "provenance": "upstreamContract",
+      "reasonCode": "wasix.snapshot_api_missing",
+      "status": "unsupported"
+    },
+    {
+      "capability": "androidPackaging",
+      "provenance": "profileStaticUnsupported",
+      "reasonCode": "android.worker_host_missing",
+      "status": "unsupported"
+    }
+  ],
+  "schemaVersion": 1
+}

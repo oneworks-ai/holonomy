@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { capabilityContractArtifacts } from './capability-contract-artifacts.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const outputRoot = resolve(root, 'src/capability-runtime/machine')
+const outputRoot = resolve(root, 'packages/runtime/src/kernel/machine')
 const check = process.argv.includes('--check')
 const json = value => `${JSON.stringify(value, null, 2)}\n`
 

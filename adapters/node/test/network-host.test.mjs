@@ -142,3 +142,34 @@ test('rejects mixed DNS authorization and resolver failures before transport', a
   await assert.rejects(() => failed.request({ url: 'https://example.test/' }), { code: 'dns_failed' })
   assert.equal(opened, 0)
 })
+
+test('uses the capability-admitted address set without ambient DNS or cross-origin reuse', async () => {
+  const capture = {}
+  let ambientDnsCalls = 0
+  let capabilityCalls = 0
+  const transport = (options, callback) => {
+    capture.callback = callback
+    return createTransport(capture, { status: 200 })(options)
+  }
+  const host = new NodeHttpNetworkHost({
+    authority: new NodeNetworkAuthority([{ origin: 'https://example.test' }]),
+    capabilityResolution: (bindingId, url) => {
+      capabilityCalls += 1
+      assert.equal(bindingId, 'network-binding-1')
+      assert.equal(url, 'https://example.test/path')
+      return ['93.184.216.34']
+    },
+    httpsRequest: transport,
+    resolve: async () => {
+      ambientDnsCalls += 1
+      return [{ address: '127.0.0.1', family: 4 }]
+    }
+  })
+
+  const response = await host.request({
+    capabilityBindingId: 'network-binding-1',
+    url: 'https://example.test/path'
+  })
+  assert.equal(response.address, '93.184.216.34')
+  assert.deepEqual({ ambientDnsCalls, capabilityCalls }, { ambientDnsCalls: 0, capabilityCalls: 1 })
+})

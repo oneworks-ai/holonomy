@@ -13,13 +13,14 @@ import {
 const fsLimits = {
   maxDirectoryEntries: 100,
   maxOpenHandles: 10,
+  maxQueuedEvents: 16,
   maxReadBytes: 1000,
   maxWatchers: 2,
   maxWriteBytes: 1000
 }
 const fs = (prefix: string[], rights: string[], maxReadBytes = 1000) => ({
   limits: { ...fsLimits, maxReadBytes },
-  roots: [{ pathPrefixSegments: prefix, rights, rootId: 'workspace' }]
+  roots: [{ pathPrefixSegments: prefix, rights, rootId: 'workspace', symlinks: 'withinRoot' }]
 })
 const networkLimits = {
   maxChunkBytes: 1024,
@@ -82,7 +83,12 @@ describe('capability definition and selection v1', () => {
       fs(['src'], ['read'])
     )).toEqual({
       limits: fsLimits,
-      roots: [{ pathPrefixSegments: ['src'], rights: ['read'], rootId: 'workspace' }]
+      roots: [{
+        pathPrefixSegments: ['src'],
+        rights: ['read'],
+        rootId: 'workspace',
+        symlinks: 'withinRoot'
+      }]
     })
   })
 
@@ -109,7 +115,8 @@ describe('capability definition and selection v1', () => {
   it('uses endpoint and port intersections for Linux process network authority', () => {
     const processNetwork = (ports: number[], maxSockets = 4) => ({
       endpoints: [{ hostname: 'api.example', ports, transport: 'tls' }],
-      maxSockets
+      maxSockets,
+      privateNetwork: 'deny'
     })
     expect(capabilitySatisfiesV1(
       'host.process.network',
@@ -127,7 +134,8 @@ describe('capability definition and selection v1', () => {
       processNetwork([443, 9443], 2)
     )).toEqual({
       endpoints: [{ hostname: 'api.example', ports: [443], transport: 'tls' }],
-      maxSockets: 2
+      maxSockets: 2,
+      privateNetwork: 'deny'
     })
   })
 
@@ -135,6 +143,7 @@ describe('capability definition and selection v1', () => {
     const device = (maxPrecision: string) => ({
       maxPrecision,
       maxPrivacyTier: 2,
+      maxQueuedEvents: 8,
       operations: ['device.connectivity.read']
     })
     const system = (maxPrecision: string) => ({
@@ -196,7 +205,12 @@ describe('capability definition and selection v1', () => {
     }], context)
     expect(selected?.bindings[0]?.constraints).toEqual({
       limits: fsLimits,
-      roots: [{ pathPrefixSegments: ['src'], rights: ['read'], rootId: 'workspace' }]
+      roots: [{
+        pathPrefixSegments: ['src'],
+        rights: ['read'],
+        rootId: 'workspace',
+        symlinks: 'withinRoot'
+      }]
     })
     expect(() => normalizeCapabilityRequirementV1({ anyOf: [] })).toThrow(CapabilityContractError)
     expect(() =>

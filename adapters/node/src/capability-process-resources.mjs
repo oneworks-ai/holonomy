@@ -5,15 +5,22 @@ import {
   trustedInvocationValueFromJsonV1
 } from '../../../dist/capability-runtime/index.js'
 
+import { reserveNodeProcessDescendantV1 } from './capability-process-descendant-reservation.mjs'
 import { ProcessCallbackEventChannelV1, ProcessEventChannelV1 } from './capability-process-events.mjs'
-import { closeProcessStdinV1, processResourcePublicationsV1 } from './capability-process-publications.mjs'
+import { processResourcePublicationsV1 } from './capability-process-publications.mjs'
+import {
+  bindNodeProcessChildEventsV1,
+  bindNodeProcessReadableV1,
+  bindNodeProcessStdinV1
+} from './capability-process-resource-events.mjs'
 import { invokeNodeProcessResourceV1 } from './capability-process-resource-operations.mjs'
-import { binary, nodeError } from './capability-process-support.mjs'
+import { nodeError } from './capability-process-support.mjs'
 
 export class NodeProcessResourceManagerV1 {
   #active = new Map()
   #backend
   #nextId = 1
+  #linuxTrees = new Map()
   #openPipes = 0
   #policy
   #total = 0
@@ -46,6 +53,23 @@ export class NodeProcessResourceManagerV1 {
       policy: this.#policy,
       state
     })
+  }
+
+  reserveDescendant(context) {
+    const source = context.source
+    const active = this.#active.get(source.processResourceId)
+    if (active == null) {
+      throw new CapabilityInvocationError('resource.stale', context.operation)
+    }
+    const result = reserveNodeProcessDescendantV1({
+      active,
+      context,
+      policy: this.#policy,
+      total: this.#total,
+      tree: this.#linuxTrees.get(source.processResourceId)
+    })
+    this.#linuxTrees.set(source.processResourceId, result.identities)
+    this.#total += result.totalIncrement
   }
 
   spawn(context, authority, requested, executableId, launch, env, stdio, options, authorityProcessLimit) {
@@ -110,10 +134,15 @@ export class NodeProcessResourceManagerV1 {
       timer: undefined
     }
     this.#active.set(resourceId, state)
-    this.#bindChildEvents(state)
-    this.#bindStdin(child.stdin, state)
-    this.#bindReadable(child.stdout, stdoutEvents, state)
-    this.#bindReadable(child.stderr, stderrEvents, state)
+    bindNodeProcessChildEventsV1(state, () => {
+      this.#active.delete(resourceId)
+      this.#linuxTrees.delete(resourceId)
+      this.#openPipes -= state.pipeCount
+      clearTimeout(state.timer)
+    })
+    bindNodeProcessStdinV1(child.stdin, state)
+    bindNodeProcessReadableV1(child.stdout, stdoutEvents, state, () => this.#closeState(state, 'SIGKILL'))
+    bindNodeProcessReadableV1(child.stderr, stderrEvents, state, () => this.#closeState(state, 'SIGKILL'))
     const timeout = Math.min(
       options.timeoutMs ?? this.#policy.limits.maxExecutionTimeMs,
       this.#policy.limits.maxExecutionTimeMs
@@ -126,45 +155,6 @@ export class NodeProcessResourceManagerV1 {
       trustedInvocationValueFromJsonV1(facade, 'result'),
       processResourcePublicationsV1(state, () => this.#closeState(state, 'SIGKILL'))
     )
-  }
-
-  #bindChildEvents(state) {
-    const { child, childEvents, resourceId } = state
-    child.once('spawn', () => childEvents.emit({ event: 'spawn', tuple: [] }))
-    child.once('error', () => {
-      childEvents.emit({ event: 'error', tuple: [nodeError('ERR_OPERATION_FAILED')] })
-    })
-    child.once('exit', (code, signal) => childEvents.emit({ event: 'exit', tuple: [code, signal] }))
-    child.once('close', (code, signal) => {
-      childEvents.emit({ event: 'close', tuple: [code, signal] })
-      this.#active.delete(resourceId)
-      this.#openPipes -= state.pipeCount
-      clearTimeout(state.timer)
-    })
-  }
-
-  #bindReadable(stream, events, state) {
-    if (stream == null) return
-    stream.on('data', chunk => {
-      if (!events.emit({ event: 'data', tuple: [binary(chunk)] }, chunk.byteLength) && !state.outputFailed) {
-        state.outputFailed = true
-        const error = nodeError('ERR_CHILD_PROCESS_STDIO_MAXBUFFER')
-        events.fail(error)
-        state.childEvents.emit({ event: 'error', tuple: [error] })
-        this.#closeState(state, 'SIGKILL')
-      }
-    })
-    stream.once('end', () => events.emit({ event: 'end', tuple: [] }))
-    stream.once('error', () => events.emit({ event: 'error', tuple: [nodeError('EIO')] }))
-    stream.once('close', () => events.emit({ event: 'close', tuple: [] }))
-  }
-
-  #bindStdin(stream, state) {
-    if (stream == null) return
-    stream.on('error', error => {
-      state.stdinError = nodeError(error?.code === 'ERR_INVALID_STATE' ? 'ERR_INVALID_STATE' : 'EIO')
-    })
-    stream.once('close', () => closeProcessStdinV1(state))
   }
 
   #closeState(state, signal) {

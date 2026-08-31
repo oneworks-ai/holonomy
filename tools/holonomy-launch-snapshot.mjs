@@ -128,7 +128,9 @@ export const prepareHolonomyLaunchSnapshot = (command, options, dependencies = {
   const uuid = dependencies.randomUUID?.() ?? randomUUID()
   const virtualEntry = new URL(`.holonomy/${command}-${uuid}.mjs`, rootUrl).toString()
   modules.set(virtualEntry, {
-    source: command === 'test' ? testRunnerSource(entryUrls, options.reporter) : runWrapperSource(entryUrls[0]),
+    source: command === 'test'
+      ? testRunnerSource(entryUrls, options.reporter)
+      : runWrapperSource(entryUrls[0], options.watch),
     url: virtualEntry
   })
   const networkRuleSet = options.networkRules == null

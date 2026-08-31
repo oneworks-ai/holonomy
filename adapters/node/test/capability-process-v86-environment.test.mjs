@@ -5,13 +5,16 @@ import { once } from 'node:events'
 // eslint-disable-next-line test/no-import-node-test -- Adapter tests use Node's public runner.
 import test from 'node:test'
 
+import { encodeHoloUvCompletionPayloadV1 } from '@holonomyjs/holouv'
+
 // eslint-disable-next-line antfu/no-import-dist -- Adapter production code consumes the built contract.
 import {
   ProcessSupervisorFrameDecoderV1,
+  decodeProcessSupervisorNetworkResponseV1,
   encodeProcessSupervisorFrameV1,
+  encodeProcessSupervisorNetworkRequestV1,
   encodeProcessSupervisorReadyPayloadV1
 } from '../../../dist/capability-runtime/index.js'
-import { encodeCompletionPayload } from '../src/capability-process-supervisor-frames.mjs'
 import { createV86ProcessBackendV1 } from '../src/capability-process-v86-backend.mjs'
 import { createV86ProcessEnvironmentFactoryV1 } from '../src/capability-process-v86-environment.mjs'
 
@@ -36,10 +39,11 @@ const configuration = {
   },
   memoryBytes: 64 * 1024 * 1024,
   requiredKernelCapabilities: ['process'],
-  supervisor: { protocolVersion: 1 }
+  supervisor: { execGateTimeoutMs: 30_000, protocolVersion: 1 }
 }
 
 class FakeV86 {
+  configurationDecoder = new ProcessSupervisorFrameDecoderV1()
   listeners = new Map()
   sent = []
 
@@ -80,6 +84,20 @@ class FakeV86 {
 
   serial_send_bytes(index, bytes) {
     this.sent.push([index, Uint8Array.from(bytes)])
+    for (const item of this.configurationDecoder.push(bytes)) {
+      if (item.operation !== 'configure') continue
+      queueMicrotask(() => {
+        const acknowledgement = encodeProcessSupervisorFrameV1({
+          operation: 'ack',
+          payload: new Uint8Array(),
+          processId: 0,
+          requestId: item.requestId,
+          sequence: 0,
+          version: 1
+        })
+        for (const byte of acknowledgement) this.emit('serial1-output-byte', byte)
+      })
+    }
   }
 }
 
@@ -114,7 +132,7 @@ class SupervisorV86 extends FakeV86 {
         for (const operation of ['exit', 'close']) {
           this.output({
             operation,
-            payload: encodeCompletionPayload(4, null),
+            payload: encodeHoloUvCompletionPayloadV1(4, null),
             processId: 23,
             requestId: 0,
             sequence: 0,
@@ -127,35 +145,57 @@ class SupervisorV86 extends FakeV86 {
 }
 
 class NetworkV86 extends SupervisorV86 {
-  serial_send_bytes(index, bytes) {
-    FakeV86.prototype.serial_send_bytes.call(this, index, bytes)
-    for (const item of this.decoder.push(bytes)) {
-      if (item.operation !== 'spawn') continue
-      queueMicrotask(() => {
+  completeNetwork() {
+    queueMicrotask(async () => {
+      NetworkV86.response = await this.network_adapter.fetch('http://127.0.0.1:8123/ping', {
+        method: 'GET'
+      })
+      for (const operation of ['exit', 'close']) {
         this.output({
-          operation: 'spawned',
-          payload: Uint8Array.of(0, 0, 0, 41),
+          operation,
+          payload: encodeHoloUvCompletionPayloadV1(0, null),
           processId: 37,
-          requestId: item.requestId,
+          requestId: 0,
           sequence: 0,
           version: 1
         })
-        queueMicrotask(async () => {
-          NetworkV86.response = await this.network_adapter.fetch('http://127.0.0.1:8123/ping', {
-            method: 'GET'
+      }
+    })
+  }
+
+  serial_send_bytes(index, bytes) {
+    FakeV86.prototype.serial_send_bytes.call(this, index, bytes)
+    for (const item of this.decoder.push(bytes)) {
+      if (item.operation === 'spawn') {
+        queueMicrotask(() => {
+          this.output({
+            operation: 'spawned',
+            payload: Uint8Array.of(0, 0, 0, 41),
+            processId: 37,
+            requestId: item.requestId,
+            sequence: 0,
+            version: 1
           })
-          for (const operation of ['exit', 'close']) {
-            this.output({
-              operation,
-              payload: encodeCompletionPayload(0, null),
-              processId: 37,
-              requestId: 0,
-              sequence: 0,
-              version: 1
-            })
-          }
+          this.output({
+            operation: 'networkRequest',
+            payload: encodeProcessSupervisorNetworkRequestV1({
+              address: '192.168.86.1',
+              linuxPid: 41,
+              parentLinuxPid: 1,
+              port: 80,
+              processStartTimeTicks: 9_001,
+              transport: 'connect'
+            }),
+            processId: 37,
+            requestId: 901,
+            sequence: 0,
+            version: 1
+          })
         })
-      })
+      } else if (
+        item.operation === 'networkResponse' &&
+        decodeProcessSupervisorNetworkResponseV1(item.payload)
+      ) this.completeNetwork()
     }
   }
 }
@@ -193,7 +233,10 @@ test('loads digest-bound v86 assets and uses the public secondary serial API', a
   assert.equal(FakeV86.last.destroyed, true)
   assert.equal(FakeV86.last.sent[0][0], 1)
   const decoder = new ProcessSupervisorFrameDecoderV1()
-  assert.equal(decoder.push(FakeV86.last.sent[0][1])[0].operation, 'shutdown')
+  assert.deepEqual(
+    FakeV86.last.sent.flatMap(([, bytes]) => decoder.push(bytes).map(frame => frame.operation)),
+    ['configure', 'shutdown']
+  )
 })
 
 test('rejects a v86 artifact whose bytes do not match the Host manifest', async () => {
@@ -262,7 +305,7 @@ test('maps an injected v86 supervisor through the Node ChildProcess resource', a
   assert.equal(SupervisorV86.last.destroyed, true)
 })
 
-test('attributes v86 fetch traffic to the single processTree workload', async () => {
+test('attributes v86 fetch traffic to the exact admitted Linux process', async () => {
   let request
   const backend = createV86ProcessBackendV1({
     V86: NetworkV86,
@@ -298,9 +341,12 @@ test('attributes v86 fetch traffic to the single processTree workload', async ()
     generation: 9,
     init: { method: 'GET' },
     linuxPid: 41,
+    parentLinuxPid: 1,
     policy: { access: 'sandboxed' },
     processId: 37,
     processResourceId: 'process-network-1',
+    processStartTimeTicks: 9001,
+    rootLinuxPid: 41,
     scope: 'processTree',
     url: 'http://127.0.0.1:8123/ping'
   })

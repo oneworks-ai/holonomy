@@ -27,11 +27,13 @@ class AndroidHttpNetworkHost private constructor(
     private val dependencies: NetworkHostDependencies,
     observation: AndroidNetworkObservationConfiguration,
     private val generation: AndroidNetworkProviderGeneration?,
+    private val capabilityAuthority: AndroidCapabilityNetworkAuthority?,
 ) : RuntimeNativeHost {
     constructor(configuration: AndroidNetworkHostConfiguration) : this(
         configuration,
         NetworkHostDependencies.platform(configuration.limits),
         AndroidNetworkObservationConfiguration(),
+        null,
         null,
     )
 
@@ -342,7 +344,57 @@ class AndroidHttpNetworkHost private constructor(
             sink.safeEmit(failure(request.id, "invalid_request"))
             return
         }
-        startAdmissionResolution(request, context.callToken, call)
+        val capabilityBindingId = if (request.args.has("capabilityBindingId")) {
+            request.args.get("capabilityBindingId")
+        } else {
+            null
+        }
+        if (capabilityAuthority == null) {
+            if (capabilityBindingId != null && capabilityBindingId !== JSONObject.NULL) {
+                calls.remove(context.callToken, call)
+                closeExchange(exchange, revoke = false, terminalState = AndroidNetworkTerminalState.FAILED)
+                sink.safeEmit(failure(request.id, "invalid_request"))
+            } else {
+                startAdmissionResolution(request, context.callToken, call)
+            }
+            return
+        }
+        val bindingId = capabilityBindingId as? String
+        if (bindingId == null) {
+            calls.remove(context.callToken, call)
+            closeExchange(exchange, revoke = false, terminalState = AndroidNetworkTerminalState.FAILED)
+            sink.safeEmit(failure(request.id, "capability_unsupported"))
+            return
+        }
+        try {
+            val addresses = capabilityAuthority.resolve(bindingId, exchange.metadata.url)
+            synchronized(exchange.lock) {
+                exchange.resolvedAddresses = addresses
+                exchange.phase = ExchangePhase.ACCEPTED
+                resources[exchange.providerToken] = exchange
+                require(ownerResources.putIfAbsent(exchange.ownerCallToken, exchange) == null)
+            }
+            val event = success(
+                call.requestId,
+                JSONObject().put("accepted", true),
+                JSONArray().put(
+                    JSONObject()
+                        .put("providerToken", exchange.providerToken)
+                        .put("type", NetworkV1.RESOURCE_TYPE),
+                ),
+            )
+            if (!emitTerminal(context.callToken, call, event)) {
+                closeExchange(exchange, revoke = false, terminalState = AndroidNetworkTerminalState.CANCELLED)
+            }
+        } catch (_: Throwable) {
+            emitTerminal(context.callToken, call, failure(request.id, "capability_unsupported"))
+            closeExchange(
+                exchange,
+                revoke = false,
+                terminalState = AndroidNetworkTerminalState.FAILED,
+                errorCode = "capability_unsupported",
+            )
+        }
     }
 
     private fun startAdmissionResolution(request: ProviderRequest, callToken: String, call: PendingCall) {

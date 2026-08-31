@@ -6,8 +6,11 @@ import process from 'node:process'
 
 import { NODE_PROCESS_BACKEND_REGISTRY_V1 } from './capability-process-backend.mjs'
 import { createV86ProcessBackendV1 } from './capability-process-v86-backend.mjs'
+import { NodeV86CapabilityBrokerV1 } from './capability-process-v86-capability-broker.mjs'
+import { NodeV86ProcessExecutionBrokerV1 } from './capability-process-v86-execution-broker.mjs'
 import { NodeV86FilesystemBrokerV1 } from './capability-process-v86-filesystem-broker.mjs'
 import { V86FuseBridgeV1 } from './capability-process-v86-fuse.mjs'
+import { verifyInstalledV86ImageBundleV1 } from './capability-process-v86-image-bundle.mjs'
 import { NodeV86ProcessNetworkBrokerV1 } from './capability-process-v86-network-broker.mjs'
 
 const BACKEND_ID = 'experimental.v86-v1'
@@ -71,16 +74,23 @@ const loadV86 = async () => {
   return namespace.V86
 }
 
-export const createInstalledV86ProcessBackendRuntimeV1 = value => {
+export const createInstalledV86ProcessBackendRuntimeV1 = (value, options = {}) => {
   const installation = normalizeNodeProcessBackendInstallationV1(value)
+  const capability = new NodeV86CapabilityBrokerV1(options.capabilityBridge?.domains ?? [])
   const filesystem = new NodeV86FilesystemBrokerV1()
   const fuse = new V86FuseBridgeV1(input => filesystem.dispatch(input))
   const network = new NodeV86ProcessNetworkBrokerV1()
+  const execution = new NodeV86ProcessExecutionBrokerV1()
   const backend = createV86ProcessBackendV1({
+    handleCapabilityRequest: input => capability.handle(input),
+    handleNetworkConnection: input => network.connect(input),
+    handleNetworkDatagram: input => network.datagram(input),
+    handleExecutionRequest: input => execution.authorize(input),
     handleFilesystemRequest: input => fuse.handle(input),
     handleNetworkRequest: input => network.fetch(input),
     loadArtifact: artifact => readArtifact(installation, artifact),
-    loadV86
+    loadV86,
+    onEnvironmentClose: environmentId => fuse.releaseEnvironment(environmentId)
   })
   let bound = false
   return Object.freeze({
@@ -89,7 +99,9 @@ export const createInstalledV86ProcessBackendRuntimeV1 = value => {
       if (bound || typeof invoke !== 'function') return invalid()
       bound = true
       filesystem.bind(invoke)
+      capability.bind(invoke)
       network.bind(invoke)
+      execution.bind(invoke)
     },
     installation,
     registry: NODE_PROCESS_BACKEND_REGISTRY_V1.extend([backend])
@@ -106,5 +118,9 @@ export const verifyInstalledV86ProcessProfileV1 = async (profile, value) => {
     const bytes = await readArtifact(installation, artifact)
     if (createHash('sha256').update(bytes).digest('hex') !== artifact.sha256) return invalid()
   }
+  await verifyInstalledV86ImageBundleV1(
+    profile,
+    artifactId => readArtifact(installation, { artifactId })
+  )
   await loadV86()
 }

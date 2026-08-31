@@ -398,6 +398,7 @@ describe('web network Fetch v2 security and semantics', () => {
     }
     const allowed = resolveNetworkAuthority({ ...baseAuthority, privateNetwork: 'allow' })
     expect(authorizeResolvedAddress(allowed, '127.0.0.1')).toBe('127.0.0.1')
+    expect(authorizeResolvedAddress(allowed, '0:0:0:0:0:0:0:1')).toBe('::1')
     expect(() => authorizeResolvedAddress(allowed, 'garbage')).toThrow(/not authorized/u)
   })
 

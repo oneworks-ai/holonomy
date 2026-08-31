@@ -1,0 +1,15 @@
+{
+  "name": "@holonomy-internal/agentos-backend-probe",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "probe": "node probe.mjs"
+  },
+  "dependencies": {
+    "@rivet-dev/agentos-core": "0.2.15"
+  }
+}

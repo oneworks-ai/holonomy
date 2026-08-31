@@ -30,6 +30,32 @@ export const verifyGeneratedRuntimeAssets = (manifest, outputRoot) => {
   if (!rejectedStale) throw new Error('Stale asset regression was not rejected')
   verifyRuntimeAssets(manifest, outputRoot)
 
+  const source = manifest.typescriptSources[0]
+  const originalSourcePath = source.path
+  source.path = '../escaped-source.ts'
+  let rejectedSourceEscape = false
+  try {
+    verifyRuntimeAssets(manifest, outputRoot)
+  } catch {
+    rejectedSourceEscape = true
+  }
+  source.path = originalSourcePath
+  if (!rejectedSourceEscape) throw new Error('Escaped TypeScript source provenance was not rejected')
+  verifyRuntimeAssets(manifest, outputRoot)
+
+  const alias = manifest.moduleAliases[0]
+  const originalAliasPath = alias.path
+  alias.path = 'runtime/modules/not-owned.js'
+  let rejectedAliasTarget = false
+  try {
+    verifyRuntimeAssets(manifest, outputRoot)
+  } catch {
+    rejectedAliasTarget = true
+  }
+  alias.path = originalAliasPath
+  if (!rejectedAliasTarget) throw new Error('Unowned Runtime module alias target was not rejected')
+  verifyRuntimeAssets(manifest, outputRoot)
+
   if (statSync(resolve(outputRoot, 'runtime/asset-manifest.json')).size === 0) {
     throw new Error('Generated runtime asset manifest is empty')
   }

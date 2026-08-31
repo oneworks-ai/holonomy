@@ -18,8 +18,8 @@ type ResolvedResourceChallengeV1 =
   | Readonly<
     ResolvedResourceChallengeBaseV1 & {
       reason: 'networkAddress'
-      requested: NetworkResourceV1
-      resolved: NetworkResourceV1
+      requested: NetworkResourceV1 | ProcessNetworkEndpointResourceV1
+      resolved: NetworkResourceV1 | ProcessNetworkEndpointResourceV1
       evidence: ResolutionEvidenceBindingV1 & { kind: 'networkAddress' }
     }
   >
@@ -83,7 +83,7 @@ interface ResolutionAdmissionTokenV1 {
 
 evidence 是 Host-only、有界、无 native path 的 typed own-data snapshot。Broker 通过可信 evidence store 以 bindingId读取exact object并复算 digest；业务 Middleware 只见 requested/resolved semantic resource，不见 DNS/handle evidence。evidence不进入 Guest、普通日志、CDP 或 Grant key。token 是 Provider-only opaque identity。
 
-strict Schema 以 `reason` 为 discriminant并同时约束 requested/resolved/evidence kind。Network challenge要求 requested/resolved semantic resource字节相同；地址只在evidence。Filesystem要求同rootId，resolved只可改变pathSegments/semantic digest。Opaque要求resourceType、generation、rightsDigest和Bridge semantic identity全相同，任何变化拒绝。token签发与Provider execute都重新验证这组映射，不能只比较 evidenceDigest。
+strict Schema 以 `reason` 为 discriminant并同时约束 requested/resolved/evidence kind。Network challenge可用于Fetch `NetworkResourceV1`或Linux Process `ProcessNetworkEndpointResourceV1`，但requested/resolved必须为同一种kind且semantic resource字节相同；地址只在evidence。Filesystem要求同rootId，resolved只可改变pathSegments/semantic digest。Opaque要求resourceType、generation、rightsDigest和Bridge semantic identity全相同，任何变化拒绝。token签发与Provider execute都重新验证这组映射，不能只比较 evidenceDigest。
 
 ## B.1.2 状态机
 
@@ -102,7 +102,7 @@ providerPreflight
 
 ## B.1.3 哪些层重跑
 
-- DNS/IP：semantic Network resource 不变，只重跑不可移除 system network Policy 和 Provider private-address authority；不调用业务 Host Middleware。地址列表 canonicalize、去重、按 binary bytes排序，最多64项；空/超限/解析失败拒绝。IPv4-mapped IPv6按底层IPv4分类，zone identifier拒绝；只要任一地址违反private policy，整个resolution拒绝。
+- DNS/IP：semantic Fetch或Process endpoint resource不变，只重跑不可移除 system network Policy 和 Provider private-address authority；不调用业务 Host Middleware。地址列表 canonicalize、去重、按 binary bytes排序，最多64项；空/超限/解析失败拒绝。IPv4-mapped IPv6按底层IPv4分类，zone identifier拒绝；只要任一地址违反private policy，整个resolution拒绝。
 - filesystem resolved target：只要 semantic target/root/rights 变化，就重跑 system filesystem Policy 和 Host resolution Middleware；Host 可用 resolved semantic digest 做决定。
 - opaque handle rebind：只能验证相同 Bridge identity/generation/rights；任何变化直接拒绝，不向 Host 询问。
 - HTTP redirect：不是 Provider challenge。Fetch 为新 URL 创建 hop+1 的完整 top-level admission，重新运行 Policy、Host Middleware 和 Network Rules。

@@ -9,7 +9,7 @@ export interface HolonomyLaunchSnapshot {
   launch: Readonly<Record<string, unknown>>
   networkRuleSet?: Record<string, unknown>
   pluginConfigPath?: string
-  runtimePlugins?: readonly import('../src/runtime/plugin-types.js').RuntimePluginBundleV1[]
+  runtimePlugins?: readonly import('@holonomyjs/runtime/app/plugin-types').RuntimePluginBundleV1[]
   sandboxPolicy: Readonly<Record<string, unknown>>
   target: 'android' | 'node'
 }

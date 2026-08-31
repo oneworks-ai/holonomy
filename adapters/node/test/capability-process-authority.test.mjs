@@ -45,7 +45,10 @@ const authority = (executableIds, signals = ['SIGINT', 'SIGKILL', 'SIGTERM']) =>
       completed.push({ resources, result })
       return { resources, result }
     },
-    completed
+    completed,
+    invocationBinding: {
+      invocationBindingDigest: '2'.repeat(64)
+    }
   }
 }
 
@@ -100,6 +103,7 @@ test('rechecks Process authority before every inherited resource side effect', a
         maxConcurrentProcesses: 2,
         maxExecutionTimeMs: 1000,
         maxOpenPipes: 3,
+        maxProcessTreeDepth: 2,
         maxStderrBytes: 1024,
         maxStdinBytes: 1024,
         maxStdoutBytes: 1024,
@@ -110,6 +114,33 @@ test('rechecks Process authority before every inherited resource side effect', a
     { get: () => backend }
   )
   const spawnAuthority = authority(['tool'])
+  const descendantArguments = Object.freeze({
+    argv: ['/virtual/tool', 'child'],
+    cwd: '/',
+    environmentId: '1:processTree:process-1',
+    environmentScope: 'processTree',
+    executableId: 'tool',
+    linuxPid: 902,
+    parentLinuxPid: 901,
+    path: '/virtual/tool',
+    processStartTimeTicks: 10_002
+  })
+  const descendantContext = Object.freeze({
+    ...context('process.program.spawn', descendantArguments),
+    member: 'authorizeDescendantProcess',
+    source: Object.freeze({
+      environmentId: descendantArguments.environmentId,
+      environmentScope: 'processTree',
+      executableId: 'tool',
+      kind: 'linuxProcess',
+      linuxPid: 902,
+      parentLinuxPid: 901,
+      processStartTimeTicks: 10_002,
+      processResourceId: 'process-1',
+      rootLinuxPid: 901,
+      syntheticProcessId: 41
+    })
+  })
   provider.invoke(
     context('process.program.spawn', {
       args: [],
@@ -122,6 +153,42 @@ test('rechecks Process authority before every inherited resource side effect', a
   const facade = terminal.result.value
   const resource = terminal.resources[0].resource
   const stdinBinding = facade.stdin.binding.bindingId
+
+  const descendantAuthority = authority(['tool'])
+  const descendantReceipt = provider.invoke(descendantContext, descendantAuthority)
+  assert.equal(descendantReceipt.result.value.authorized, true)
+  assert.throws(() =>
+    provider.invoke({
+      ...descendantContext,
+      source: { ...descendantContext.source, executableId: 'different-tool' }
+    }, authority(['tool'])), error => error.code === 'policy.denied')
+  assert.throws(() =>
+    provider.invoke({
+      ...descendantContext,
+      arguments: { ...descendantArguments, processStartTimeTicks: 20_002 },
+      source: { ...descendantContext.source, processStartTimeTicks: 20_002 }
+    }, authority(['tool'])), error => error.code === 'resource.handle_limit')
+  assert.throws(() =>
+    provider.invoke({
+      ...descendantContext,
+      arguments: { ...descendantArguments, path: '/virtual/other' }
+    }, authority(['tool'])), error => error.code === 'policy.denied')
+  assert.throws(() =>
+    provider.invoke({
+      ...descendantContext,
+      arguments: {
+        ...descendantArguments,
+        linuxPid: 903,
+        parentLinuxPid: 902,
+        processStartTimeTicks: 10_003
+      },
+      source: {
+        ...descendantContext.source,
+        linuxPid: 903,
+        parentLinuxPid: 902,
+        processStartTimeTicks: 10_003
+      }
+    }, authority(['tool'])), error => error.code === 'resource.handle_limit')
 
   assert.throws(() =>
     provider.invoke(

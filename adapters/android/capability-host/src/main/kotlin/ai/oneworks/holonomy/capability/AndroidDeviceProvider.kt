@@ -3,6 +3,8 @@ package ai.oneworks.holonomy.capability
 import android.content.Context
 import android.os.SystemClock
 import ai.oneworks.holonomy.host.RuntimeCapabilityResourceEventSink
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import org.json.JSONObject
 
@@ -11,8 +13,10 @@ internal class AndroidDeviceProvider(
     private val generation: Long,
     descriptor: JSONObject,
     private val resources: CapabilityResourceStore,
+    private val observations: AndroidDeviceObservationSource,
+    valueSource: AndroidDeviceValueSource? = null,
 ) {
-    private val values = AndroidDeviceValues(context)
+    private val values = AndroidDeviceValues(valueSource ?: AndroidDeviceValueSource.platform(context))
     private val nextBinding = AtomicLong(1)
     private val supported = descriptor.getJSONArray("operations").objects()
         .associate { item -> item.getString("operation") to item }
@@ -33,12 +37,19 @@ internal class AndroidDeviceProvider(
         val kinds = request.getJSONObject("arguments").getJSONArray("kinds").strings()
         val allowedKinds = supported.getValue("device.events.subscribe").getJSONArray("eventKinds").strings()
         if (kinds.isEmpty() || !allowedKinds.containsAll(kinds)) throw ProviderFailure("capability.denied")
+        val maxQueuedEvents = request.getJSONArray("authorityBindings").objects()
+            .filter { binding -> binding.getString("providerModule") == "host.device" }
+            .map { binding -> binding.getJSONObject("constraints").getInt("maxQueuedEvents") }
+            .minOrNull()
+            ?.takeIf { value -> value >= 1 }
+            ?: throw ProviderFailure("capability.denied")
         val bindingId = "android-device-${nextBinding.getAndIncrement()}"
-        val subscription = AndroidDeviceSubscriptionResource(kinds, values)
+        val subscription = AndroidDeviceSubscriptionResource(kinds, values, observations)
         resources.publish(bindingId, subscription)
         return success(
             JSONObject()
                 .put("binding", JSONObject().put("bindingId", bindingId).put("generation", generation))
+                .put("maxQueuedEvents", maxQueuedEvents)
                 .put("resourceType", "device.subscription")
                 .put("startSequence", 0),
             listOf(resourcePublication(bindingId, "device.subscription", "HoloDeviceEventV1")),
@@ -62,24 +73,49 @@ internal class AndroidDeviceProvider(
 private class AndroidDeviceSubscriptionResource(
     private val kinds: List<String>,
     private val values: AndroidDeviceValues,
+    private val observations: AndroidDeviceObservationSource,
 ) : EventCapabilityResource() {
+    private val closed = AtomicBoolean(false)
+    private val lastRevisions = ConcurrentHashMap<String, Long>()
     private val nextSequence = AtomicLong(1)
+    private val started = AtomicBoolean(false)
+    @Volatile private var observationSubscription: AutoCloseable? = null
 
     override fun onSubscribed(sink: RuntimeCapabilityResourceEventSink) {
         for (kind in kinds.sorted()) {
             val reading = values.readingForEvent(kind)
+            lastRevisions[kind] = reading.getLong("revision")
             sink.emit(
-                JSONObject()
-                    .put("kind", kind)
-                    .put("observedAt", SystemClock.elapsedRealtime())
-                    .put("phase", "snapshot")
-                    .put("reading", reading)
-                    .put("schemaVersion", 1)
-                    .put("sequence", nextSequence.getAndIncrement())
-                    .toString(),
+                event(kind, "snapshot", reading).toString(),
             )
+        }
+        if (started.compareAndSet(false, true)) {
+            observationSubscription = observations.subscribe(kinds.toSet(), ::emitChange)
+            for (kind in kinds.sorted()) emitChange(kind)
         }
     }
 
-    override fun closeResource() = Unit
+    private fun emitChange(kind: String) {
+        if (closed.get() || kind !in kinds) return
+        val reading = values.readingForEvent(kind)
+        val revision = reading.getLong("revision")
+        val previous = lastRevisions.put(kind, revision)
+        if (previous != null && revision <= previous) return
+        emit(event(kind, "change", reading).toString())
+    }
+
+    private fun event(kind: String, phase: String, reading: JSONObject) = JSONObject()
+        .put("kind", kind)
+        .put("observedAt", SystemClock.elapsedRealtime())
+        .put("phase", phase)
+        .put("reading", reading)
+        .put("schemaVersion", 1)
+        .put("sequence", nextSequence.getAndIncrement())
+
+    override fun closeResource() {
+        if (!closed.compareAndSet(false, true)) return
+        runCatching { observationSubscription?.close() }
+        observationSubscription = null
+        lastRevisions.clear()
+    }
 }

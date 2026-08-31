@@ -1,0 +1,18 @@
+{
+  "name": "@holonomyjs/holouv",
+  "type": "module",
+  "version": "1.0.0-rc.3",
+  "description": "Backend-neutral environment lifecycle for Holonomy process runtimes",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "__oneworks__": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "src/**/*.ts"],
+  "dependencies": {
+    "@holonomyjs/capability-process": "1.0.0-rc.3"
+  }
+}

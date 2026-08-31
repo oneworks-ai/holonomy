@@ -38,9 +38,9 @@ Arrays marked set are deduplicated and code-point sorted before RFC8785-style ca
 
 ## A.2.3 Filesystem与Device
 
-FS roots 1–64、每root rights 1–7；rootId 1–64 ASCII bytes且唯一；virtualUrl必须精确`holo-fs://<rootId>/`。limits：open handles 1–4096，read/write bytes 1–256MiB，directory entries 1–100000，watchers 0–1024。相同rootId/URL重复拒绝；rights去重排序。
+FS roots 1–64、每root rights 1–7；rootId 1–64 ASCII bytes且唯一；virtualUrl必须精确`holo-fs://<rootId>/`。limits：open handles 1–4096，read/write bytes 1–256MiB，directory entries 1–100000，watchers 0–1024，queued watch events 0–4096。`maxWatchers=0`或`maxQueuedEvents=0`时watch稳定拒绝；Guest `maxQueuedEvents`省略时使用Policy值，显式值只能是1–4096且不能超过Policy。相同rootId/URL重复拒绝；rights去重排序。
 
-Device operations最多等于closed `DeviceOperationV1`数量；每项唯一。subscriptions 0–256，events/sec 1–1000。Privacy/precision只接受各自typed lattice；Policy operation不能声明高于Provider descriptor maxPrecision，但Provider descriptor不反向放大Policy。
+Device operations最多等于closed `DeviceOperationV1`数量；每项唯一。subscriptions 0–256，events/sec 1–1000，queued events 0–4096。`maxSubscriptions=0`或`maxQueuedEvents=0`时订阅稳定拒绝；Guest `maxQueuedEvents`省略时使用Policy值，显式值只能是1–4096且不能超过Policy。Privacy/precision只接受各自typed lattice；Policy operation不能声明高于Provider descriptor maxPrecision，但Provider descriptor不反向放大Policy。
 
 ## A.2.4 System、Code、Inspector、Diagnostics
 

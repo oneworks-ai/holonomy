@@ -266,6 +266,7 @@ describe('web network Fetch v3 adversarial lifecycle regressions', () => {
   })
 
   it('drops source values when cancellation wins at pending and terminal microtask positions', async () => {
+    let pendingTerminals = 0
     let resolvePending: ((value: Uint8Array) => void) | undefined
     const pendingSource: WebBodySource = {
       cancel() {},
@@ -274,12 +275,17 @@ describe('web network Fetch v3 adversarial lifecycle regressions', () => {
           resolvePending = resolve
         })
     }
-    const pendingController = new WebBodyController(pendingSource)
+    const pendingController = new WebBodyController(pendingSource, () => {
+      pendingTerminals += 1
+    })
     const pendingRead = pendingController.stream.getReader().read()
     pendingController.cancel('before_source_resolves')
     resolvePending?.(new Uint8Array([1]))
     await expect(pendingRead).rejects.toMatchObject({ code: 'network.cancelled' })
+    pendingController.cancel('duplicate_cancel')
+    expect(pendingTerminals).toBe(1)
 
+    let terminalDeliveries = 0
     let terminalController: WebBodyController
     const terminalSource: WebBodySource = {
       cancel() {},
@@ -289,9 +295,20 @@ describe('web network Fetch v3 adversarial lifecycle regressions', () => {
         return new Uint8Array([2])
       }
     }
-    terminalController = new WebBodyController(terminalSource)
+    terminalController = new WebBodyController(terminalSource, () => {
+      terminalDeliveries += 1
+    })
     const terminalRead = terminalController.stream.getReader().read()
     await expect(terminalRead).rejects.toMatchObject({ code: 'network.cancelled' })
+    expect(terminalDeliveries).toBe(1)
+
+    let emptyDeliveries = 0
+    const empty = new WebBodyController(undefined, () => {
+      emptyDeliveries += 1
+    })
+    await expect(empty.text(0)).resolves.toBe('')
+    empty.cancel('after_empty')
+    expect(emptyDeliveries).toBe(1)
   })
 
   it('fails closed for IPv6 registry special-use, reserved and malformed addresses', () => {

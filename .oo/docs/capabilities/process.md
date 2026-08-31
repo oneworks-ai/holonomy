@@ -2,7 +2,7 @@
 
 [English](../en/capabilities/process.md)
 
-M3.5 发布的是一个显式 opt-in 的 Process profile，而不是宿主 `child_process` 透传。当前 Stable 组合是 macOS Node/Desktop 上的 `process-profile-v1` + `native.darwin-seatbelt-v1`。Node/Desktop 还提供可由 Host 安装的 Experimental `experimental.v86-v1`；它在 Node V8 内启动受控 Linux，但镜像资产不随 npm 包默认发布。Android 当前没有生产 Process Backend，agentOS 与 WASIX 也仍只是候选实现。
+M3.5 发布的是一个显式 opt-in 的 Process profile，而不是宿主 `child_process` 透传。当前 Stable 组合是 macOS Node/Desktop 上的 `process-profile-v1` + `native.darwin-seatbelt-v1`。Node/Desktop 提供 Host 安装的 Experimental `experimental.v86-v1`；Android 也提供同一 Backend 的可选生产 AAR 集成，但仍保持 Experimental。两者都不随核心包默认发布 Linux 资产；agentOS 与 WASIX 仍只是候选实现。
 
 ## Runtime 内使用
 
@@ -108,11 +108,15 @@ Experimental v86 还需要一个独立的 Host-only 安装清单 `$HOLONOMY_HOME
           "artifacts": {
             "bios": { "artifactId": "seabios.bin", "sha256": "<64-hex>" },
             "kernel": { "artifactId": "kernel.bin", "sha256": "<64-hex>" },
-            "initrd": { "artifactId": "supervisor.cpio", "sha256": "<64-hex>" },
+            "initrd": { "artifactId": "agent.cpio", "sha256": "<64-hex>" },
             "wasm": { "artifactId": "v86.wasm", "sha256": "<64-hex>" }
           },
           "memoryBytes": 134217728,
-          "requiredKernelCapabilities": ["process", "fuse"],
+          "requiredKernelCapabilities": [
+            "process",
+            "fuse",
+            "seccompUserNotification"
+          ],
           "supervisor": { "protocolVersion": 1 }
         }
       },
@@ -141,22 +145,41 @@ Experimental v86 还需要一个独立的 Host-only 安装清单 `$HOLONOMY_HOME
 
 所有 Backend 复用同一个 `node:child_process` facade、Broker、Process resource、Backend Registry 和 Symbol scope，不会再造第二套公开 API。Host profile 通过 `backendId` 选择已安装实现，并控制 image/rootfs、mount、network、device/system bridge、配额和 writeback；Runtime 内代码只选择被允许的 `runtime` 或 `processTree` 生命周期。
 
+四类职责保持分离：Holo Process Runtime 负责 Node 兼容语义；共享 Environment Host Runtime 负责 profile、资产、environment、进程/stdio resource、生命周期和 Capability Bridge；Backend Driver 只负责启动与底层通信；Guest System Adapter 负责 path、argv、shell、signal、process tree 和错误等 OS 语义。这样 v86、agentOS 与 WASIX 可以复用大部分安全和资源逻辑，而不把各自的设备、Worker 或 SDK 协议泄漏到公共 facade。
+
+v86 的 Host 无法直接调用 Linux 内部的 `fork`、`execve`、`waitpid`、pipe 或 signal，因此镜像内需要一个长期运行的 Backend Guest Agent，把结构化 spawn、stdio、signal 和 terminal frame 转换为 Linux Process API。它不是 shell，也不是所有 Backend 都必须携带的公共组件：Native Backend 直接使用宿主进程 API，agentOS/WASIX 则优先适配自身 SDK 已提供的结构化进程接口。
+
+虚拟环境的软件与工具由 Host 资产清单决定，不由 Runtime options 决定。可独立交付的镜像层级包括仅含 Guest Agent 的 `minimal`、增加 BusyBox 与 `/bin/sh` 的 `base`、再增加 `curl`/`git`/`ssh`/`jq` 等常见工具的 `agent`，以及开发者摘要绑定的 `custom`。当前未冻结通用 `imageProfile` 配置字段；每个 Backend 在实现该选择前仍通过自己的 Host-only manifest 声明。生产资产不包含 conformance selftest fixture。
+
+普通 `spawn()` 与 `execFile()` 直接启动已授权 executable；`exec()` 和 `spawn(..., { shell: true })` 才进入 Host profile 指定的 shell。shell、PATH、工具集、mount、network 和 credential 都必须显式进入 profile 与 authority，不能成为虚拟环境里的 ambient 旁路。
+
+### Root 调用与后代进程
+
+Native Darwin 与 v86 解决的是两类不同问题，Host 可以同时安装两种 profile，但 Runtime 代码不能自行切换 Backend：
+
+| Backend       | 可以执行的程序                                | 当前 root 调用                                                    | 当前后代进程边界                                                                                                      |
+| ------------- | --------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Native Darwin | Host manifest 准入的 macOS Mach-O 与系统工具  | 每次先经过 Process Policy、CanonicalResource 与 Cordis Middleware | Seatbelt profile 对整棵进程树施加静态约束；尚不提供每次后代 `exec` 的 Host 回调                                       |
+| v86 Linux     | 镜像清单准入的 Linux x86-32 ELF 与 shell 工具 | 每次先经过相同的 Process 调用链                                   | Node/Desktop 与 Android 均在后代 `execve`/受支持 `execveat` 继续前通过 Linux seccomp user-notification 执行 Host 准入 |
+
+因此，选择 v86 可以获得更深的 Linux 后代进程控制，但不能运行 macOS 程序；需要 macOS 工具时继续选择 Native Darwin。Native profile 即使没有逐次后代回调，Seatbelt 仍会把预先编译的文件、网络和系统约束施加到后代进程。若未来接入具备系统权限的 Darwin 进程监控/执行控制能力，它会作为独立 Host/System profile 发布，不借用 v86 的证据。
+
+后续 descriptor revision 会把后代执行能力区分为静态约束、只观察和执行前授权。当前 Native Darwin 只能声明静态约束；v86 已具备实验性的执行前授权：root process 的第一次执行使用此前已通过 Broker 的 root authority，之后继承 seccomp listener 的进程在每次 `execve` 或 `execveat` 前暂停。Guest Agent 上报 `linuxPid`、`parentLinuxPid`、绝对路径、`argv` 和 `cwd`；Host 将路径映射为 profile 中的 `executableId`，再通过 `holo:runtime.authorizeDescendantProcess` 进入同一 Policy、CanonicalResource、Middleware 和 Provider 重验链。Host 返回 allow 后，Guest 还会最终重验 seccomp notification 与 syscall 快照；内核接受 `CONTINUE` 后，Guest 必须再确认 `/proc/<pid>/exe` 的规范路径、设备号、inode 与放行前冻结的目标完全一致，才回传 `committed=true`。Host 只有收到该成功提交结果才更新 PID 的 executable identity。若通知已经过期、实际 `exec` 返回 `ENOEXEC`/`EACCES` 等错误、进程身份变化或目标不匹配，则回传 `committed=false`，原调用者身份保持不变。未知 executable、Middleware deny、断连、generation 关闭、决定超时或最终重验失败均 fail closed，迟到结果不会改变后续归因。
+
+这条边界目前仍为 Experimental：绝对 `execve`、绝对 `execveat(AT_FDCWD, flags=0)` 和 PATH 解析后的清单内绝对目标可以准入；relative dirfd、`AT_EMPTY_PATH`、相对 executable 与未知目标稳定返回 `EPERM`。1–120000 ms 的 gate deadline 由 Host-only Backend profile 配置，默认 30 秒。镜像构建时解析并校验 executable symlink，启动资产受摘要绑定；Process mount 只允许一个已授权 `/workspace`，无法遮蔽 `/bin`、`/sbin`、`/usr/bin` 或 `/usr/sbin`，因此可变 executable/目标替换在 v1 fail closed。Node/Desktop 与 Android 使用同一 C supervisor 和 operation 16/17/21 Host channel。
+
+真实 Node `22.22.2` / V8 `12.4` / v86 / Linux E2E 已验证 Host allow/deny、未知路径拒绝和 generation 清理。共享 Android JavaScript conformance 还从标准 facade 验证清单内绝对目标、PATH lookup 可执行、未知目标和相对目标拒绝；两端都在内核继续执行前完成 Host 决策。
+
 共享 Registry/SPI 为不同候选保留独立打包和注册路径。没有 Host 安装清单时，Experimental Backend 不进入 Registry，也不借用其他 Backend 的测试证据：
 
-- [v86](https://github.com/copy/v86) 的 Node/Desktop Experimental 实现现已接入正式 Node Runtime 与 Service Host 配置。Node `22.22.2` / V8 `12.4` E2E 在标准 `node:child_process` facade 后真实启动 Linux `6.8.12`，同时验证 supervisor/stdio/exit、经 Capability Broker 的 FUSE 文件读写、带 Linux PID 与 executable 上下文的精确授权 HTTP，以及 stop 前的资源清理。它仍不支持任意 TCP/UDP/DNS、完整 FS surface、64-bit kernel 或 multicore。
+- [v86](https://github.com/copy/v86) 的 Experimental 实现已接入正式 Node/Desktop Runtime、Service Host 与 Android 可选生产模块。真实 Linux `6.8.12` E2E 验证 supervisor/stdio/exit、`/workspace` FUSE 目录面、带实际 Linux PID/PPID/starttime 与已提交 executable 上下文的 TCP/UDP、带 TTL/rebinding 防护的 DNS、Host Device/System 投影、后代执行前 allow/deny，以及活跃进程树 stop/restart 清理。它仍不承诺 `/workspace` 之外的 POSIX 文件面、64-bit kernel、multicore、物理 Android 或真正的 VM snapshot/restore。
 - [agentOS](https://github.com/rivet-dev/agentos) 的 Desktop probe 已验证进程、stdio、VM FS、Host 目录桥和两种 environment scope；Linux workload 的网络桥仍失败，发布 sidecar 也没有 Android 产物，因此尚未注册为 Holo Backend。
 - [WASIX](https://wasix.org/docs/explanation/extensions-to-wasi) 只适合重新编译的 WASI/WASIX workload。当前 SDK `0.10.0` 在 Node/V8 存在模块序列化回归；兼容版本虽验证 stdio/exit/虚拟 FS，但 process tree、终止清理、网络、snapshot 与 Android Host 均未闭合，因此不会作为 Reference Backend。
 
-Android 模拟器中的 Javet/V8 已真实启动 v86、Linux 和同一 supervisor。一个 trusted Backend E2E
-运行实例内同时验证了进程/stdio/退出、FUSE request/response，以及经生产 Capability Runtime 和
-`AndroidCapabilityHost` 执行的归因文件读写。随后启动的第二个 Linux 进程发出 HTTP 请求；Host 以
-Linux PID、synthetic process 和 executable 为上下文完成 `process.network.connect` 授权，再访问精确
-允许的 loopback endpoint。该实现仍只属于 instrumentation 证据，未装入 Android 默认 Backend
-Registry；它也不代表任意 TCP/UDP/DNS 已实现。物理设备不是当前实验轨道的强制门槛，未来发布物理设备
-支持声明时再单独验收。
+Android 的 `process-backend-v86` 是正式源码模块，不是测试目录里的临时 Provider。嵌入方把这个可选 AAR 与摘要绑定资产装入 Host，并在创建 Runtime 时使用 `AndroidV86RuntimeServicesFactory`。当 Process Policy 为 `none` 时不读取 Linux 资产也不创建第二个 V8；当 Host 选择 `experimental.v86-v1` 且 Policy 为 `sandboxed` 时自动设置所需 V8 flags、校验资产与 kernel capability，并为每个 generation 创建 Backend。无需 Runtime 代码手动注册。
 
-Linux 内的文件访问必须映射已授权的 `holo-fs` root；`curl`/`git` 的 DNS/TCP/TLS 走 Process
-Network authority，而不是伪装成 JS Fetch。当前安全调用由 Holo Capability Broker middleware 执行，
-Cordis App 负责插件装配、卸载和 watch reload；通用调用协议切换到 Cordis 后也必须保留相同的
-Policy、authority、generation 与 Provider 重验不变量。每个 Experimental Backend 必须分别完成
-descriptor probe、二进制边界、文件/网络桥和真实 E2E，才能进入默认 Registry。
+当前 `agent` 验证资产的 raw `packageBytes` 约为 37.9 MiB；Debug AAR 相比禁用资产构建增加约 2.9 MiB 压缩体积。嵌入方通过 `-Pholonomy.v86.assetsDir=<trusted-directory>` 或 `HOLO_V86_ANDROID_ASSET_ROOT` 决定是否打包；未配置时 AAR 只包含约 53 KiB 的桥接脚本和 unavailable manifest。资产集必须包含摘要匹配的 v86 WASM、BIOS、Holonomy FUSE/TUN kernel、生产 `agent` initramfs 和 runtime driver。
+
+模拟器 E2E 已从标准 `node:child_process` facade 贯通生产 Runtime Kernel、Android Provider、独立可信 Javet/V8、v86/Linux/supervisor，并验证 stdio/退出、pre-spawn stdin、带 Linux PID 的 FUSE 目录操作、TCP/UDP/DNS、Device/System 投影、后代 allow/deny 与 generation restart。测试由 Android instrumentation APK 发起，但被测实现来自上述生产 AAR。Backend 失败会关闭当代资源；正常 Runtime restart 创建新的 VM，不在同一 generation 内静默恢复。物理设备支持仍未声明。
+
+Linux 内的文件访问只映射一个已授权的 `holo-fs` root 到 `/workspace`；其他 Guest mount 在启动前拒绝。`curl`/`git` 的 DNS/TCP/TLS 走 Process Network authority，而不是伪装成 JS Fetch。DNS Provider 先冻结排序去重后的地址集合、resolver generation、TTL 与 evidence digest，再通过共享 resolution challenge 重验；实际传输只能消费未过期 token 中的 admitted address，地址集合变化会拒绝旧调用。当前安全调用由 Holo Capability Broker middleware 执行，Cordis App 负责插件装配、卸载和 watch reload；通用调用协议切换到 Cordis 后也必须保留相同的 Policy、authority、generation 与 Provider 重验不变量。每个 Experimental Backend 必须分别完成 descriptor probe、二进制边界、文件/网络桥和真实 E2E，才能进入默认 Registry。

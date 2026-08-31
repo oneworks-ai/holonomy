@@ -1,0 +1,13 @@
+{
+  "executables": [
+    {
+      "executableId": "shell",
+      "path": "/bin/sh",
+      "shell": true
+    }
+  ],
+  "id": "custom.example",
+  "packages": [],
+  "rootfs": "alpine",
+  "schemaVersion": 1
+}

@@ -2,12 +2,11 @@
 
 import {
   createCapabilityModuleOverridesV1,
-  createCapabilityNetworkHooksV1,
-  createUnsupportedCapabilityWebSocketV1
+  createCapabilityNetworkHooksV1
 } from './modules/capability-runtime/guest-facades.js'
 import { RuntimeEventLoop } from './modules/event-loop/index.js'
 import { createRuntimeConsole } from './modules/runtime-console/index.js'
-import { HolonomyRuntimePluginAppV1, createHolonomyRuntime } from './modules/runtime/index.js'
+import { createHolonomyRuntime } from './modules/runtime/index.js'
 import { createRuntimeTimers } from './modules/timers/index.js'
 import { NetworkMockRouter } from './modules/web-network/network-mock-router.js'
 import { RuntimeTextDecoder, RuntimeURL, RuntimeURLSearchParams } from './runtime-web-standards.mjs'
@@ -56,6 +55,7 @@ const networkPort = networkEnabled
     authority: sandboxPlan.authority,
     bodySha256: body => sha256Chunks([body]),
     bodySha256Chunks: sha256Chunks,
+    delay: milliseconds => new Promise(resolve => timers.setTimeout(resolve, milliseconds)),
     initialRules: configuration.networkRules,
     passthrough: nativePort
   })
@@ -105,14 +105,45 @@ const capabilityConfigurationSource = host.capabilityConfiguration()
 const capabilityConfiguration = capabilityConfigurationSource == null
   ? null
   : JSON.parse(capabilityConfigurationSource)
+let nextCapabilityCancellationId = 0
 
 const capabilityBridge = capabilityConfiguration == null
   ? undefined
   : Object.freeze({
-    invoke: requestJson =>
+    invoke: (requestJson, signal) =>
       new Promise((resolve, reject) => {
-        const accepted = host.capabilityInvoke(requestJson, resolve)
-        if (accepted !== true) reject(new Error('Holonomy capability Runtime is unavailable'))
+        const cancellationId = signal == null ? null : `capability-abort-${++nextCapabilityCancellationId}`
+        let active = true
+        let started = false
+        const abort = () => {
+          if (active && started && cancellationId != null) host.capabilityAbort(cancellationId)
+        }
+        const removeAbort = () => {
+          try {
+            signal?.remove(abort)
+          } catch {}
+        }
+        try {
+          if (signal != null) signal.add(abort)
+          const initiallyAborted = signal?.readAborted() === true
+          const accepted = host.capabilityInvoke(requestJson, cancellationId, initiallyAborted, terminal => {
+            if (!active) return
+            active = false
+            removeAbort()
+            resolve(terminal)
+          })
+          started = accepted === true
+          if (!started) {
+            active = false
+            removeAbort()
+            reject(new Error('Holonomy capability Runtime is unavailable'))
+          } else if (signal?.readAborted() === true) abort()
+        } catch (error) {
+          active = false
+          removeAbort()
+          if (started && cancellationId != null) host.capabilityAbort(cancellationId)
+          reject(error)
+        }
       }),
     invokeImmediate: requestJson => {
       const source = host.capabilityInvokeImmediate(requestJson)
@@ -176,10 +207,7 @@ const runtime = await createHolonomyRuntime({
 if (host.installSyntheticModules(runtime.syntheticModules) !== true) {
   throw new Error('Node Runtime synthetic registry installation failed')
 }
-const runtimeGlobals = capabilityConfiguration == null
-  ? runtime.globals
-  : { ...runtime.globals, WebSocket: createUnsupportedCapabilityWebSocketV1() }
-for (const [name, value] of Object.entries(runtimeGlobals)) {
+for (const [name, value] of Object.entries(runtime.globals)) {
   Object.defineProperty(globalThis, name, {
     configurable: true,
     enumerable: false,
@@ -188,19 +216,9 @@ for (const [name, value] of Object.entries(runtimeGlobals)) {
   })
 }
 
-const pluginApp = new HolonomyRuntimePluginAppV1({
-  importModule: entryUrl => import(entryUrl),
-  initialRevision: configuration.pluginGraphRevision - (configuration.runtimePlugins.length === 0 ? 0 : 1)
-})
-await pluginApp.replace(configuration.runtimePlugins)
-if (pluginApp.snapshot().pluginGraphRevision !== configuration.pluginGraphRevision) {
-  throw new Error('Runtime plugin graph revision mismatch')
-}
-host.registerPluginUpdater(json => pluginApp.replace(JSON.parse(json)))
-
 const plan = await runtime.moduleLoader.createPlan(configuration.userEntryUrl)
 if (!plan.modules.some(module => module.url === configuration.userEntryUrl)) {
   throw new Error('Node Runtime entry is absent from the module plan')
 }
-host.registerDispose(() => pluginApp.close().then(() => runtime.dispose()))
+host.registerDispose(() => runtime.dispose())
 await import(configuration.userEntryUrl)

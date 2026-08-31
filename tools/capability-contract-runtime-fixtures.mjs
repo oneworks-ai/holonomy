@@ -63,7 +63,12 @@ export const capabilitySelectionInput = (digest, fsLimits, networkLimits) => ({
   available: [{
     constraints: {
       limits: fsLimits,
-      roots: [{ pathPrefixSegments: [], rights: ['read', 'write'], rootId: 'workspace' }]
+      roots: [{
+        pathPrefixSegments: [],
+        rights: ['read', 'write'],
+        rootId: 'workspace',
+        symlinks: 'withinRoot'
+      }]
     },
     name: 'host.fs',
     version: 1
@@ -90,7 +95,12 @@ export const capabilitySelectionInput = (digest, fsLimits, networkLimits) => ({
       allOf: [{
         constraints: {
           limits: fsLimits,
-          roots: [{ pathPrefixSegments: ['src'], rights: ['read'], rootId: 'workspace' }]
+          roots: [{
+            pathPrefixSegments: ['src'],
+            rights: ['read'],
+            rootId: 'workspace',
+            symlinks: 'withinRoot'
+          }]
         },
         name: 'host.fs',
         version: 1

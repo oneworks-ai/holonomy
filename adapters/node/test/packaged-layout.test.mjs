@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { cp, lstat, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -24,6 +25,30 @@ test('starts from an installed package layout with runtime dependencies resolved
   await cp(join(repositoryRoot, 'src'), join(packageRoot, 'src'), { recursive: true })
   await writeFile(join(packageRoot, 'package.json'), JSON.stringify({ name: 'holonomy', type: 'module' }))
   await mkdir(join(temporary, 'node_modules'), { recursive: true })
+  await mkdir(join(temporary, 'node_modules', '@holonomyjs'), { recursive: true })
+  const workspacePackages = [
+    ['holouv', 'packages/holouv'],
+    ['runtime', 'packages/runtime'],
+    ['capability-device', 'packages/capabilities/device'],
+    ['capability-fs', 'packages/capabilities/fs'],
+    ['capability-network', 'packages/capabilities/network'],
+    ['capability-process', 'packages/capabilities/process'],
+    ['capability-system', 'packages/capabilities/system'],
+    ['plugin-audit', 'packages/plugins/audit'],
+    ['plugin-permission', 'packages/plugins/permission']
+  ]
+  for (const [name, source] of workspacePackages) {
+    const destination = join(temporary, 'node_modules', '@holonomyjs', name)
+    const packed = join(temporary, `workspace-${name}`)
+    await mkdir(packed)
+    const result = JSON.parse(execFileSync(
+      'npm',
+      ['pack', '--json', '--pack-destination', packed],
+      { cwd: join(repositoryRoot, source), encoding: 'utf8' }
+    ))[0]
+    execFileSync('tar', ['-xzf', join(packed, result.filename), '-C', packed])
+    await cp(join(packed, 'package'), destination, { recursive: true })
+  }
   await symlink(acornPackage, join(temporary, 'node_modules', 'acorn'), 'dir')
   await symlink(ajvPackage, join(temporary, 'node_modules', 'ajv'), 'dir')
   await symlink(cordisPackage, join(temporary, 'node_modules', 'cordis'), 'dir')

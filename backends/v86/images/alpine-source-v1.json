@@ -1,0 +1,28 @@
+{
+  "architecture": "x86",
+  "repositories": [
+    {
+      "baseUrl": "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86",
+      "id": "main",
+      "indexSha256": "10e503e2bd7067984274a0c3f78b62118f12a0b1f39183a87fca358d6b34ad23"
+    },
+    {
+      "baseUrl": "https://dl-cdn.alpinelinux.org/alpine/v3.24/community/x86",
+      "id": "community",
+      "indexSha256": "840ec4bc85062f5b591959aaf519ba645c12de0924ec6d182b6734923823e35f"
+    }
+  ],
+  "rootfs": {
+    "sha256": "634355e2245c9d56186d1b86fb6e034453eb303aea15b573ca250b343376fffd",
+    "url": "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/x86/alpine-minirootfs-3.24.1-x86.tar.gz",
+    "version": "3.24.1"
+  },
+  "schemaVersion": 1,
+  "seedPackages": [
+    "ca-certificates",
+    "curl",
+    "git",
+    "jq",
+    "openssh-client-default"
+  ]
+}

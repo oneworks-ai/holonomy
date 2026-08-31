@@ -8,6 +8,33 @@ importers:
 
   .:
     dependencies:
+      '@holonomyjs/capability-device':
+        specifier: 1.0.0-rc.3
+        version: link:packages/capabilities/device
+      '@holonomyjs/capability-fs':
+        specifier: 1.0.0-rc.3
+        version: link:packages/capabilities/fs
+      '@holonomyjs/capability-network':
+        specifier: 1.0.0-rc.3
+        version: link:packages/capabilities/network
+      '@holonomyjs/capability-process':
+        specifier: 1.0.0-rc.3
+        version: link:packages/capabilities/process
+      '@holonomyjs/capability-system':
+        specifier: 1.0.0-rc.3
+        version: link:packages/capabilities/system
+      '@holonomyjs/holouv':
+        specifier: 1.0.0-rc.3
+        version: link:packages/holouv
+      '@holonomyjs/plugin-audit':
+        specifier: 1.0.0-rc.3
+        version: link:packages/plugins/audit
+      '@holonomyjs/plugin-permission':
+        specifier: 1.0.0-rc.3
+        version: link:packages/plugins/permission
+      '@holonomyjs/runtime':
+        specifier: 1.0.0-rc.3
+        version: link:packages/runtime
       acorn:
         specifier: ^8.18.0
         version: 8.18.0
@@ -43,6 +70,81 @@ importers:
       v86:
         specifier: 0.5.432
         version: 0.5.432
+
+  packages/capabilities/device:
+    dependencies:
+      '@holonomyjs/runtime':
+        specifier: 1.0.0-rc.3
+        version: link:../../runtime
+
+  packages/capabilities/fs:
+    dependencies:
+      '@holonomyjs/runtime':
+        specifier: 1.0.0-rc.3
+        version: link:../../runtime
+
+  packages/capabilities/network:
+    dependencies:
+      '@holonomyjs/runtime':
+        specifier: 1.0.0-rc.3
+        version: link:../../runtime
+
+  packages/capabilities/process:
+    dependencies:
+      '@holonomyjs/runtime':
+        specifier: 1.0.0-rc.3
+        version: link:../../runtime
+
+  packages/capabilities/system:
+    dependencies:
+      '@holonomyjs/runtime':
+        specifier: 1.0.0-rc.3
+        version: link:../../runtime
+
+  packages/holouv:
+    dependencies:
+      '@holonomyjs/capability-process':
+        specifier: 1.0.0-rc.3
+        version: link:../capabilities/process
+
+  packages/plugins/audit:
+    dependencies:
+      '@holonomyjs/runtime':
+        specifier: 1.0.0-rc.3
+        version: link:../../runtime
+
+  packages/plugins/permission:
+    dependencies:
+      '@holonomyjs/runtime':
+        specifier: 1.0.0-rc.3
+        version: link:../../runtime
+
+  packages/runtime:
+    dependencies:
+      '@holonomyjs/capability-device':
+        specifier: 1.0.0-rc.3
+        version: link:../capabilities/device
+      '@holonomyjs/capability-fs':
+        specifier: 1.0.0-rc.3
+        version: link:../capabilities/fs
+      '@holonomyjs/capability-network':
+        specifier: 1.0.0-rc.3
+        version: link:../capabilities/network
+      '@holonomyjs/capability-process':
+        specifier: 1.0.0-rc.3
+        version: link:../capabilities/process
+      '@holonomyjs/capability-system':
+        specifier: 1.0.0-rc.3
+        version: link:../capabilities/system
+      acorn:
+        specifier: ^8.18.0
+        version: 8.18.0
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      cordis:
+        specifier: 4.0.0-rc.8
+        version: 4.0.0-rc.8
 
 packages:
 

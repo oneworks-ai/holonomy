@@ -35,6 +35,7 @@ internal class NetworkHostHarness(
     privateNetwork: PrivateNetworkPolicy = PrivateNetworkPolicy.ALLOW,
     worker: NetworkWorker = ImmediateWorker(),
     generation: AndroidNetworkProviderGeneration? = null,
+    capabilityAuthority: AndroidCapabilityNetworkAuthority? = null,
 ) {
     var resolveCalls = 0
         private set
@@ -75,12 +76,13 @@ internal class NetworkHostHarness(
         ),
         observation,
         generation,
+        capabilityAuthority,
     )
 
-    fun openResource(): ResourceFixture {
+    fun openResource(capabilityBindingId: String? = null): ResourceFixture {
         val events = dispatch(
             id = "request",
-            request = requestJson("request", NetworkV1.REQUEST, requestArgs()),
+            request = requestJson("request", NetworkV1.REQUEST, requestArgs(capabilityBindingId)),
             context = contextJson("call:request"),
         )
         val event = JSONObject(events.single().eventJson)
@@ -130,6 +132,7 @@ private fun createTestAndroidHttpNetworkHost(
     dependencies: NetworkHostDependencies,
     observation: AndroidNetworkObservationConfiguration,
     generation: AndroidNetworkProviderGeneration?,
+    capabilityAuthority: AndroidCapabilityNetworkAuthority?,
 ): AndroidHttpNetworkHost {
     val constructor = AndroidHttpNetworkHost::class.java.declaredConstructors.single { candidate ->
         candidate.parameterTypes.contentEquals(
@@ -138,11 +141,18 @@ private fun createTestAndroidHttpNetworkHost(
                 NetworkHostDependencies::class.java,
                 AndroidNetworkObservationConfiguration::class.java,
                 AndroidNetworkProviderGeneration::class.java,
+                AndroidCapabilityNetworkAuthority::class.java,
             ),
         )
     }
     constructor.isAccessible = true
-    return constructor.newInstance(configuration, dependencies, observation, generation) as AndroidHttpNetworkHost
+    return constructor.newInstance(
+        configuration,
+        dependencies,
+        observation,
+        generation,
+        capabilityAuthority,
+    ) as AndroidHttpNetworkHost
 }
 
 internal class ImmediateWorker : NetworkWorker {
@@ -360,7 +370,12 @@ internal class FakeNetworkConnection(
     }
 }
 
-internal fun requestArgs(): String = "{\"headers\":[],\"method\":\"POST\",\"url\":\"http://example.test/\"}"
+internal fun requestArgs(capabilityBindingId: String? = null): String = JSONObject()
+    .apply { if (capabilityBindingId != null) put("capabilityBindingId", capabilityBindingId) }
+    .put("headers", JSONArray())
+    .put("method", "POST")
+    .put("url", "http://example.test/")
+    .toString()
 
 internal fun requestJson(id: String, operation: String, args: String, extra: String = ""): String =
     "{$extra\"args\":$args,\"id\":\"$id\",\"module\":\"host.network\",\"operation\":\"$operation\"}"

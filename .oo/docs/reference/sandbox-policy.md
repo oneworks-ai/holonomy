@@ -2,7 +2,7 @@
 
 [English](../en/reference/sandbox-policy.md)
 
-SandboxPolicy v1 是当前通用 CLI/Service 网络沙箱的不可变能力边界。Capability Runtime `kernel-slice` 另外接受 SandboxPolicy v2，并通过 `ProcessStartRequest.capabilityRuntime` 原子提交；精确请求 Schema 以 `/openapi.json` 为准。
+SandboxPolicy v1 是通用 CLI/Service 网络沙箱的不可变能力边界。Capability Runtime `provider-v1` 另外接受 SandboxPolicy v2，并通过 `ProcessStartRequest.capabilityRuntime` 原子提交；精确请求 Schema 以 `/openapi.json` 为准。
 
 ## 最小策略
 
@@ -46,6 +46,6 @@ SandboxPolicy v1 是当前通用 CLI/Service 网络沙箱的不可变能力边�
 - `allowPrivateNetwork=false` 会拒绝 loopback、link-local 与私网地址。
 - 所有 limit 都有 Service hard cap；缩小限制可以，不能通过 guest 扩大。
 - `mockOnly` 使用相同字段，但规则集必须 `failClosed` 且不能 passthrough。
-- 普通 v1 启动路径的 `filesystem=sandboxed` 返回 `sandbox.capability_unsupported`。v2 Capability Runtime 只开放 `holo-fs://workspace/` 受控读写切片，不等同于完整生产文件系统 v1。
+- 普通 v1 启动路径的 `filesystem=sandboxed` 返回 `sandbox.capability_unsupported`。v2 Capability Runtime `provider-v1` 在 Host 配置的 `holo-fs://` 虚拟根内开放附录 H 声明的 path、handle、directory、atomic write 与 watch surface。
 
 Service 会计算 canonical policy digest。初始 fixture 的精确 loopback origin 在 staging 中固化为 effective policy；对外 Process DTO 在完成前只显示 `pending`，完成后才显示 effective policy 与 digest。

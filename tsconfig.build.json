@@ -2,7 +2,7 @@
   "compilerOptions": {
     "composite": false,
     "target": "ESNext",
-    "rootDir": "src",
+    "rootDir": ".",
     "customConditions": [
       "__oneworks__"
     ],
@@ -13,13 +13,14 @@
     "declaration": true,
     "declarationMap": false,
     "noEmit": false,
-    "outDir": "dist",
+    "outDir": ".build",
     "sourceMap": false,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "packages/**/*"
   ]
 }

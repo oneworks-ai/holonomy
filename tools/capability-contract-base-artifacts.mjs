@@ -26,6 +26,7 @@ export const CAPABILITY_VECTOR_LIMITS = Object.freeze({
   filesystem: Object.freeze({
     maxDirectoryEntries: 100,
     maxOpenHandles: 10,
+    maxQueuedEvents: 16,
     maxReadBytes: 1000,
     maxWatchers: 2,
     maxWriteBytes: 1000

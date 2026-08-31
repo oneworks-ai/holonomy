@@ -64,6 +64,21 @@ describe('capability operation registry v1', () => {
         member: 'exec',
         operation: 'process.shell.spawn',
         resultSchemaId: 'ChildProcessFacadeV1'
+      }),
+      expect.objectContaining({
+        member: 'getCellularState',
+        module: 'holo:device',
+        operation: 'device.connectivity.cellular.state.read'
+      }),
+      expect.objectContaining({
+        member: 'getWifiState',
+        module: 'holo:device',
+        operation: 'device.connectivity.wifi.state.read'
+      }),
+      expect.objectContaining({
+        member: 'getWifiIdentity',
+        module: 'holo:device/promises',
+        operation: 'device.connectivity.wifi.identity.read'
       })
     ]))
   })

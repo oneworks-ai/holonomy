@@ -12,7 +12,7 @@ import {
   emitNetworkDiagnostic
 } from '../../../src/index.js'
 
-import type { HostEventLoopPort, HostEventLoopTermination } from '../../../src/index.js'
+import type { HostEventLoopPort, HostEventLoopTermination, WebNetworkCapabilityHooksV1 } from '../../../src/index.js'
 import type { NetworkDiagnosticsEvent, NetworkMockRuleSet } from '../../../src/web-network/types.js'
 
 class VirtualHost implements HostEventLoopPort {
@@ -354,6 +354,74 @@ describe('network control contracts', () => {
     const forbidden = runtime.fetch('https://api.example/real')
     await flush(loop)
     await expect(forbidden).rejects.toMatchObject({ code: 'network.invalid_url' })
+    expect(real.receivedRequests).toEqual([])
+    runtime.dispose()
+  })
+
+  it('freezes one Rules revision across redirects and releases it before the next logical request', async () => {
+    const authority = {
+      allowedOrigins: ['https://api.example'],
+      limits: { maxConcurrentConnections: 1 }
+    }
+    const real = new ScriptedNetworkProvider({ authority, http: [] })
+    const oldRules = {
+      mode: 'failClosed' as const,
+      rules: [{
+        action: { headers: [['location', '/next']] as const, status: 302, type: 'respond' as const },
+        id: 'redirect',
+        match: { method: 'GET', path: { op: 'exact' as const, value: '/start' } },
+        priority: 2
+      }, {
+        action: { body: { kind: 'utf8' as const, value: 'old-revision' }, status: 200, type: 'respond' as const },
+        id: 'old-next',
+        match: { method: 'GET', path: { op: 'exact' as const, value: '/next' } },
+        priority: 1
+      }]
+    }
+    const newRules = {
+      mode: 'failClosed' as const,
+      rules: [{
+        action: { body: { kind: 'utf8' as const, value: 'new-revision' }, status: 200, type: 'respond' as const },
+        id: 'new-next',
+        match: { method: 'GET', path: { op: 'exact' as const, value: '/next' } },
+        priority: 1
+      }]
+    }
+    const router = new NetworkMockRouter({ authority, initialRules: oldRules, passthrough: real })
+    const loop = new RuntimeEventLoop(new VirtualHost())
+    const bridge = createNativeBridge(router, {
+      authority: { capabilities: ['host.network.mock'], principal: 'revision-test' },
+      eventLoop: loop
+    })
+    let nextBinding = 1
+    const capability: WebNetworkCapabilityHooksV1 = {
+      authorizeRedirect: async () => {
+        router.rules.replace(newRules)
+      },
+      authorizeRequest: async () => ({
+        bindingId: `network-response:${nextBinding++}`,
+        generation: 1,
+        resourceType: 'network.response'
+      }),
+      authorizeResponse: () => {},
+      cloneResponse: admission => admission,
+      releaseResponse: () => {}
+    }
+    const runtime = createFetchRuntime({ authority, bridge, capability })
+
+    const redirectedPending = runtime.fetch('https://api.example/start')
+    await flush(loop)
+    const redirected = await redirectedPending
+    const redirectedText = redirected.text()
+    await flush(loop)
+    await expect(redirectedText).resolves.toBe('old-revision')
+
+    const freshPending = runtime.fetch('https://api.example/next')
+    await flush(loop)
+    const fresh = await freshPending
+    const freshText = fresh.text()
+    await flush(loop)
+    await expect(freshText).resolves.toBe('new-revision')
     expect(real.receivedRequests).toEqual([])
     runtime.dispose()
   })

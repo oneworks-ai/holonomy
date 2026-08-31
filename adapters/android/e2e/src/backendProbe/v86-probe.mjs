@@ -49,7 +49,7 @@
     const state = {
       buffer: new Uint8Array(),
       environmentStartedAt: Date.now(),
-      fuse: globalThis.__holoCreateV86FuseProbe(),
+      fuse: globalThis.__holoCreateV86FuseBridge(),
       fusePid: 0,
       fuseStdout: '',
       pid: 0,
@@ -72,6 +72,7 @@
         const processId = readU32(item, 16)
         const payload = item.slice(24)
         if (operation === 5) {
+          state.readyFlags = readU32(payload, 0)
           state.bootDurationMs = Date.now() - state.environmentStartedAt
           state.workloadStartedAt = Date.now()
           send(
@@ -80,7 +81,7 @@
             0,
             spawnPayload({
               args: ['stdio-exit'],
-              executable: '/holo-selftest',
+              executable: '/usr/bin/holo-v86-selftest',
               executableId: 'android-v86-probe',
               resourceId: 'android-v86-process'
             })
@@ -104,7 +105,7 @@
               0,
               spawnPayload({
                 args: ['fuse'],
-                executable: '/holo-selftest',
+                executable: '/usr/bin/holo-v86-selftest',
                 executableId: 'android-v86-fuse',
                 resourceId: 'android-v86-fuse-process'
               })
@@ -121,6 +122,7 @@
             fuseOutput: ascii(state.fuse.readFile('/workspace/output.txt')),
             fuseProcessId: source?.processId ?? 0,
             fuseStdout: state.fuseStdout,
+            readyFlags: state.readyFlags,
             stderr: state.stderr,
             stdout: state.stdout,
             workloadDurationMs: Date.now() - state.workloadStartedAt
@@ -139,7 +141,7 @@
       autostart: true,
       bios: { buffer: globalThis.__holoV86Bios },
       bzimage: { buffer: globalThis.__holoV86Kernel },
-      cmdline: 'tsc=reliable mitigations=off random.trust_cpu=on console=ttyS0 audit=0 rdinit=/holo-supervisor',
+      cmdline: 'tsc=reliable mitigations=off random.trust_cpu=on console=ttyS0 audit=0 rdinit=/sbin/holo-uvd',
       disable_keyboard: true,
       disable_jit: true,
       disable_mouse: true,

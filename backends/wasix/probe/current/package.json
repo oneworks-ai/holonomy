@@ -1,0 +1,15 @@
+{
+  "name": "@holonomy-internal/wasix-current-backend-probe",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "probe": "node probe.mjs"
+  },
+  "dependencies": {
+    "@wasmer/sdk": "0.10.0"
+  }
+}

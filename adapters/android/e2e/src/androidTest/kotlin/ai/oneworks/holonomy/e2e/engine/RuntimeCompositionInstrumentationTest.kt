@@ -128,10 +128,7 @@ class RuntimeCompositionInstrumentationTest {
             )
             assertEquals("user/module", externalModule.getString("joined"))
             assertEquals(
-                listOf(
-                    "holonomy:///runtime/bootstrap.mjs",
-                    "fixture+device://phone/modules/entry.mjs",
-                ),
+                listOf("fixture+device://phone/modules/entry.mjs"),
                 externalReferrers,
             )
             assertRuntimeFailsWithCode(
@@ -235,6 +232,7 @@ class RuntimeCompositionInstrumentationTest {
         val manifest = JSONObject(assets.open(MANIFEST_PATH).use { it.readBytes().toString(Charsets.UTF_8) })
         assertEquals(2, manifest.getInt("schemaVersion"))
         assertTrue(manifest.getJSONArray("typescriptSources").length() > 0)
+        assertTrue(manifest.getJSONArray("moduleAliases").length() > 0)
         val entries = manifest.getJSONArray("assets")
         val expected = mutableSetOf(MANIFEST_PATH)
         val guestReadable = mutableSetOf<String>()

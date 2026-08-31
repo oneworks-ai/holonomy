@@ -8,12 +8,9 @@ import {
 } from '../../../dist/capability-runtime/index.js'
 
 import { NodeFilesystemProviderV1 } from './capability-fs-provider.mjs'
+import { NodeNetworkAuthorizationProviderV1 } from './capability-network-provider.mjs'
 import { NodeProcessProviderV1 } from './capability-process-provider.mjs'
-import {
-  assertNodeDeviceAuthorityV1,
-  assertNodeNetworkAuthorityV1,
-  assertNodeSystemAuthorityV1
-} from './capability-provider-authority.mjs'
+import { assertNodeDeviceAuthorityV1, assertNodeSystemAuthorityV1 } from './capability-provider-authority.mjs'
 
 class NodeSystemProviderV1 {
   execution = 'sync'
@@ -63,6 +60,10 @@ class NodeDeviceProviderV1 {
       const bindingId = `device-subscription-${this.#nextSubscriptionId++}`
       const listeners = new Set()
       const kinds = context.arguments.kinds
+      const maxQueuedEvents = Math.min(...authority.bindings.map(binding => binding.constraints.maxQueuedEvents))
+      if (!Number.isSafeInteger(maxQueuedEvents) || maxQueuedEvents < 1) {
+        throw new CapabilityInvocationError('capability.denied', context.operation)
+      }
       let sequence = 0
       let closed = false
       const emit = value => {
@@ -94,6 +95,7 @@ class NodeDeviceProviderV1 {
       }
       const facade = {
         binding: { bindingId, generation: context.runtime.generation },
+        maxQueuedEvents,
         resourceType: 'device.subscription',
         startSequence
       }
@@ -124,65 +126,13 @@ class NodeDeviceProviderV1 {
   }
 }
 
-class NodeNetworkAuthorizationProviderV1 {
-  execution = 'sync'
-  module
-
-  constructor(module) {
-    this.module = module
-  }
-
-  invoke(context, authority) {
-    if (context.resource.requested.kind !== 'network') {
-      throw new CapabilityInvocationError('resource.invalid', context.operation)
-    }
-    assertNodeNetworkAuthorityV1(context, authority, this.module)
-    if (context.operation === 'network.fetch.redirect') {
-      return authority.complete(trustedInvocationValueFromJsonV1({}, 'result'))
-    }
-    if (context.operation === 'network.response.metadata.read') {
-      return authority.complete(trustedInvocationValueFromJsonV1(context.providerData, 'result'))
-    }
-    if (context.operation === 'network.response.body.read') {
-      if (context.member === 'Response.clone') {
-        const bindingId = context.resource.inheritedBindingId
-        return authority.complete(trustedInvocationValueFromJsonV1({
-          binding: { bindingId, generation: context.runtime.generation },
-          resourceType: 'network.response'
-        }, 'result'))
-      }
-      const value = context.member === 'Response.json'
-        ? null
-        : context.member === 'Response.text'
-        ? ''
-        : { base64: '', byteLength: 0, sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' }
-      return authority.complete(trustedInvocationValueFromJsonV1(value, 'result'))
-    }
-    const bindingId = `network-${context.requestId}`
-    return authority.complete(
-      trustedInvocationValueFromJsonV1({
-        binding: {
-          bindingId,
-          generation: context.runtime.generation
-        },
-        resourceType: 'network.response'
-      }, 'result'),
-      [{
-        bindingId,
-        resource: context.resource.requested,
-        resourceType: 'network.response'
-      }]
-    )
-  }
-}
-
 export const createNodeCapabilityProvidersV1 = (session, generation, processBackendRegistry) => {
   const configuration = session.providerConfiguration
   return new Map([
     ['host.device', new NodeDeviceProviderV1(configuration)],
     ['host.fs', new NodeFilesystemProviderV1(configuration.filesystemRoots)],
-    ['host.network', new NodeNetworkAuthorizationProviderV1('host.network')],
-    ['host.network.mock', new NodeNetworkAuthorizationProviderV1('host.network.mock')],
+    ['host.network', new NodeNetworkAuthorizationProviderV1('host.network', generation)],
+    ['host.network.mock', new NodeNetworkAuthorizationProviderV1('host.network.mock', generation)],
     ...(configuration.processProfile == null
       ? []
       : [[

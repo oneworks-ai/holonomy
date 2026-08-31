@@ -2,8 +2,12 @@ package ai.oneworks.holonomy.capability
 
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.RandomAccessFile
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.concurrent.atomic.AtomicLong
 import org.json.JSONObject
 
@@ -15,6 +19,8 @@ internal class AndroidFilesystemProvider(
     private val workspace = workspaceDirectory.apply {
         if (!mkdirs() && !isDirectory) throw IllegalStateException("Capability workspace is unavailable")
     }.canonicalFile
+    private val resolution = AndroidFilesystemResolution(workspace)
+    private val pendingResolutions = mutableMapOf<String, AndroidFilesystemResolutionPlan>()
     private val nextBinding = AtomicLong(1)
     private val nextFd = AtomicLong(10)
     private val openHandles = mutableSetOf<String>()
@@ -24,9 +30,21 @@ internal class AndroidFilesystemProvider(
         val resource = request.getJSONObject("resource")
         require(resource.getString("kind") == "filesystem")
         val operation = request.getString("operation")
+        when (request.optString("providerPhase")) {
+            "preflight" -> return preflight(request, resource, operation)
+            "verify" -> return verify(request)
+            "cancel" -> {
+                pendingResolutions.remove(request.getString("requestId"))
+                return success(JSONObject())
+            }
+        }
         val inherited = request.optString("inheritedBindingId").ifEmpty { null }
         if (inherited != null) return invokeResource(request, operation, inherited)
-        val target = target(resource, operation)
+        if (request.optString("providerPhase") != "execute") throw ProviderFailure("provider.protocol_error")
+        val plan = pendingResolutions.remove(request.getString("requestId"))
+            ?: throw ProviderFailure("resource.stale")
+        val resolved = validateExecution(request, plan)
+        val target = resolved.first().target
         return when (operation) {
             "filesystem.file.read" -> readPath(request, target)
             "filesystem.file.write" -> writePath(request, target)
@@ -41,7 +59,7 @@ internal class AndroidFilesystemProvider(
             }
             "filesystem.directory.read" -> readdir(request, target)
             "filesystem.directory.create" -> mkdir(request, resource, target)
-            "filesystem.entry.rename" -> rename(request, resource, target)
+            "filesystem.entry.rename" -> rename(request, resource, target, resolved.getOrNull(1)?.target)
             "filesystem.entry.unlink" -> {
                 requireAuthority(request, "delete")
                 unlink(target)
@@ -50,6 +68,66 @@ internal class AndroidFilesystemProvider(
             else -> throw ProviderFailure("provider.unavailable")
         }
     }
+
+    private fun preflight(request: JSONObject, resource: JSONObject, operation: String): String {
+        val requestId = request.getString("requestId")
+        if (pendingResolutions.containsKey(requestId)) throw ProviderFailure("provider.protocol_error")
+        val symlinks = symlinkMode(request)
+        val source = resolution.request(resource.getJSONArray("pathSegments").strings(), operation, symlinks)
+        val destination = if (operation != "filesystem.entry.rename") null else resolution.request(
+            segmentsFromUrl(request.arguments().getString("to"), resource.getString("rootId")),
+            operation,
+            symlinks,
+        )
+        val plan = AndroidFilesystemResolutionPlan(listOfNotNull(source, destination))
+        pendingResolutions[requestId] = plan
+        return success(
+            JSONObject().put("requests", org.json.JSONArray(plan.requests.map { resolutionRequestJson(it.snapshot) })),
+        )
+    }
+
+    private fun verify(request: JSONObject): String {
+        val plan = pendingResolutions[request.getString("requestId")] ?: throw ProviderFailure("resource.stale")
+        val index = request.getInt("resolutionIndex")
+        val current = plan.requests.getOrNull(index)?.let(resolution::verify)
+            ?: throw ProviderFailure("provider.protocol_error")
+        return success(
+            JSONObject()
+                .put("evidence", current.evidence)
+                .put("resolvedVirtualUrl", current.resolvedVirtualUrl),
+        )
+    }
+
+    private fun validateExecution(
+        request: JSONObject,
+        plan: AndroidFilesystemResolutionPlan,
+    ): List<AndroidFilesystemResolutionSnapshot> {
+        val tokens = request.getJSONArray("resolutionTokens")
+        val resources = request.getJSONArray("resolutionResources")
+        val authorities = request.getJSONArray("resolutionAuthorityBindings")
+        if (tokens.length() != plan.requests.size || resources.length() != plan.requests.size ||
+            authorities.length() != plan.requests.size
+        ) throw ProviderFailure("provider.protocol_error")
+        return plan.requests.mapIndexed { index, resolutionRequest ->
+            val current = resolution.verify(resolutionRequest)
+            val token = tokens.getJSONObject(index)
+            val resolvedResource = resources.getJSONObject(index)
+            if (
+                token.getLong("generation") != generation ||
+                token.getString("parentRequestId") != request.getString("requestId") ||
+                token.getString("resolvedSemanticDigest") != resolvedResource.getString("semanticResourceDigest") ||
+                token.getString("evidenceDigest") != resolution.evidenceDigest(current.evidence) ||
+                current.resolvedVirtualUrl != resolvedResource.getString("virtualUrl")
+            ) throw ProviderFailure("resource.invalid")
+            current
+        }
+    }
+
+    private fun resolutionRequestJson(snapshot: AndroidFilesystemResolutionSnapshot) = JSONObject()
+        .put("evidence", snapshot.evidence)
+        .put("reason", "filesystemTarget")
+        .put("resolvedVirtualUrl", snapshot.resolvedVirtualUrl)
+        .put("sideEffectCount", 0)
 
     private fun invokeResource(request: JSONObject, operation: String, bindingId: String): String {
         if (operation == "filesystem.watch.close") {
@@ -144,8 +222,24 @@ internal class AndroidFilesystemProvider(
                 output.write(data)
                 output.fd.sync()
             }
-            if (exclusive && target.exists()) throw ProviderFailure("resource.exists")
-            if (!temporary.renameTo(target)) throw ProviderFailure("provider.unavailable")
+            try {
+                if (exclusive) {
+                    Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE)
+                } else {
+                    Files.move(
+                        temporary.toPath(),
+                        target.toPath(),
+                        StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING,
+                    )
+                }
+            } catch (_: FileAlreadyExistsException) {
+                throw ProviderFailure("resource.exists")
+            } catch (_: AtomicMoveNotSupportedException) {
+                throw ProviderFailure("provider.unavailable")
+            } catch (_: IOException) {
+                throw ProviderFailure("provider.unavailable")
+            }
         } finally {
             if (temporary.exists()) temporary.delete()
         }
@@ -193,6 +287,13 @@ internal class AndroidFilesystemProvider(
         requireAuthority(request, "create")
         val recursive = request.arguments().optJSONObject("options")?.optBoolean("recursive", false) == true
         val existed = target.exists()
+        val segments = resource.getJSONArray("pathSegments").strings()
+        var current = workspace
+        var firstMissingIndex: Int? = null
+        for ((index, segment) in segments.withIndex()) {
+            current = File(current, segment)
+            if (firstMissingIndex == null && !current.exists()) firstMissingIndex = index
+        }
         val created = if (recursive) target.mkdirs() || target.isDirectory else target.mkdir()
         if (!created) {
             if (!recursive || !target.isDirectory) throw ProviderFailure(if (existed) "resource.exists" else "resource.not_found")
@@ -200,16 +301,17 @@ internal class AndroidFilesystemProvider(
         val result = if (!recursive) JSONObject() else if (existed) {
             JSONObject().put("kind", "undefined")
         } else {
-            JSONObject().put("kind", "path").put("value", resource.getString("virtualUrl"))
+            val createdIndex = firstMissingIndex ?: throw ProviderFailure("provider.protocol_error")
+            JSONObject().put("kind", "path").put("value", virtualUrl(segments.take(createdIndex + 1)))
         }
         return success(result)
     }
 
-    private fun rename(request: JSONObject, resource: JSONObject, source: File): String {
+    private fun rename(request: JSONObject, resource: JSONObject, source: File, destination: File?): String {
         requireAuthority(request, "move")
-        val destinationUrl = request.arguments().getString("to")
-        val destination = targetFromUrl(destinationUrl, resource.getString("rootId"), "filesystem.entry.rename")
-        if (!source.renameTo(destination)) throw ProviderFailure("provider.unavailable")
+        val target = destination ?: throw ProviderFailure("provider.protocol_error")
+        requireAuthority(request, "move", request.getJSONArray("resolutionAuthorityBindings").getJSONArray(1))
+        if (!source.renameTo(target)) throw ProviderFailure("provider.unavailable")
         return success(JSONObject())
     }
 
@@ -222,6 +324,7 @@ internal class AndroidFilesystemProvider(
     private fun watch(request: JSONObject, resource: JSONObject, target: File): String {
         requireAuthority(request, "watch")
         requireWatcherCapacity(request)
+        val maxQueuedEvents = watchQueueLimit(request)
         if (!target.exists()) throw ProviderFailure("resource.not_found")
         val bindingId = "android-watch-${nextBinding.getAndIncrement()}"
         openWatchers += bindingId
@@ -232,14 +335,18 @@ internal class AndroidFilesystemProvider(
             "filesystem.watcher"
         }
         return success(
-            facade(bindingId, type),
+            facade(bindingId, type).put("maxQueuedEvents", maxQueuedEvents),
             listOf(resourcePublication(bindingId, type, "VirtualFsWatcherDeliveryV1")),
         )
     }
 
-    private fun requireAuthority(request: JSONObject, right: String) {
+    private fun requireAuthority(
+        request: JSONObject,
+        right: String,
+        bindings: org.json.JSONArray = request.getJSONArray("authorityBindings"),
+    ) {
         val resource = request.getJSONObject("resource")
-        val authorized = request.getJSONArray("authorityBindings").objects().any { binding ->
+        val authorized = bindings.objects().any { binding ->
             if (binding.getString("providerModule") != "host.fs") return@any false
             binding.getJSONObject("constraints").getJSONArray("roots").objects().any { root ->
                 root.getString("rootId") == resource.getString("rootId") &&
@@ -247,6 +354,21 @@ internal class AndroidFilesystemProvider(
             }
         }
         if (!authorized) throw ProviderFailure("capability.denied")
+    }
+
+    private fun symlinkMode(request: JSONObject): String = request.getJSONArray("authorityBindings").objects()
+        .asSequence()
+        .filter { it.getString("providerModule") == "host.fs" }
+        .flatMap { it.getJSONObject("constraints").getJSONArray("roots").objects().asSequence() }
+        .first { it.getString("rootId") == WORKSPACE_ROOT_ID }
+        .getString("symlinks")
+
+    private fun segmentsFromUrl(url: String, rootId: String): List<String> {
+        val prefix = "holo-fs://$rootId/"
+        if (rootId != WORKSPACE_ROOT_ID || !url.startsWith(prefix)) throw ProviderFailure("resource.cross_root")
+        val segments = url.removePrefix(prefix).split('/')
+        if (segments.isEmpty() || segments.any { !validSegment(it) }) throw ProviderFailure("resource.invalid")
+        return segments
     }
 
     private fun requireLimit(request: JSONObject, name: String, actual: Int) {
@@ -266,6 +388,18 @@ internal class AndroidFilesystemProvider(
         }
     }
 
+    private fun watchQueueLimit(request: JSONObject): Int {
+        val maximum = request.fsLimits().getInt("maxQueuedEvents")
+        val requested = request.arguments().optJSONObject("options")?.let { options ->
+            if (options.has("maxQueuedEvents")) options.getInt("maxQueuedEvents") else null
+        }
+        if (maximum < 1) throw ProviderFailure("resource.handle_limit")
+        if (requested != null && (requested < 1 || requested > maximum)) {
+            throw ProviderFailure("argument.invalid")
+        }
+        return requested ?: maximum
+    }
+
     private fun positioned(request: JSONObject, kind: String): PositionedFilesystemRequest? {
         val value = request.optJSONObject("providerData") ?: return null
         val keys = if (kind == "positionedRead") arrayOf("kind", "offset", "size") else arrayOf("kind", "offset")
@@ -276,35 +410,6 @@ internal class AndroidFilesystemProvider(
         val size = if (kind == "positionedRead") value.getLong("size") else null
         if (size != null && (size < 0 || size > Int.MAX_VALUE)) throw ProviderFailure("argument.invalid")
         return PositionedFilesystemRequest(offset, size?.toInt())
-    }
-
-    private fun target(resource: JSONObject, operation: String): File {
-        require(resource.getString("rootId") == WORKSPACE_ROOT_ID)
-        val segments = resource.getJSONArray("pathSegments").strings()
-        require(resource.getString("virtualUrl") == virtualUrl(segments))
-        return targetFromSegments(segments, operation)
-    }
-
-    private fun targetFromUrl(url: String, rootId: String, operation: String): File {
-        val prefix = "holo-fs://$rootId/"
-        if (rootId != WORKSPACE_ROOT_ID || !url.startsWith(prefix)) throw ProviderFailure("resource.cross_root")
-        return targetFromSegments(url.removePrefix(prefix).split('/'), operation)
-    }
-
-    private fun targetFromSegments(segments: List<String>, operation: String): File {
-        if (segments.isEmpty() || segments.any { segment -> !validSegment(segment) }) {
-            throw ProviderFailure("resource.invalid")
-        }
-        var current = workspace
-        for (segment in segments) {
-            current = File(current, segment)
-            if (Files.isSymbolicLink(current.toPath())) throw ProviderFailure("resource.cross_root")
-        }
-        val canonical = current.canonicalFile
-        if (canonical != workspace && !canonical.path.startsWith("${workspace.path}${File.separator}")) {
-            throw ProviderFailure("resource.cross_root")
-        }
-        return canonical
     }
 
     private fun stat(file: File, followLinks: Boolean): JSONObject {
@@ -350,3 +455,4 @@ internal class AndroidFilesystemProvider(
 }
 
 private data class PositionedFilesystemRequest(val offset: Long, val size: Int?)
+private data class AndroidFilesystemResolutionPlan(val requests: List<AndroidFilesystemResolutionRequest>)

@@ -46,6 +46,7 @@ type HoloDeviceEventV1 =
 
 interface DeviceSubscriptionV1 extends AsyncIterable<HoloDeviceEventV1> {
   readonly generation: number
+  readonly maxQueuedEvents: number
   readonly startSequence: number
   acknowledgeResync(
     revisions: Readonly<Partial<Record<DeviceEventKindV1, number>>>
@@ -60,8 +61,8 @@ resync getter映射固定为：connectivity→`getConnectivity/device.connectivi
 
 sequence 在generation内从1开始严格递增；category-local revision只取`reading.revision`，event envelope不复制第二份revision。`observedAt`使用Runtime单调时钟毫秒。重复/倒序event被丢弃并计入诊断。
 
-队列溢出发布一个合并 overflow，`requiredRevisions` 精确列出受影响 kind 及必须达到的 revision。订阅暂停这些 kind 并只保留每个 kind 最新 reading；其他 kind 可以继续交付。消费者必须调用对应独立 getter（不是 Tier 1 summary），重新经过该 operation 的 Policy/Middleware，然后以实际 reading revisions 调用 `acknowledgeResync()`。所有 revision 达标后，Provider 丢弃不新的 coalesced reading，再按 revision/sequence 发布剩余 change；状态不会倒退。Policy/Middleware 拒绝不会扩大权限，消费者只能稍后重试或关闭订阅。
+generation-bound Runtime Subscription Resource拥有消费队列；Host Provider只发布经过Schema验证的baseline/live reading，不观察Guest消费速度。队列溢出时Resource用一个合并overflow替换尚未消费的reading，`requiredRevisions`精确列出受影响kind及必须达到的revision，并只保留每个kind最新reading；其他kind仍可继续交付。消费者必须调用对应独立getter（不是Tier 1 summary），重新经过该operation的Policy/Middleware，然后以实际reading revisions调用`acknowledgeResync()`。所有revision达标后，Resource丢弃不新的coalesced reading，再按kind稳定排序分配新的sequence并发布剩余change；状态不会倒退。错误、缺失或未来revision以`holo.invalid_arguments`拒绝。Policy/Middleware拒绝不会扩大权限，消费者只能稍后重试或关闭订阅。
 
-`maxQueuedEvents` 只能收紧 Policy hard cap。close、Runtime stop、restart 与 Provider revoke 共享 exactly-once terminal；旧 generation cursor 不可续传。订阅事件只包含对应 discriminated reading，不携带 SSID/BSSID、SIM、原始传感器样本或平台 callback object。
+`maxQueuedEvents`省略时取`DeviceSandboxV2.maxQueuedEvents`，显式值只能收紧该hard cap；有效值由Provider写入受校验的`DeviceSubscriptionV1` facade，Resource不得采用环境默认值。close、Runtime stop、restart与Provider revoke共享exactly-once terminal；旧generation cursor不可续传。订阅事件只包含对应discriminated reading，不携带SSID/BSSID、SIM、原始传感器样本或平台callback object。
 
 固定测试覆盖 connectivity+thermal 同时溢出、permissionDenied/Host 撤销、resync 中新事件、错误/未来 revision ack、原子 baseline/live、restart cursor 和 Tier 2 不能通过 summary 恢复。

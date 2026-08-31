@@ -14,6 +14,7 @@ interface CanonicalResourceBaseV1 {
     | 'opaqueHandle'
     | 'processExecutable'
     | 'processInstance'
+    | 'processNetworkEndpoint'
     | 'systemField'
   readonly semanticId: string
   readonly semanticResourceDigest: string
@@ -54,6 +55,13 @@ interface OpaqueHandleResourceV1 extends CanonicalResourceBaseV1 {
   readonly rightsDigest: string
 }
 
+interface ProcessNetworkEndpointResourceV1 extends CanonicalResourceBaseV1 {
+  readonly kind: 'processNetworkEndpoint'
+  readonly hostname: string
+  readonly port: number
+  readonly transport: 'tcp' | 'tls' | 'udp'
+}
+
 type CanonicalResourceV1 =
   | FilesystemResourceV1
   | NetworkResourceV1
@@ -61,6 +69,7 @@ type CanonicalResourceV1 =
   | OpaqueHandleResourceV1
   | ProcessExecutableResourceV1
   | ProcessInstanceResourceV1
+  | ProcessNetworkEndpointResourceV1
   | SystemInformationFieldResourceV1
 
 interface ResourceCanonicalizerV1<Args> {
@@ -90,9 +99,10 @@ canonical formula 使用带type tag、UTF-8和lexicographic object-key order的c
 - FS=`['filesystem',rootId,pathSegments]`；Network=`['network',method,origin,pathname,queryDigest|null]`；Device=`['deviceField',operation,field,privacyTier]`；Handle=`['opaqueHandle',resourceType,generation,rightsDigest,bridgeIdentityDigest]`。
 - Process program executable=`['processExecutable','program',executableId,argvDigest,cwdSemanticResourceDigest|null,environmentScope,environmentNamesDigest,stdioDigest]`；shell executable=`['processExecutable','shell',shellExecutableId,commandDigest,cwdSemanticResourceDigest|null,environmentScope,environmentNamesDigest,stdioDigest]`。`argvDigest`覆盖有序argv snapshot；`commandDigest`覆盖exact frozen command UTF-8 bytes，不做token猜测或shell重解析；`environmentScope`是Host profile准入后的`runtime|processTree`；environment names按UTF-8排序后摘要，不含value；stdio按有序`pipe|ignore`数组摘要。两种type tag及不同environment scope不可互换或meet。
 - Process instance=`['processInstance',executableSemanticResourceDigest,processResourceId,generation]`。`processResourceId`是Kernel生成的有界opaque ID，不是PID；`generation`与parent executable digest防止旧resource复用。
+- Process network endpoint=`['processNetworkEndpoint',transport,hostname,port]`；hostname是lowercase canonical DNS name或canonical IP literal，port为1..65535，transport来自`tcp|tls|udp`闭集。DNS地址不进入semantic resource，只进入resolution evidence。
 - System field=`['systemField',field]`；field 必须来自 `SystemInformationFieldV1` closed union。
 
-`semanticId`分别是`holo-fs:<root>/<segments>`、canonical network request label、device operation/field、opaque type/id、`process-executable:<executableId>:<digest-prefix>`或`process-instance:<opaque-id>:<generation>`；它是有界可读编码，不能替代digest比较。Process invocation binding另外覆盖processId、Runtime generation、operation、requestId、selected capability/authority/policy digests；Provider token提交完全相同的binding，不接收Guest PID或命令字符串作为授权依据。
+`semanticId`分别是`holo-fs:<root>/<segments>`、canonical network request label、device operation/field、opaque type/id、`process-executable:<executableId>:<digest-prefix>`、`process-instance:<opaque-id>:<generation>`或`process-network:<transport>:<hostname>:<port>`；它是有界可读编码，不能替代digest比较。Process invocation binding另外覆盖processId、Runtime generation、operation、requestId、selected capability/authority/policy digests；Provider token提交完全相同的binding，不接收Guest PID或命令字符串作为授权依据。
 
 ## B.2 Canonicalization
 

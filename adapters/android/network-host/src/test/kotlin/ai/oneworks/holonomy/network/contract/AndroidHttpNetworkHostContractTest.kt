@@ -94,4 +94,55 @@ class AndroidHttpNetworkHostContractTest {
         assertTrue(harness.connectionTargets.single().address.contentEquals(InetAddress.getByName("8.8.8.8").address))
         harness.host.close()
     }
+
+    @Test
+    fun `capability binding supplies the exact admitted address without ambient DNS`() {
+        var now = 1_000L
+        var capabilityLookups = 0
+        val configuration = AndroidNetworkHostConfiguration(
+            principal = "test-principal",
+            allowedOrigins = setOf("http://example.test"),
+            privateNetwork = PrivateNetworkPolicy.DENY,
+            limits = AndroidNetworkLimits(maxChunkBytes = 4),
+        )
+        val authority = AndroidCapabilityNetworkAuthority(
+            configuration = configuration,
+            generation = 7,
+            clock = { now },
+            lookup = {
+                capabilityLookups += 1
+                listOf(InetAddress.getByName("8.8.4.4"))
+            },
+        )
+        val evidence = authority.preflight("http://example.test", 250.0)
+        authority.bind("binding-1", evidence)
+        val harness = NetworkHostHarness(
+            addressResolver = ImmediateResolver { error("ambient DNS must not run") },
+            capabilityAuthority = authority,
+            connection = FakeNetworkConnection(),
+            generation = AndroidNetworkProviderGeneration("capability-network", 7),
+            privateNetwork = PrivateNetworkPolicy.DENY,
+        )
+
+        val resource = harness.openResource("binding-1")
+        harness.resourceCall("open", resource, NetworkV1.OPEN_BODY)
+        val finish = harness.resourceCall("finish", resource, NetworkV1.FINISH_BODY)
+
+        assertEquals("result", finish.single().type())
+        assertEquals(1, capabilityLookups)
+        assertEquals(0, harness.resolveCalls)
+        assertTrue(harness.connectionTargets.single().address.contentEquals(InetAddress.getByName("8.8.4.4").address))
+        authority.cloneBinding("binding-1", "binding-2")
+        authority.release("binding-1")
+        assertTrue(runCatching { authority.resolve("binding-1", configuration.authorizeUrl("http://example.test/")) }.isFailure)
+        assertEquals(
+            1,
+            authority.resolve("binding-2", configuration.authorizeUrl("http://example.test/")).size,
+        )
+        authority.release("binding-2")
+        assertTrue(runCatching { authority.resolve("binding-2", configuration.authorizeUrl("http://example.test/")) }.isFailure)
+        now += 30_001
+        harness.host.close()
+        authority.close()
+    }
 }

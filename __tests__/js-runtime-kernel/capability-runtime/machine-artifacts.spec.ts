@@ -38,7 +38,7 @@ import {
   validateOperationRegistryV1
 } from '../../../src/capability-runtime/index.js'
 
-const machineRoot = resolve(process.cwd(), 'src/capability-runtime/machine')
+const machineRoot = resolve(process.cwd(), 'packages/runtime/src/kernel/machine')
 const json = <T>(name: string): T => JSON.parse(readFileSync(resolve(machineRoot, name), 'utf8')) as T
 const validates = (schema: object, value: unknown) => {
   const validate = new Ajv2020({ strict: true }).compile(schema)

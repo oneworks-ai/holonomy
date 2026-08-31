@@ -1,13 +1,17 @@
+/* eslint-disable max-lines -- The complete admitted Runtime fixture is intentionally reviewed as one transaction. */
 import { DEFAULT_SANDBOX_POLICY_V2 } from 'holonomy/capability-runtime'
 import { createNodeModuleLaunchV1 } from '../src/capability-session.mjs'
 import { deviceOperations, reading } from './capability-runtime-device-fixture.mjs'
 import { sandboxLimits, sandboxSession } from './sandbox-fixture.mjs'
 
 export const capabilityRuntimeSession = ({
+  additionalUserModules = [],
   behavior = 'allow',
   deviceTarget = 'node',
   entryUrl,
+  filesystemSymlinks = 'deny',
   hostPath,
+  middlewareMatcher,
   moduleRootUrl,
   network,
   processBackendInstallation,
@@ -15,9 +19,11 @@ export const capabilityRuntimeSession = ({
   processMounts = [],
   processNetwork = { access: 'none' },
   processProfile,
-  source
+  source,
+  systemInformation,
+  systemProjection
 }) => {
-  const userModules = [{ source, url: entryUrl }]
+  const userModules = [{ source, url: entryUrl }, ...additionalUserModules]
   const ownerId = 'node-host'
   const provider = module => ({
     module,
@@ -32,6 +38,7 @@ export const capabilityRuntimeSession = ({
     limits: {
       maxDirectoryEntries: 32,
       maxOpenHandles: 8,
+      maxQueuedEvents: 8,
       maxReadBytes: 4096,
       maxWatchers: 2,
       maxWriteBytes: 4096
@@ -39,22 +46,29 @@ export const capabilityRuntimeSession = ({
     roots: [{
       rights: ['create', 'delete', 'list', 'move', 'read', 'watch', 'write'],
       rootId: 'workspace',
-      symlinks: 'deny',
+      symlinks: filesystemSymlinks,
       virtualUrl: 'holo-fs://workspace/'
     }]
   }
   policy.device = {
     defaultAccess: 'deny',
     maxEventsPerSecond: 16,
+    maxQueuedEvents: 8,
     maxSubscriptions: 2,
     operations: {
-      'device.events.subscribe': { access: 'allow', maxPrecision: 'standard', maxPrivacyTier: 1 },
       'device.form-factor.read': { access: 'allow', maxPrecision: 'standard', maxPrivacyTier: 0 },
       'device.lifecycle.read': { access: 'allow', maxPrecision: 'standard', maxPrivacyTier: 1 },
-      'device.summary.read': { access: 'allow', maxPrecision: 'standard', maxPrivacyTier: 1 }
+      'device.summary.read': { access: 'allow', maxPrecision: 'standard', maxPrivacyTier: 1 },
+      ...(deviceTarget === 'desktop'
+        ? {
+          'device.display.read': { access: 'allow', maxPrecision: 'standard', maxPrivacyTier: 1 },
+          'device.events.subscribe': { access: 'allow', maxPrecision: 'standard', maxPrivacyTier: 1 },
+          'device.input.read': { access: 'allow', maxPrecision: 'standard', maxPrivacyTier: 1 }
+        }
+        : {})
     }
   }
-  policy.systemInformation = {
+  policy.systemInformation = systemInformation ?? {
     defaultMode: 'unavailable',
     fields: { 'os.arch': { allowedModes: ['synthetic'], maxPrecision: 'exact' } }
   }
@@ -70,7 +84,7 @@ export const capabilityRuntimeSession = ({
         maxConcurrentProcesses: 4,
         maxExecutionTimeMs: 5000,
         maxOpenPipes: 12,
-        maxProcessTreeDepth: 1,
+        maxProcessTreeDepth: 2,
         maxStderrBytes: 64 * 1024,
         maxStdinBytes: 64 * 1024,
         maxStdoutBytes: 64 * 1024,
@@ -108,27 +122,56 @@ export const capabilityRuntimeSession = ({
       }),
       networkRules: network.rules
     }
+  const display = reading({
+    hdr: 'unknown',
+    heightCssPx: 900,
+    orientation: 'landscape',
+    scale: 1,
+    wideColor: 'unknown',
+    widthCssPx: 1440
+  })
+  const formFactor = reading(deviceTarget === 'desktop' ? 'desktop' : 'server')
+  const input = reading({
+    hover: true,
+    keyboard: true,
+    maxTouchPoints: 0,
+    mouse: true,
+    pointer: 'fine',
+    touch: false
+  })
+  const lifecycle = reading({
+    interactive: true,
+    memoryPressure: 'normal',
+    visibility: 'foreground'
+  })
+  const unsupported = { observedAt: 100, precision: 'none', revision: 1, status: 'unsupported' }
   return {
     ...legacyNetwork,
     capabilityRuntime: {
-      initialMiddleware: { behavior, ...(behavior === 'timeout' ? { timeoutMs: 10 } : {}) },
+      initialMiddleware: {
+        behavior,
+        ...(behavior === 'timeout' ? { timeoutMs: 10 } : {}),
+        ...(middlewareMatcher == null ? {} : { matcher: middlewareMatcher })
+      },
       ownerId,
       processId: 'process-capability-e2e',
       providerConfiguration: {
         deviceReadings: {
-          'device.form-factor.read': reading('desktop'),
-          'device.lifecycle.read': reading({
-            interactive: true,
-            memoryPressure: 'normal',
-            visibility: 'foreground'
-          })
+          'device.form-factor.read': formFactor,
+          'device.lifecycle.read': lifecycle,
+          ...(deviceTarget === 'desktop'
+            ? {
+              'device.display.read': display,
+              'device.input.read': input
+            }
+            : {})
         },
         deviceSummary: {
-          display: { observedAt: 100, precision: 'none', revision: 1, status: 'unsupported' },
-          formFactor: reading('desktop'),
-          input: { observedAt: 100, precision: 'none', revision: 1, status: 'unsupported' },
-          lifecycle: reading({ interactive: true, memoryPressure: 'normal', visibility: 'foreground' }),
-          power: { observedAt: 100, precision: 'none', revision: 1, status: 'unsupported' },
+          display: deviceTarget === 'desktop' ? display : unsupported,
+          formFactor,
+          input: deviceTarget === 'desktop' ? input : unsupported,
+          lifecycle,
+          power: unsupported,
           schemaVersion: 1
         },
         filesystemRoots: [{ hostPath, rootId: 'workspace' }],
@@ -154,7 +197,7 @@ export const capabilityRuntimeSession = ({
           launch,
           sandboxPolicy: policy,
           schemaVersion: 1,
-          systemProjection: {
+          systemProjection: systemProjection ?? {
             fields: { 'os.arch': { mode: 'synthetic', precision: 'exact', value: 'arm64' } },
             schemaVersion: 1
           }

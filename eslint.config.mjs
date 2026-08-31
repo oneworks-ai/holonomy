@@ -24,7 +24,8 @@ export default config(
       '**/*.d.ts',
       'dist/**',
       'coverage/**',
-      'src/capability-runtime/machine/*.json'
+      'backends/v86/images/*-lock-v1.json',
+      'packages/runtime/src/kernel/machine/*.json'
     ],
     stylistic: false,
     rules: {
@@ -56,6 +57,24 @@ export default config(
       overrides: {
         'test/consistent-test-it': 'off'
       }
+    }
+  },
+  {
+    files: ['backends/v86/images/*.mjs'],
+    rules: {
+      'antfu/no-top-level-await': 'off',
+      'no-console': 'off'
+    }
+  },
+  {
+    files: [
+      'adapters/android/process-backend-v86/src/main/backend/*.mjs',
+      'adapters/node/src/capability-process-v86-environment.mjs',
+      'adapters/node/src/capability-process-v86-fuse.mjs',
+      'packages/holouv/src/supervisor-payload.ts'
+    ],
+    rules: {
+      'max-lines': maxLinesTestRule
     }
   },
   {

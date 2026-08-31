@@ -1,0 +1,23 @@
+{
+  "name": "@holonomyjs/capability-system",
+  "type": "module",
+  "version": "1.0.0-rc.3",
+  "description": "Holonomy host system capability",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "__oneworks__": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./*": {
+      "__oneworks__": "./src/*.ts",
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
+    }
+  },
+  "files": ["dist", "src/**/*.ts"],
+  "peerDependencies": {
+    "@holonomyjs/runtime": "1.0.0-rc.3"
+  }
+}

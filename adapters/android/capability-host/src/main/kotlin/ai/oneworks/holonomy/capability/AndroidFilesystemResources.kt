@@ -27,6 +27,7 @@ internal class AndroidFileWatcherResource(
 ) : EventCapabilityResource() {
     private val observer = object : FileObserver(target.absolutePath, ALL_EVENTS) {
         override fun onEvent(event: Int, path: String?) {
+            if (path?.startsWith(INTERNAL_TEMPORARY_PREFIX) == true) return
             val kind = when (event and ALL_EVENTS) {
                 MODIFY, ATTRIB, CLOSE_WRITE -> "change"
                 CREATE, DELETE, DELETE_SELF, MOVED_FROM, MOVED_TO, MOVE_SELF -> "rename"
@@ -48,5 +49,9 @@ internal class AndroidFileWatcherResource(
     override fun closeResource() {
         observer.stopWatching()
         onClose()
+    }
+
+    private companion object {
+        private const val INTERNAL_TEMPORARY_PREFIX = ".holonomy-"
     }
 }

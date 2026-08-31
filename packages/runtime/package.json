@@ -1,0 +1,44 @@
+{
+  "name": "@holonomyjs/runtime",
+  "type": "module",
+  "version": "1.0.0-rc.3",
+  "description": "Holonomy runtime kernel and Cordis application",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "__oneworks__": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./app": {
+      "__oneworks__": "./src/app/index.ts",
+      "types": "./dist/app/index.d.ts",
+      "default": "./dist/app/index.js"
+    },
+    "./kernel": {
+      "__oneworks__": "./src/kernel/index.ts",
+      "types": "./dist/kernel/index.d.ts",
+      "default": "./dist/kernel/index.js"
+    },
+    "./*": {
+      "__oneworks__": "./src/*.ts",
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src/**/*.ts",
+    "src/kernel/machine/*.json"
+  ],
+  "dependencies": {
+    "@holonomyjs/capability-device": "1.0.0-rc.3",
+    "@holonomyjs/capability-fs": "1.0.0-rc.3",
+    "@holonomyjs/capability-network": "1.0.0-rc.3",
+    "@holonomyjs/capability-process": "1.0.0-rc.3",
+    "@holonomyjs/capability-system": "1.0.0-rc.3",
+    "acorn": "^8.18.0",
+    "ajv": "^8.20.0",
+    "cordis": "4.0.0-rc.8"
+  }
+}

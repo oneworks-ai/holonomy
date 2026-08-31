@@ -2,7 +2,7 @@
 
 [简体中文](../../reference/sandbox-policy.md)
 
-SandboxPolicy v1 is the immutable boundary for the general CLI/Service network sandbox. The Capability Runtime `kernel-slice` additionally accepts SandboxPolicy v2, submitted atomically through `ProcessStartRequest.capabilityRuntime`; `/openapi.json` remains authoritative for the exact request schema.
+SandboxPolicy v1 is the immutable boundary for the general CLI/Service network sandbox. Capability Runtime `provider-v1` additionally accepts SandboxPolicy v2, submitted atomically through `ProcessStartRequest.capabilityRuntime`; `/openapi.json` remains authoritative for the exact request schema.
 
 ## Minimum policy
 
@@ -46,6 +46,6 @@ SandboxPolicy v1 is the immutable boundary for the general CLI/Service network s
 - `allowPrivateNetwork=false` rejects loopback, link-local, and private addresses.
 - Every limit has a Service hard cap. Guest code can reduce a limit but cannot enlarge it.
 - `mockOnly` uses the same authority fields, but requires a `failClosed` rule set and forbids passthrough.
-- The ordinary v1 launch path returns `sandbox.capability_unsupported` for `filesystem=sandboxed`. The v2 Capability Runtime exposes only a controlled `holo-fs://workspace/` read/write slice, not the complete production filesystem v1.
+- The ordinary v1 launch path returns `sandbox.capability_unsupported` for `filesystem=sandboxed`. Capability Runtime v2 `provider-v1` exposes the Appendix H path, handle, directory, atomic-write, and watch surface inside Host-configured `holo-fs://` virtual roots.
 
 The Service computes a canonical policy digest. During staging, a fixture's exact loopback origin is frozen into the effective policy. The public Process DTO shows only `pending` before completion and exposes the effective policy and digest only after finalization.

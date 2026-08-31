@@ -1,6 +1,8 @@
 # Android Adapter Tests
 
-Android contains two native adapter responsibilities. `host-core` and `v8-host` form the native engine host: they own the runtime thread, engine construction, generation-bound NativePort transport, Inspector transport and teardown. `network-host` is a native capability provider: it owns authorization, DNS, sockets/TLS, HTTP transport bytes, native cancellation and resource cleanup. Neither side owns public JavaScript Fetch, timer or filesystem semantics.
+Android contains three native adapter responsibilities. `host-core` and `v8-host` form the native engine host: they own the runtime thread, engine construction, generation-bound NativePort transport, Inspector transport and teardown. `network-host` and `capability-host` execute admitted Host capabilities. Optional Backend modules such as `process-backend-v86` compose with those hosts without becoming ambient defaults; v86 owns its trusted V8/Linux VM, digest-bound assets and generation teardown. None of these modules owns public JavaScript Fetch, timer, filesystem or `node:child_process` semantics.
+
+Android instrumentation may verify APK packaging, engine/native transport, Backend assets, generation restart and teardown. Public JavaScript API behavior must execute as a shared JavaScript conformance case; Kotlin only starts the Runtime and checks its test-runner terminal summary.
 
 ## Test topology
 
@@ -13,6 +15,7 @@ Android contains two native adapter responsibilities. `host-core` and `v8-host` 
 - `network-host/src/test/.../transport/`: pinned DNS/socket/TLS/HTTP framing and byte transport.
 - `network-host/src/test/.../lifecycle/`: cancellation, deadlines, watchdogs, close/dispose and late-event races.
 - `network-host/src/test/.../security/`: private-network policy, managed inputs and bounded quotas.
+- `process-backend-v86/`: optional production v86/Linux Process Provider, Host bridge and asset packager; keep direct VM probes in `e2e/`, not production implementation classes.
 - A module-local `support/` may hold a single shared deterministic seam. Do not copy large harnesses across responsibility directories.
 
 `e2e/src/androidTest/` is Adapter instrumentation. `engine/` proves the real Android engine composition, `engine/transport/` proves NativePort transport, `engine/inspector/` proves the real Inspector socket, and `session/lifecycle/` or `session/security/` proves Android session boundaries. These cases do not start through `holonomy run` or `holonomy test`, so they are not developer CLI E2E and do not count toward common conformance coverage.
