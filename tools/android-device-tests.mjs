@@ -18,12 +18,13 @@ function fail(message) {
 }
 
 function parseArgs(args) {
-  const options = { allDevices: false, physicalOnly: false, serials: [] }
+  const options = { allDevices: false, physicalOnly: false, requireV86: false, serials: [] }
   while (args.length > 0) {
     const argument = args.shift()
     if (argument === '--serial') options.serials.push(args.shift())
     else if (argument === '--all-devices') options.allDevices = true
     else if (argument === '--physical-only') options.physicalOnly = true
+    else if (argument === '--require-v86') options.requireV86 = true
     else fail(`Unknown option: ${argument}`)
   }
   if (options.allDevices && options.serials.length > 0) fail('Use either --all-devices or --serial, not both')
@@ -36,11 +37,22 @@ function deviceKind(adb, serial) {
     : 'physical'
 }
 
-function executeDeviceSuite(adb, serial) {
+function executeDeviceSuite(adb, serial, requireV86) {
   const startedAt = Date.now()
   const result = spawnSync(
     './gradlew',
-    ['--no-daemon', ':e2e:connectedDebugAndroidTest'],
+    [
+      '--no-daemon',
+      ':e2e:connectedDebugAndroidTest',
+      ...(requireV86
+        ? [
+          '-Pandroid.testInstrumentationRunnerArguments.holonomyRequireV86=true',
+          '-Pandroid.testInstrumentationRunnerArguments.class=' +
+          'ai.oneworks.holonomy.e2e.session.capability.' +
+          'CapabilityRuntimeKernelInstrumentationTest#publicV86ChildProcessEventsReachGuestFacade'
+        ]
+        : [])
+    ],
     {
       cwd: androidRoot,
       encoding: 'utf8',
@@ -66,7 +78,7 @@ let serials = options.allDevices
 if (options.physicalOnly) serials = serials.filter(serial => deviceKind(adb, serial) === 'physical')
 if (serials.length === 0) fail('No matching online Android devices were found')
 
-const results = serials.map(serial => executeDeviceSuite(adb, serial))
+const results = serials.map(serial => executeDeviceSuite(adb, serial, options.requireV86))
 const report = {
   passed: results.every(result => result.passed),
   results

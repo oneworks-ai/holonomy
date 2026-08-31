@@ -24,6 +24,7 @@ export class NodeV86ProcessExecutionBrokerV1 {
     }
     return this.#authorize.authorize(Object.freeze({
       argv: input.argv,
+      callerExecutableId: input.callerExecutableId,
       cwd: input.cwd,
       environmentId: input.environmentId,
       executableId: executable.executableId,
@@ -33,6 +34,7 @@ export class NodeV86ProcessExecutionBrokerV1 {
       policy: input.policy,
       processId: input.processId,
       processResourceId: input.processResourceId,
+      processStartTimeTicks: input.processStartTimeTicks,
       rootLinuxPid: input.rootLinuxPid,
       scope: input.scope
     }))

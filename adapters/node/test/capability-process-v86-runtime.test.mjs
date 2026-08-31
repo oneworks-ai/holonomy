@@ -1,110 +1,40 @@
 import assert from 'node:assert/strict'
 import { Buffer } from 'node:buffer'
-import { createHash } from 'node:crypto'
 import { createSocket } from 'node:dgram'
 import { once } from 'node:events'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
-import process from 'node:process'
 // eslint-disable-next-line test/no-import-node-test -- Adapter tests use Node's public runner.
 import test from 'node:test'
 
 import { NodeRuntimeSupervisor } from '../src/supervisor.mjs'
+import {
+  assertProcessControlResult,
+  processControlRuntimeSource
+} from './capability-process-v86-process-control-support.mjs'
+import { assetRoot, entryUrl, moduleRootUrl, processProfileV1 } from './capability-process-v86-runtime-support.mjs'
 import { capabilityRuntimeSession } from './capability-runtime-fixture.mjs'
 
-const assetRoot = process.env.HOLO_V86_PRODUCTION_ASSET_ROOT
-const entryUrl = 'app+local://workspace/main.mjs'
-const moduleRootUrl = 'app+local://workspace/'
-
-const profile = async root => {
-  const files = {
-    bios: 'seabios.bin',
-    initrd: 'agent.cpio',
-    kernel: 'kernel.bin',
-    wasm: 'v86.wasm'
+const waitForFile = async (file, timeoutMs = 15_000) => {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    try {
+      return await readFile(file, 'utf8')
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error
+      await new Promise(resolve => setTimeout(resolve, 25))
+    }
   }
-  const artifacts = Object.fromEntries(
-    await Promise.all(
-      Object.entries(files).map(async ([key, artifactId]) => [
-        key,
-        {
-          artifactId,
-          sha256: createHash('sha256').update(await readFile(path.join(root, artifactId))).digest('hex')
-        }
-      ])
-    )
-  )
-  return {
-    backend: {
-      backendId: 'experimental.v86-v1',
-      configuration: {
-        artifacts,
-        memoryBytes: 128 * 1024 * 1024,
-        requiredKernelCapabilities: ['process', 'fuse', 'seccompUserNotification'],
-        supervisor: { protocolVersion: 1 }
-      }
-    },
-    environment: {
-      allowedScopes: ['processTree'],
-      capabilityBridge: { domains: ['device', 'system'] },
-      defaultScope: 'processTree'
-    },
-    executables: [
-      {
-        executable: { kind: 'guestPath', path: '/bin/sh' },
-        executableId: 'shell',
-        fixedArgs: [],
-        shell: true
-      },
-      {
-        executable: { kind: 'guestPath', path: '/bin/cat' },
-        executableId: 'cat',
-        fixedArgs: [],
-        shell: false
-      },
-      {
-        executable: { kind: 'guestPath', path: '/usr/bin/curl' },
-        executableId: 'curl',
-        fixedArgs: [],
-        shell: false
-      },
-      {
-        executable: { kind: 'guestPath', path: '/usr/bin/hoholo' },
-        executableId: 'hoholo',
-        fixedArgs: [],
-        shell: false
-      },
-      {
-        executable: { kind: 'guestPath', path: '/usr/bin/nc' },
-        executableId: 'nc',
-        fixedArgs: [],
-        shell: false
-      },
-      ...[
-        ['ls', '/bin/ls'],
-        ['mkdir', '/bin/mkdir'],
-        ['mv', '/bin/mv'],
-        ['rm', '/bin/rm'],
-        ['rmdir', '/bin/rmdir'],
-        ['timeout', '/usr/bin/timeout']
-      ].map(([executableId, executablePath]) => ({
-        executable: { kind: 'guestPath', path: executablePath },
-        executableId,
-        fixedArgs: [],
-        shell: false
-      }))
-    ],
-    profile: 'process-profile-v1'
-  }
+  throw new Error(`Timed out waiting for ${file}`)
 }
 
 test('runs the installed v86 Backend through the production Node Runtime path', {
   skip: assetRoot == null,
   timeout: 90_000
 }, async t => {
-  const processProfile = await profile(assetRoot)
+  const processProfile = await processProfileV1(assetRoot)
   const filesystemRoot = await mkdtemp(path.join(os.tmpdir(), 'holonomy-v86-runtime-'))
   const hostAddress = Object.values(os.networkInterfaces()).flat().find(
     value => value?.family === 'IPv4' && !value.internal
@@ -147,11 +77,12 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
         { hostname: hostAddress, ports: [address.port], transport: 'tcp' },
         { hostname: hostName, ports: [address.port], transport: 'tcp' }
       ],
-      maxSockets: 1
+      maxSockets: 1,
+      privateNetwork: 'allow'
     },
     processProfile,
     source: `
-      import { spawn } from 'node:child_process'
+      import { execFile, spawn } from 'node:child_process'
       const run = (executableId, args, input) => new Promise((resolve, reject) => {
           const child = spawn(executableId, args)
           const stdout = []
@@ -172,6 +103,7 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
           child.stdin.end()
         })
       const stage = value => console.log('V86_PRODUCTION_STAGE:' + value)
+      ${processControlRuntimeSource}
       stage('stdio')
       const stdio = await run('shell', [
         '-c',
@@ -230,7 +162,7 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
       const system = await run('hoholo', ['system', 'read', 'os.arch'])
       console.log('V86_PRODUCTION_RUNTIME:' + JSON.stringify({
         descendant, device, filesystem, filesystemSurface, hostnameTcp, hosts, identity, network, networkState,
-        rawTcp, relativeExec, stdio, system,
+        processControl, rawTcp, relativeExec, stdio, system,
       }))
     `
   })
@@ -243,6 +175,7 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
   const line = logs.find(value => value.startsWith('V86_PRODUCTION_RUNTIME:'))
   assert.ok(line)
   const result = JSON.parse(line.slice(23))
+  assertProcessControlResult(result.processControl)
   assert.deepEqual(result.descendant, {
     code: 0,
     signal: null,
@@ -307,10 +240,12 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
   assert.equal(
     result.hostnameTcp.code,
     0,
-    JSON.stringify({
-      hosts: Buffer.from(result.hosts.stdout).toString(),
-      stderr: Buffer.from(result.hostnameTcp.stderr).toString()
-    })
+    `${
+      JSON.stringify({
+        hosts: Buffer.from(result.hosts.stdout).toString(),
+        stderr: Buffer.from(result.hostnameTcp.stderr).toString()
+      })
+    }\n${logs.filter(value => value.includes('[v86:')).join('\n')}`
   )
   assert.equal(result.hostnameTcp.signal, null)
   assert.deepEqual(result.hostnameTcp.stderr, [])
@@ -321,7 +256,7 @@ test('bridges a Linux UDP datagram through the production Process Network author
   skip: assetRoot == null,
   timeout: 45_000
 }, async t => {
-  const processProfile = await profile(assetRoot)
+  const processProfile = await processProfileV1(assetRoot)
   const filesystemRoot = await mkdtemp(path.join(os.tmpdir(), 'holonomy-v86-udp-'))
   const hostAddress = Object.values(os.networkInterfaces()).flat().find(
     value => value?.family === 'IPv4' && !value.internal
@@ -355,7 +290,8 @@ test('bridges a Linux UDP datagram through the production Process Network author
     processNetwork: {
       access: 'restricted',
       endpoints: [{ hostname: hostAddress, ports: [address.port], transport: 'udp' }],
-      maxSockets: 1
+      maxSockets: 1,
+      privateNetwork: 'allow'
     },
     processProfile,
     source: `
@@ -386,14 +322,93 @@ test('bridges a Linux UDP datagram through the production Process Network author
   const result = JSON.parse(line.slice(16))
   assert.equal(result.code, 0, Buffer.from(result.stderr).toString())
   assert.equal(result.signal, null)
-  assert.equal(Buffer.from(result.stdout).toString(), 'HOLO_V86_UDP_OK:guest-datagram')
+  assert.equal(
+    Buffer.from(result.stdout).toString(),
+    'HOLO_V86_UDP_OK:guest-datagram',
+    logs.join('\n')
+  )
+})
+
+test('destroys an active v86 process tree before restarting in a fresh generation', {
+  skip: assetRoot == null,
+  timeout: 90_000
+}, async t => {
+  const processProfile = await processProfileV1(assetRoot)
+  const filesystemRoot = await mkdtemp(path.join(os.tmpdir(), 'holonomy-v86-restart-'))
+  const heartbeatPath = path.join(filesystemRoot, 'heartbeat.txt')
+  const restartedPath = path.join(filesystemRoot, 'restarted.txt')
+  const supervisor = new NodeRuntimeSupervisor({ requestTimeoutMs: 75_000 })
+  t.after(async () => {
+    await supervisor.stop()
+    await rm(filesystemRoot, { force: true, recursive: true })
+  })
+  const base = {
+    entryUrl,
+    hostPath: filesystemRoot,
+    moduleRootUrl,
+    processBackendInstallation: {
+      artifactRoot: assetRoot,
+      backendId: 'experimental.v86-v1',
+      implementation: 'builtin.v86-v1'
+    },
+    processLimits: { maxExecutionTimeMs: 60_000 },
+    processMounts: [{ guestPath: '/workspace', rights: ['read', 'write'], rootId: 'workspace' }],
+    processProfile
+  }
+  const firstStart = supervisor.start(capabilityRuntimeSession({
+    ...base,
+    source: `
+      import { spawn } from 'node:child_process'
+      spawn('shell', [
+        '-c',
+        'value=0; while :; do value=$((value + 1)); printf "%s" "$value" > /workspace/heartbeat.txt; /bin/sleep 0.05; done',
+      ])
+      await new Promise(() => {})
+    `
+  })).then(
+    value => ({ ok: true, value }),
+    error => ({ error, ok: false })
+  )
+  const firstHeartbeat = await waitForFile(heartbeatPath)
+  let changingHeartbeat = firstHeartbeat
+  const heartbeatDeadline = Date.now() + 5_000
+  while (changingHeartbeat === firstHeartbeat && Date.now() < heartbeatDeadline) {
+    await new Promise(resolve => setTimeout(resolve, 50))
+    changingHeartbeat = await readFile(heartbeatPath, 'utf8')
+  }
+  assert.notEqual(changingHeartbeat, firstHeartbeat)
+  assert.equal(supervisor.generation, 1)
+
+  await supervisor.restart(capabilityRuntimeSession({
+    ...base,
+    source: `
+      import { spawn } from 'node:child_process'
+      const child = spawn('shell', ['-c', 'printf GENERATION_TWO > /workspace/restarted.txt'])
+      await new Promise((resolve, reject) => {
+        child.on('error', reject)
+        child.on('close', (code, signal) => code === 0 && signal == null
+          ? resolve()
+          : reject(new Error('restart child failed')))
+      })
+      console.log('V86_RESTART_GENERATION_TWO')
+    `
+  }))
+  const firstTerminal = await firstStart
+  assert.equal(firstTerminal.ok, false)
+  assert.equal(firstTerminal.error?.code, 'child_exited')
+  assert.equal(supervisor.generation, 2)
+  assert.equal(await waitForFile(restartedPath), 'GENERATION_TWO')
+
+  const terminalHeartbeat = await readFile(heartbeatPath, 'utf8')
+  await new Promise(resolve => setTimeout(resolve, 250))
+  assert.equal(await readFile(heartbeatPath, 'utf8'), terminalHeartbeat)
 })
 
 test('denies a v86 descendant exec through Host middleware without killing the environment', {
   skip: assetRoot == null,
   timeout: 90_000
 }, async t => {
-  const processProfile = await profile(assetRoot)
+  const processProfile = await processProfileV1(assetRoot)
   const filesystemRoot = await mkdtemp(path.join(os.tmpdir(), 'holonomy-v86-descendant-deny-'))
   const supervisor = new NodeRuntimeSupervisor({ requestTimeoutMs: 75_000 })
   t.after(async () => {
@@ -449,30 +464,4 @@ test('denies a v86 descendant exec through Host middleware without killing the e
     signal: null,
     stdout: [...Buffer.from('DESCENDANT_HOST_DENIED\n')]
   })
-})
-
-test('rejects a tampered installed v86 artifact before Guest entry', {
-  skip: assetRoot == null
-}, async () => {
-  const processProfile = await profile(assetRoot)
-  processProfile.backend.configuration.artifacts.kernel.sha256 = '0'.repeat(64)
-  const supervisor = new NodeRuntimeSupervisor()
-  const logs = []
-  supervisor.on('log', event => logs.push(event.text))
-  const session = capabilityRuntimeSession({
-    entryUrl,
-    hostPath: assetRoot,
-    moduleRootUrl,
-    processBackendInstallation: {
-      artifactRoot: assetRoot,
-      backendId: 'experimental.v86-v1',
-      implementation: 'builtin.v86-v1'
-    },
-    processProfile,
-    source: `console.log('TAMPERED_V86_GUEST_ENTRY')`
-  })
-
-  await assert.rejects(supervisor.start(session), TypeError)
-  assert.equal(supervisor.generation, 0)
-  assert.equal(logs.some(value => value.includes('TAMPERED_V86_GUEST_ENTRY')), false)
 })

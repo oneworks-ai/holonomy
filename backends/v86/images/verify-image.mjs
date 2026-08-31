@@ -32,6 +32,7 @@ if (embeddedEntry == null) throw new TypeError('Missing v86 image profile')
 const embedded = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(embeddedEntry.bytes))
 if (
   embedded?.schemaVersion !== 1 || embedded.profileId !== manifest.profileId ||
+  embedded.profileDigest !== manifest.profileDigest ||
   embedded.supervisor?.sha256 !== manifest.supervisorSha256 ||
   JSON.stringify(embedded.executables) !== JSON.stringify(manifest.executables)
 ) throw new TypeError('Invalid embedded v86 image profile')

@@ -78,6 +78,11 @@ const main = async () => {
       bytes: selftest,
       mode: 0o100755,
       name: 'usr/bin/holo-v86-selftest'
+    }],
+    ['usr/bin/holo-v86-invalid-executable', {
+      bytes: new TextEncoder().encode('not-an-elf\n'),
+      mode: 0o100755,
+      name: 'usr/bin/holo-v86-invalid-executable'
     }]
   ])
   const outputEntries = entries

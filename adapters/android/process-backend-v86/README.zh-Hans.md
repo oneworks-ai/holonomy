@@ -11,7 +11,7 @@ generation 创建一个可信 v86/Linux 环境，并且只通过 Holonomy 受控
 ./gradlew -Pholonomy.v86.assetsDir=/absolute/trusted/v86-assets :app:assembleDebug
 ```
 
-目录必须包含 `libv86.mjs`、`v86.wasm`、`seabios.bin`、`kernel.bin` 和 `supervisor.cpio`。Host 随后把
+目录必须包含 `libv86.mjs`、`v86.wasm`、`seabios.bin`、`kernel.bin` 和 `agent.cpio`。Host 随后把
 `AndroidV86RuntimeServicesFactory` 传给 `RuntimeEngineFactory.create()`。Process Policy 为 `none` 时不会
 创建额外 V8；sandboxed profile 选择 `experimental.v86-v1` 后，会先校验资产与必需 kernel capability，
 再接受进程调用。

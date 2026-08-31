@@ -18,8 +18,11 @@ import {
 import {
   ProcessSupervisorFrameDecoderV1,
   decodeProcessSupervisorExecResponseV1,
+  decodeProcessSupervisorNetworkResponseV1,
   encodeProcessSupervisorExecRequestV1,
+  encodeProcessSupervisorExecResultV1,
   encodeProcessSupervisorFrameV1,
+  encodeProcessSupervisorNetworkRequestV1,
   encodeProcessSupervisorReadyPayloadV1
 } from '../../../dist/capability-runtime/index.js'
 
@@ -35,10 +38,65 @@ const frame = (operation, values = {}) => ({
 const request = signal => ({
   configuration: { image: 'fixture' },
   environmentId: '7:runtime',
+  executables: [{
+    executable: { kind: 'guestPath', path: '/bin/echo' },
+    executableId: 'echo',
+    fixedArgs: [],
+    shell: false
+  }, {
+    executable: { kind: 'guestPath', path: '/bin/tool' },
+    executableId: 'tool',
+    fixedArgs: [],
+    shell: false
+  }],
   generation: 7,
   policy: { access: 'sandboxed' },
   scope: 'runtime',
   signal
+})
+
+test('shares one in-flight supervisor close and writes shutdown once', async () => {
+  const hostDecoder = new ProcessSupervisorFrameDecoderV1()
+  const outbound = []
+  let closeCalls = 0
+  let finishTransportClose
+  const factory = createHoloUvSupervisorEnvironmentFactoryV1({
+    async openTransport(input) {
+      queueMicrotask(() =>
+        input.onBytes(encodeProcessSupervisorFrameV1(frame('ready', {
+          payload: encodeProcessSupervisorReadyPayloadV1(['process'])
+        })))
+      )
+      return {
+        close() {
+          closeCalls += 1
+          return new Promise(resolve => {
+            finishTransportClose = resolve
+          })
+        },
+        async write(bytes) {
+          for (const item of hostDecoder.push(bytes)) outbound.push(item.operation)
+        }
+      }
+    }
+  })
+  const environment = await factory.open(request(new AbortController().signal))
+
+  const first = environment.close('cancelled')
+  const second = environment.close('generation-stale')
+  let secondSettled = false
+  void second.then(() => {
+    secondSettled = true
+  })
+  await new Promise(resolve => setImmediate(resolve))
+
+  assert.strictEqual(first, second)
+  assert.equal(closeCalls, 1)
+  assert.equal(secondSettled, false)
+  assert.deepEqual(outbound, ['shutdown'])
+  finishTransportClose()
+  await Promise.all([first, second])
+  assert.equal(secondSettled, true)
 })
 
 test('maps framed supervisor commands to one environment process', async () => {
@@ -47,10 +105,13 @@ test('maps framed supervisor commands to one environment process', async () => {
   const filesystemRequests = []
   const executionRequests = []
   const executionResponses = []
+  const networkAttributions = []
+  const networkResponses = []
   const capabilityRequests = []
   const capabilityResponses = []
   let settleLateExecution
   let settleLateFilesystem
+  let settleExecutionCommit
   let callbacks
   const factory = createHoloUvSupervisorEnvironmentFactoryV1({
     createConfiguration() {
@@ -68,6 +129,7 @@ test('maps framed supervisor commands to one environment process', async () => {
           settleLateExecution = resolve
         })
       }
+      return 'echo-target'
     },
     handleCapabilityRequest(input) {
       capabilityRequests.push({
@@ -89,6 +151,9 @@ test('maps framed supervisor commands to one environment process', async () => {
       }
       return Uint8Array.of(9, 8, 7)
     },
+    handleNetworkAttribution(input) {
+      networkAttributions.push(input)
+    },
     async openTransport(input) {
       callbacks = input
       queueMicrotask(() =>
@@ -102,10 +167,22 @@ test('maps framed supervisor commands to one environment process', async () => {
           for (const item of hostDecoder.push(bytes)) {
             outbound.push(item.operation)
             if (item.operation === 'execResponse') {
-              executionResponses.push(decodeProcessSupervisorExecResponseV1(item.payload))
+              const allowed = decodeProcessSupervisorExecResponseV1(item.payload)
+              executionResponses.push(allowed)
+              const settle = () =>
+                input.onBytes(encodeProcessSupervisorFrameV1(frame('execResult', {
+                  payload: encodeProcessSupervisorExecResultV1(allowed),
+                  processId: item.processId,
+                  requestId: item.requestId
+                })))
+              if (item.requestId === 79 && allowed) settleExecutionCommit = settle
+              else settle()
             }
             if (item.operation === 'capabilityResponse') {
               capabilityResponses.push(decodeHoloUvCapabilityResponseV1(item.payload))
+            }
+            if (item.operation === 'networkResponse') {
+              networkResponses.push(decodeProcessSupervisorNetworkResponseV1(item.payload))
             }
             if (item.operation === 'configure') {
               input.onBytes(encodeProcessSupervisorFrameV1(frame('ack', {
@@ -159,11 +236,12 @@ test('maps framed supervisor commands to one environment process', async () => {
   })))
   callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('execRequest', {
     payload: encodeProcessSupervisorExecRequestV1({
-      argv: ['/bin/echo', 'allowed'],
+      argv: ['/bin/tool', 'allowed'],
       cwd: '/workspace',
       linuxPid: 902,
       parentLinuxPid: 901,
-      path: '/bin/echo'
+      processStartTimeTicks: 10_002,
+      path: '/bin/tool'
     }),
     processId: 41,
     requestId: 79
@@ -171,7 +249,8 @@ test('maps framed supervisor commands to one environment process', async () => {
   callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('capabilityRequest', {
     payload: encodeHoloUvCapabilityRequestV1({ command: ['system', 'read', 'os.arch'], version: 1 }),
     processId: 41,
-    requestId: 82
+    requestId: 82,
+    sequence: 901
   })))
   callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('execRequest', {
     payload: encodeProcessSupervisorExecRequestV1({
@@ -179,6 +258,7 @@ test('maps framed supervisor commands to one environment process', async () => {
       cwd: '/workspace',
       linuxPid: 903,
       parentLinuxPid: 901,
+      processStartTimeTicks: 10_003,
       path: '/bin/denied'
     }),
     processId: 41,
@@ -197,10 +277,44 @@ test('maps framed supervisor commands to one environment process', async () => {
       cwd: '/workspace',
       linuxPid: 904,
       parentLinuxPid: 901,
+      processStartTimeTicks: 10_004,
       path: '/bin/late'
     }),
     processId: 41,
     requestId: 81
+  })))
+  await new Promise(resolve => setImmediate(resolve))
+  callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('capabilityRequest', {
+    payload: encodeHoloUvCapabilityRequestV1({ command: ['system', 'read', 'os.arch'], version: 1 }),
+    processId: 41,
+    requestId: 83,
+    sequence: 902
+  })))
+  await new Promise(resolve => setImmediate(resolve))
+  settleExecutionCommit()
+  callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('networkRequest', {
+    payload: encodeProcessSupervisorNetworkRequestV1({
+      address: '192.0.2.7',
+      linuxPid: 902,
+      parentLinuxPid: 901,
+      port: 443,
+      processStartTimeTicks: 10_002,
+      transport: 'connect'
+    }),
+    processId: 41,
+    requestId: 85
+  })))
+  await new Promise(resolve => setImmediate(resolve))
+  const networkSource = callbacks.consumeNetworkAdmission({
+    address: '192.0.2.7',
+    port: 443,
+    transport: 'tcp'
+  })
+  callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('capabilityRequest', {
+    payload: encodeHoloUvCapabilityRequestV1({ command: ['system', 'read', 'os.arch'], version: 1 }),
+    processId: 41,
+    requestId: 84,
+    sequence: 902
   })))
   await new Promise(resolve => setImmediate(resolve))
   callbacks.onBytes(encodeProcessSupervisorFrameV1(frame('stdout', {
@@ -229,7 +343,10 @@ test('maps framed supervisor commands to one environment process', async () => {
     'filesystemResponse',
     'capabilityResponse',
     'execResponse',
-    'execResponse'
+    'execResponse',
+    'capabilityResponse',
+    'networkResponse',
+    'capabilityResponse'
   ])
   assert.deepEqual(capabilityRequests, [{
     command: ['system', 'read', 'os.arch'],
@@ -238,45 +355,90 @@ test('maps framed supervisor commands to one environment process', async () => {
     processId: 41,
     processResourceId: 'process-1',
     requestId: 82
+  }, {
+    command: ['system', 'read', 'os.arch'],
+    executableId: 'tool',
+    linuxPid: 902,
+    processId: 41,
+    processResourceId: 'process-1',
+    requestId: 84
   }])
-  assert.deepEqual(capabilityResponses, [{ json: '{"arch":"x64"}', ok: true, version: 1 }])
+  assert.deepEqual(capabilityResponses, [
+    { json: '{"arch":"x64"}', ok: true, version: 1 },
+    { error: 'bridge.failed', ok: false, version: 1 },
+    { json: '{"arch":"x64"}', ok: true, version: 1 }
+  ])
   assert.deepEqual(
     executionRequests.map(input => ({
       argv: input.argv,
-      executableId: input.executableId,
+      callerExecutableId: input.callerExecutableId,
       linuxPid: input.linuxPid,
       parentLinuxPid: input.parentLinuxPid,
       path: input.path,
+      processStartTimeTicks: input.processStartTimeTicks,
       processResourceId: input.processResourceId,
       rootLinuxPid: input.rootLinuxPid
     })),
     [{
-      argv: ['/bin/echo', 'allowed'],
-      executableId: 'echo',
+      argv: ['/bin/tool', 'allowed'],
+      callerExecutableId: 'echo',
       linuxPid: 902,
       parentLinuxPid: 901,
-      path: '/bin/echo',
+      path: '/bin/tool',
+      processStartTimeTicks: 10_002,
       processResourceId: 'process-1',
       rootLinuxPid: 901
     }, {
       argv: ['/bin/denied'],
-      executableId: 'echo',
+      callerExecutableId: 'echo',
       linuxPid: 903,
       parentLinuxPid: 901,
       path: '/bin/denied',
+      processStartTimeTicks: 10_003,
       processResourceId: 'process-1',
       rootLinuxPid: 901
     }, {
       argv: ['/bin/late'],
-      executableId: 'echo',
+      callerExecutableId: 'echo',
       linuxPid: 904,
       parentLinuxPid: 901,
       path: '/bin/late',
+      processStartTimeTicks: 10_004,
       processResourceId: 'process-1',
       rootLinuxPid: 901
     }]
   )
   assert.deepEqual(executionResponses, [true, false])
+  assert.deepEqual(networkResponses, [true])
+  assert.deepEqual(
+    networkAttributions.map(input => ({
+      address: input.address,
+      executableId: input.executableId,
+      linuxPid: input.linuxPid,
+      parentLinuxPid: input.parentLinuxPid,
+      port: input.port,
+      processStartTimeTicks: input.processStartTimeTicks,
+      transport: input.transport
+    })),
+    [{
+      address: '192.0.2.7',
+      executableId: 'tool',
+      linuxPid: 902,
+      parentLinuxPid: 901,
+      port: 443,
+      processStartTimeTicks: 10_002,
+      transport: 'connect'
+    }]
+  )
+  assert.deepEqual(networkSource, {
+    executableId: 'tool',
+    linuxPid: 902,
+    parentLinuxPid: 901,
+    processId: 41,
+    processResourceId: 'process-1',
+    processStartTimeTicks: 10_002,
+    rootLinuxPid: 901
+  })
   assert.deepEqual(
     filesystemRequests.map(item => ({
       environmentId: item.environmentId,
@@ -303,7 +465,7 @@ test('maps framed supervisor commands to one environment process', async () => {
     }]
   )
   await environment.close('generation-stale')
-  settleLateExecution()
+  settleLateExecution('late-target')
   settleLateFilesystem(Uint8Array.of(6, 5, 4))
   await new Promise(resolve => setImmediate(resolve))
   assert.deepEqual(outbound, [
@@ -315,6 +477,9 @@ test('maps framed supervisor commands to one environment process', async () => {
     'capabilityResponse',
     'execResponse',
     'execResponse',
+    'capabilityResponse',
+    'networkResponse',
+    'capabilityResponse',
     'shutdown'
   ])
 })

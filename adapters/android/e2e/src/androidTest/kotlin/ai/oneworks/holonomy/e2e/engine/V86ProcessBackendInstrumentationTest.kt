@@ -4,6 +4,7 @@ import android.os.Debug
 import android.os.SystemClock
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import ai.oneworks.holonomy.v86.AndroidV86AssetStore
 import ai.oneworks.holonomy.v86.AndroidV86ProcessBackendFeature
 import com.caoccao.javet.enums.V8AwaitMode
@@ -18,15 +19,20 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
+import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class V86ProcessBackendInstrumentationTest {
+    @Ignore("The direct probe requires a dedicated pre-isolate process; the public Runtime façade E2E is authoritative")
     @Test
     fun testPackagedV86BootsLinuxAndRunsSupervisorProcess() {
         val assets = runtimeAssets()
         val backendAssets = AndroidV86AssetStore(assets)
+        if (InstrumentationRegistry.getArguments().getString("holonomyRequireV86") == "true") {
+            assertTrue("The required v86 production assets were not packaged", backendAssets.available)
+        }
         assumeTrue(
             "The optional digest-bound v86 probe assets were not packaged",
             backendAssets.available,
@@ -50,7 +56,7 @@ class V86ProcessBackendInstrumentationTest {
             installBuffer(runtime, "__holoV86Wasm", backendAssets.read("v86.wasm"))
             installBuffer(runtime, "__holoV86Bios", backendAssets.read("seabios.bin"))
             installBuffer(runtime, "__holoV86Kernel", backendAssets.read("kernel.bin"))
-            installBuffer(runtime, "__holoV86Initrd", backendAssets.read("supervisor.cpio"))
+            installBuffer(runtime, "__holoV86Initrd", backendAssets.read("agent.cpio"))
 
             val library = backendAssets.read("libv86.mjs").toString(Charsets.UTF_8)
             val module = runtime.getExecutor(library)

@@ -94,9 +94,10 @@ const processPolicy = !V86_ENABLED
         Object.freeze({ hostname: 'android-v86.test', ports: Object.freeze([V86_TCP_PORT]), transport: 'tcp' }),
         Object.freeze({ hostname: 'android-v86.test', ports: Object.freeze([V86_UDP_PORT]), transport: 'udp' })
       ]),
-      maxSockets: 2
+      maxSockets: 2,
+      privateNetwork: 'allow'
     }),
-    shell: Object.freeze({ access: 'none' })
+    shell: Object.freeze({ access: 'restricted', executableId: 'holo-v86-shell' })
   })
 
 const deviceOperation = maxPrivacyTier =>
@@ -654,7 +655,8 @@ const v86Profile = () => ({
       supervisor: { execGateTimeoutMs: 30_000, protocolVersion: 1 }
     }
   },
-  environment: { allowedScopes: ['runtime'], defaultScope: 'runtime' },
+  defaultShellExecutableId: 'holo-v86-shell',
+  environment: { allowedScopes: ['runtime', 'processTree'], defaultScope: 'runtime' },
   executables: [
     ['holo-v86-shell', '/bin/sh'],
     ['holo-v86-cat', '/bin/cat'],
@@ -666,7 +668,7 @@ const v86Profile = () => ({
     executable: { kind: 'guestPath', path },
     executableId,
     fixedArgs: [],
-    shell: false
+    shell: executableId === 'holo-v86-shell'
   })),
   profile: 'process-profile-v1'
 })

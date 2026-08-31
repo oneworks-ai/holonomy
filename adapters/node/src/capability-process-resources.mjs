@@ -5,6 +5,7 @@ import {
   trustedInvocationValueFromJsonV1
 } from '../../../dist/capability-runtime/index.js'
 
+import { reserveNodeProcessDescendantV1 } from './capability-process-descendant-reservation.mjs'
 import { ProcessCallbackEventChannelV1, ProcessEventChannelV1 } from './capability-process-events.mjs'
 import { processResourcePublicationsV1 } from './capability-process-publications.mjs'
 import {
@@ -56,28 +57,19 @@ export class NodeProcessResourceManagerV1 {
 
   reserveDescendant(context) {
     const source = context.source
-    const input = context.arguments
     const active = this.#active.get(source.processResourceId)
     if (active == null) {
       throw new CapabilityInvocationError('resource.stale', context.operation)
     }
-    let tree = this.#linuxTrees.get(source.processResourceId)
-    if (tree == null) {
-      tree = new Map([[source.linuxPid, 1]])
-      this.#linuxTrees.set(source.processResourceId, tree)
-    } else if (tree.get(source.linuxPid) !== 1) {
-      throw new CapabilityInvocationError('resource.stale', context.operation)
-    }
-    const existingDepth = tree.get(input.linuxPid)
-    if (existingDepth != null) return
-    const parentDepth = tree.get(input.parentLinuxPid)
-    const depth = parentDepth == null ? Number.POSITIVE_INFINITY : parentDepth + 1
-    if (
-      depth > this.#policy.limits.maxProcessTreeDepth ||
-      this.#total >= this.#policy.limits.maxTotalProcesses
-    ) throw new CapabilityInvocationError('resource.handle_limit', context.operation)
-    tree.set(input.linuxPid, depth)
-    this.#total += 1
+    const result = reserveNodeProcessDescendantV1({
+      active,
+      context,
+      policy: this.#policy,
+      total: this.#total,
+      tree: this.#linuxTrees.get(source.processResourceId)
+    })
+    this.#linuxTrees.set(source.processResourceId, result.identities)
+    this.#total += result.totalIncrement
   }
 
   spawn(context, authority, requested, executableId, launch, env, stdio, options, authorityProcessLimit) {

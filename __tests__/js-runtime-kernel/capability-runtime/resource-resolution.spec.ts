@@ -6,6 +6,7 @@ import {
   canonicalizeFilesystemResource,
   canonicalizeNetworkResource,
   canonicalizeOpaqueHandleResource,
+  canonicalizeProcessNetworkEndpointResource,
   normalizeResolutionAdmissionTokenV1,
   normalizeResolutionEvidenceV1,
   normalizeResolvedResourceChallengeV1,
@@ -46,6 +47,38 @@ describe('resolved resource challenge v1', () => {
     })
     expect(challenge.reason).toBe('networkAddress')
     expect(challenge.requested.semanticResourceDigest).toBe(challenge.resolved.semanticResourceDigest)
+  })
+
+  it('uses the same network resolution challenge for Process socket endpoints', () => {
+    const requested = canonicalizeProcessNetworkEndpointResource({
+      hostname: 'api.example',
+      label: 'api.example:443',
+      port: 443,
+      transport: 'tls'
+    })
+    const challenge = normalizeResolvedResourceChallengeV1({
+      challengeId: 'challenge-process-network',
+      evidence: evidenceBinding('networkAddress'),
+      parentRequestId: 'request-process-network',
+      reason: 'networkAddress',
+      requested,
+      resolved: { ...requested, display: { label: 'resolved process endpoint' } },
+      schemaVersion: 1,
+      sequence: 1
+    })
+    expect(challenge.requested.kind).toBe('processNetworkEndpoint')
+    expect(() =>
+      normalizeResolvedResourceChallengeV1({
+        challengeId: 'challenge-cross-network-kind',
+        evidence: evidenceBinding('networkAddress'),
+        parentRequestId: 'request-process-network',
+        reason: 'networkAddress',
+        requested,
+        resolved: canonicalizeNetworkResource('https://api.example/', 'GET', null, 'fetch endpoint'),
+        schemaVersion: 1,
+        sequence: 1
+      })
+    ).toThrow(CapabilityContractError)
   })
 
   it('allows same-root filesystem semantic resolution and rejects cross-root targets', () => {

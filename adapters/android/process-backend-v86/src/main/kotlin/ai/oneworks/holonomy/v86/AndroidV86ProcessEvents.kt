@@ -18,7 +18,11 @@ internal class AndroidV86EventChannel(
 
     @Synchronized
     fun emit(source: String, bytes: Int = 0): Boolean {
-        if (closed.get() || size + bytes > maximumBytes) return false
+        // A released Guest resource intentionally discards later producer
+        // events. Only a live channel exceeding its cap is backpressure
+        // failure that should terminate the child process.
+        if (closed.get()) return true
+        if (size + bytes > maximumBytes) return false
         size += bytes
         events += source
         if (!paused) listeners.keys.forEach(::drain)

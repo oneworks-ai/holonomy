@@ -1,62 +1,31 @@
 import { createSocket } from 'node:dgram'
-import { createConnection, isIP } from 'node:net'
+import { createConnection } from 'node:net'
 
 // Built runtime contract: adapter production code must use the package payload, not TypeScript sources.
 import { LinuxProcessNetworkCapabilityBridgeV1 } from '../../../dist/capability-runtime/index.js'
 
-const invalid = code => {
-  const error = new Error('v86 process network bridge failed')
-  Object.defineProperty(error, 'code', { enumerable: true, value: code })
-  throw error
-}
-
-const hostname = value => {
-  if (typeof value !== 'string' || value.length === 0 || value.length > 253) {
-    return invalid('process.network_endpoint_unsupported')
-  }
-  const normalized = value.toLowerCase()
-  if (isIP(normalized) !== 0) return normalized
-  try {
-    const url = new URL(`http://${normalized}/`)
-    if (url.hostname !== normalized || url.port !== '' || url.username !== '' || url.password !== '') {
-      return invalid('process.network_endpoint_unsupported')
-    }
-  } catch {
-    return invalid('process.network_endpoint_unsupported')
-  }
-  return normalized
-}
-
-const endpoint = value => {
-  let url
-  try {
-    url = new URL(value)
-  } catch {
-    return invalid('process.network_url_invalid')
-  }
-  if (
-    !['http:', 'https:'].includes(url.protocol) || url.username !== '' || url.password !== '' ||
-    url.hash !== ''
-  ) return invalid('process.network_endpoint_unsupported')
-  const normalizedHostname = hostname(url.hostname)
-  if (isIP(normalizedHostname) === 0) return invalid('process.network_endpoint_unsupported')
-  return Object.freeze({
-    hostname: normalizedHostname,
-    port: url.port === '' ? url.protocol === 'https:' ? 443 : 80 : Number(url.port),
-    transport: url.protocol === 'https:' ? 'tls' : 'tcp',
-    url
-  })
-}
+import {
+  leaseProcessNetworkResponseV1,
+  normalizeProcessNetworkHostnameV1,
+  processNetworkEndpointV1,
+  processNetworkFailureV1
+} from './capability-process-v86-network-support.mjs'
 
 export class NodeV86ProcessNetworkBrokerV1 {
+  #activeSockets = 0
   #authorize = new LinuxProcessNetworkCapabilityBridgeV1()
+  #connect
+  #createDatagram
   #fetch
   #maxRedirects
 
   constructor(options = {}) {
+    this.#connect = options.createConnection ?? createConnection
+    this.#createDatagram = options.createDatagram ?? createSocket
     this.#fetch = options.fetch ?? globalThis.fetch
     this.#maxRedirects = options.maxRedirects ?? 10
     if (
+      typeof this.#connect !== 'function' || typeof this.#createDatagram !== 'function' ||
       typeof this.#fetch !== 'function' || !Number.isInteger(this.#maxRedirects) ||
       this.#maxRedirects < 0 || this.#maxRedirects > 32
     ) throw new TypeError('Invalid v86 process network bridge')
@@ -71,9 +40,9 @@ export class NodeV86ProcessNetworkBrokerV1 {
     if (
       !Number.isSafeInteger(input.port) ||
       input.port < 1 || input.port > 65_535
-    ) return invalid('process.network_endpoint_unsupported')
-    const normalizedHostname = hostname(input.hostname)
-    await this.#authorize.authorize({
+    ) return processNetworkFailureV1('process.network_endpoint_unsupported')
+    const normalizedHostname = normalizeProcessNetworkHostnameV1(input.hostname)
+    const authorization = await this.#authorize.authorize({
       environmentId: input.environmentId,
       executableId: input.executableId,
       hostname: normalizedHostname,
@@ -85,12 +54,17 @@ export class NodeV86ProcessNetworkBrokerV1 {
       scope: input.scope,
       transport: 'tcp'
     })
+    if ((globalThis.performance?.now?.() ?? Date.now()) > authorization.resolution.expiresAtMonotonicMs) {
+      return processNetworkFailureV1('resource.stale')
+    }
+    const release = this.#acquire(input.policy)
     return await new Promise((resolve, reject) => {
-      const socket = createConnection({
-        host: normalizedHostname,
+      const socket = this.#connect({
+        host: authorization.resolution.addresses[0],
         port: input.port,
         signal: input.signal
       })
+      socket.once('close', release)
       function cleanup() {
         socket.removeListener('connect', connected)
         socket.removeListener('error', failed)
@@ -102,6 +76,7 @@ export class NodeV86ProcessNetworkBrokerV1 {
       function failed(error) {
         cleanup()
         socket.destroy()
+        release()
         reject(error)
       }
       socket.once('connect', connected)
@@ -111,10 +86,10 @@ export class NodeV86ProcessNetworkBrokerV1 {
 
   async datagram(input) {
     if (!Number.isSafeInteger(input.port) || input.port < 1 || input.port > 65_535) {
-      return invalid('process.network_endpoint_unsupported')
+      return processNetworkFailureV1('process.network_endpoint_unsupported')
     }
-    const normalizedHostname = hostname(input.hostname)
-    await this.#authorize.authorize({
+    const normalizedHostname = normalizeProcessNetworkHostnameV1(input.hostname)
+    const authorization = await this.#authorize.authorize({
       environmentId: input.environmentId,
       executableId: input.executableId,
       hostname: normalizedHostname,
@@ -126,8 +101,13 @@ export class NodeV86ProcessNetworkBrokerV1 {
       scope: input.scope,
       transport: 'udp'
     })
+    if ((globalThis.performance?.now?.() ?? Date.now()) > authorization.resolution.expiresAtMonotonicMs) {
+      return processNetworkFailureV1('resource.stale')
+    }
+    const release = this.#acquire(input.policy)
     return await new Promise((resolve, reject) => {
-      const socket = createSocket('udp4')
+      const socket = this.#createDatagram('udp4')
+      socket.once('close', release)
       function cleanup() {
         input.signal.removeEventListener('abort', aborted)
         socket.removeListener('connect', connected)
@@ -141,6 +121,7 @@ export class NodeV86ProcessNetworkBrokerV1 {
       function failed(error) {
         cleanup()
         socket.close()
+        release()
         reject(error)
       }
       function aborted() {
@@ -148,13 +129,13 @@ export class NodeV86ProcessNetworkBrokerV1 {
       }
       socket.once('connect', connected)
       socket.once('error', failed)
-      socket.connect(input.port, normalizedHostname)
+      socket.connect(input.port, authorization.resolution.addresses[0])
       if (input.signal.aborted) aborted()
     })
   }
 
   async fetch(input) {
-    let current = endpoint(input.url)
+    let current = processNetworkEndpointV1(input.url)
     let init = { ...input.init, redirect: 'manual', signal: input.signal }
     for (let redirects = 0;; redirects += 1) {
       await this.#authorize.authorize({
@@ -169,15 +150,42 @@ export class NodeV86ProcessNetworkBrokerV1 {
         scope: input.scope,
         transport: current.transport
       })
-      const response = await this.#fetch(current.url, init)
-      if (![301, 302, 303, 307, 308].includes(response.status)) return response
-      if (redirects >= this.#maxRedirects) return invalid('process.network_redirect_limit')
+      const release = this.#acquire(input.policy)
+      let response
+      try {
+        response = await this.#fetch(current.url, init)
+      } catch (error) {
+        release()
+        throw error
+      }
+      if (![301, 302, 303, 307, 308].includes(response.status)) {
+        return leaseProcessNetworkResponseV1(response, release)
+      }
+      await response.body?.cancel().catch(() => undefined)
+      release()
+      if (redirects >= this.#maxRedirects) return processNetworkFailureV1('process.network_redirect_limit')
       const location = response.headers.get('location')
       if (location == null) return response
-      current = endpoint(new URL(location, current.url).href)
+      current = processNetworkEndpointV1(new URL(location, current.url).href)
       if (response.status === 303 || [301, 302].includes(response.status) && init.method === 'POST') {
         init = { ...init, body: undefined, method: 'GET' }
       }
+    }
+  }
+
+  #acquire(policy) {
+    const maximum = policy?.access === 'sandboxed' && policy.network?.access === 'restricted'
+      ? policy.network.maxSockets
+      : 0
+    if (!Number.isInteger(maximum) || maximum < 1 || this.#activeSockets >= maximum) {
+      return processNetworkFailureV1('provider.quota')
+    }
+    this.#activeSockets += 1
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+      this.#activeSockets -= 1
     }
   }
 }

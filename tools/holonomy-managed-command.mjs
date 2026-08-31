@@ -11,6 +11,13 @@ const OPERATION_TERMINAL_STATES = new Set(['cancelled', 'failed', 'succeeded'])
 
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
 
+class RuntimeCommandInterruptedError extends Error {
+  constructor(reason) {
+    super(`Holonomy runtime command interrupted by ${String(reason ?? 'signal')}`)
+    this.name = 'RuntimeCommandInterruptedError'
+  }
+}
+
 export const writeJson = (io, value) => io.stdout.write(`${JSON.stringify(value, null, 2)}\n`)
 
 export const createClient = async (options, dependencies, ensure = true) => {
@@ -32,6 +39,7 @@ export const createClient = async (options, dependencies, ensure = true) => {
 export const waitForOperation = async (client, operationId, options = {}) => {
   const deadline = (options.now ?? Date.now)() + (options.timeoutMs ?? 30_000)
   while ((options.now ?? Date.now)() < deadline) {
+    if (options.signal?.aborted) throw new RuntimeCommandInterruptedError(options.signal.reason)
     const operation = await client.call(`/v1/operations/${encodeURIComponent(operationId)}`)
     if (OPERATION_TERMINAL_STATES.has(operation.state)) {
       if (operation.state !== 'succeeded') throw new Error(`Holonomy operation ${operation.state}`)
@@ -71,17 +79,39 @@ export const followProcess = async (client, processId, io, options = {}) => {
   const deadline = (options.now ?? Date.now)() + options.timeoutMs
   let cursor = 0
   while ((options.now ?? Date.now)() < deadline) {
+    if (options.signal?.aborted) throw new RuntimeCommandInterruptedError(options.signal.reason)
     const logs = await client.readLogs(processId, { after: cursor, limit: 256, waitMs: 250 })
     printLogEvents(io, logs.events ?? [])
     cursor = logs.cursor ?? cursor
     const process = await client.call(`/v1/processes/${encodeURIComponent(processId)}`)
     if (TERMINAL_STATES.has(process.state)) return process
+    if (options.signal?.aborted) throw new RuntimeCommandInterruptedError(options.signal.reason)
   }
   const process = await client.call(`/v1/processes/${encodeURIComponent(processId)}`)
   if (!TERMINAL_STATES.has(process.state)) {
     await client.processAction(process.id, 'stop', process.generation, randomUUID())
   }
   throw new Error('Holonomy runtime process timed out')
+}
+
+const waitForProcessCleanup = async (client, processId, options = {}) => {
+  const deadline = (options.now ?? Date.now)() + (options.timeoutMs ?? 30_000)
+  while ((options.now ?? Date.now)() < deadline) {
+    const current = await client.call(`/v1/processes/${encodeURIComponent(processId)}`)
+    if (TERMINAL_STATES.has(current.state) && current.cleanupPending !== true) return current
+    await (options.pause ?? pause)(25)
+  }
+  throw new Error('Holonomy runtime cleanup timed out')
+}
+
+export const removeInterruptedProcess = async (client, process, options = {}) => {
+  let current = await client.call(`/v1/processes/${encodeURIComponent(process.id)}`)
+  if (!TERMINAL_STATES.has(current.state)) {
+    const admitted = await client.processAction(current.id, 'stop', current.generation, randomUUID())
+    await waitForOperation(client, admitted.value.operation.id, options)
+  }
+  current = await waitForProcessCleanup(client, process.id, options)
+  await client.removeProcess(current.id, current.generation, randomUUID())
 }
 
 export const openProcessInspector = async (client, process, options, dependencies = {}) => {
@@ -122,33 +152,48 @@ export const runHolonomyRuntimeCommand = async (parsed, io, dependencies = {}) =
     writeJson(io, { generation: process.generation, processId: process.id, state: process.state })
     return 0
   }
-  await waitForOperation(client, admitted.value.operation.id, {
-    ...dependencies,
-    timeoutMs: parsed.options.timeoutMs
-  })
-  let current = await client.call(`/v1/processes/${encodeURIComponent(process.id)}`)
-  if (parsed.options.openDevTools) {
-    await openProcessInspector(client, current, parsed.options, dependencies)
-  }
-  const pluginWatch = parsed.options.watch
-    ? (dependencies.startPluginWatch ?? startHolonomyPluginWatch)({
-      client,
-      configPath: snapshot.pluginConfigPath,
-      dependencies: { ...dependencies, waitForOperation },
-      io,
-      pluginRoots: parsed.options.pluginRoots,
-      process: current,
-      runtimePlugins: snapshot.runtimePlugins
-    })
-    : undefined
+  let current = process
+  let pluginWatch
+  let interrupted = false
   try {
-    current = await followProcess(client, process.id, io, {
+    await waitForOperation(client, admitted.value.operation.id, {
       ...dependencies,
       timeoutMs: parsed.options.timeoutMs
     })
+    current = await client.call(`/v1/processes/${encodeURIComponent(process.id)}`)
+    if (parsed.options.openDevTools) {
+      await openProcessInspector(client, current, parsed.options, dependencies)
+    }
+    pluginWatch = parsed.options.watch
+      ? (dependencies.startPluginWatch ?? startHolonomyPluginWatch)({
+        client,
+        configPath: snapshot.pluginConfigPath,
+        dependencies: { ...dependencies, waitForOperation },
+        io,
+        pluginRoots: parsed.options.pluginRoots,
+        process: current,
+        runtimePlugins: snapshot.runtimePlugins
+      })
+      : undefined
+    current = await followProcess(client, process.id, io, {
+      ...dependencies,
+      signal: dependencies.signal,
+      timeoutMs: parsed.options.timeoutMs
+    })
+  } catch (error) {
+    if (!(error instanceof RuntimeCommandInterruptedError)) throw error
+    interrupted = true
   } finally {
     await pluginWatch?.close()
+    if (interrupted) {
+      await removeInterruptedProcess(client, process, {
+        ...dependencies,
+        signal: undefined,
+        timeoutMs: Math.min(parsed.options.timeoutMs, 30_000)
+      })
+    }
   }
+  if (interrupted) return dependencies.signal?.reason === 'SIGINT' ? 130 : 143
   const code = current.exit?.code ?? (current.state === 'exited' ? 0 : 1)
   return parsed.options.allowFailures ? 0 : code
 }

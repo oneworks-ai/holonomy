@@ -46,7 +46,7 @@ const hostname = (value: unknown): string => {
 }
 
 const network = (value: unknown): Constraints => {
-  const input = exact(value, ['endpoints', 'maxSockets'])
+  const input = exact(value, ['endpoints', 'maxSockets', 'privateNetwork'])
   const endpoints = array(required(input, 'endpoints'), 0, 256).map(value => {
     const endpoint = exact(value, ['hostname', 'ports', 'transport'])
     const ports = array(required(endpoint, 'ports'), 1, 64)
@@ -62,7 +62,8 @@ const network = (value: unknown): Constraints => {
   if (new Set(identities).size !== identities.length) return invalidPolicy()
   return Object.freeze({
     endpoints: Object.freeze(endpoints),
-    maxSockets: integer(required(input, 'maxSockets'), 1, 256)
+    maxSockets: integer(required(input, 'maxSockets'), 1, 256),
+    privateNetwork: literal(input.privateNetwork ?? 'deny', ['allow', 'deny'] as const)
   }) as Constraints
 }
 

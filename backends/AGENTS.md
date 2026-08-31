@@ -12,7 +12,7 @@
 
 - `packages/runtime/src/kernel/` owns the shared Policy, Broker, CanonicalResource base, error translation and generation/resource lifecycle contracts.
 - `packages/capabilities/process/src/kernel/` owns the public `node:child_process` facade, Process Registry, Process resource protocol and Backend-neutral Process contracts.
-- A future shared Environment Host Runtime owns Host profiles and artifacts, environment/process/stdio resources, lifecycle fencing, Capability Bridge re-entry, and Backend-independent conformance.
+- `packages/holouv/` owns the reusable Environment Host Runtime for VM/worker-style Backends: environment/process/stdio resources, lifecycle fencing and Capability Bridge re-entry. Native Darwin directly implements the same Process Backend SPI and conformance without constructing a redundant VM-environment object.
 - `backends/<family>/` owns only family-specific boot, binary, transport, Guest Agent or SDK adaptation, and reproducible assets that are platform neutral.
 - `adapters/<platform>/` owns Host Platform and JavaScript Engine integration, packaging, native processes/workers, platform resource loading, and platform E2E.
 - A Guest System Adapter owns path, argv, shell, signal, process-tree, uid/gid, PTY, and error semantics. Windows, Darwin, Linux POSIX, WASIX, and agentOS semantics must not be hidden inside one generic Driver.
@@ -35,6 +35,7 @@ Native exists because the same public Process contract, profile admission, autho
 - Root invocation admission and descendant execution control are separate capabilities. Every Backend must admit the initial `node:child_process` request through the shared Broker before starting work.
 - Native Darwin currently provides static Seatbelt containment for the whole process tree. It does not provide a Cordis callback before every descendant `exec`, and v86 must not be used as a substitute when the workload requires macOS Mach-O programs.
 - v86 uses a Guest Agent plus a seccomp user-notification gate for `execve` and the supported absolute `execveat` form. It reports `{ pid, ppid, executable, argv, cwd }`, waits for the generation-bound Host decision, and fails closed on unknown, relative, timed-out, cancelled, or stale targets.
+- Run `pnpm test:m35:v86:guest` with `HOLO_V86_PRODUCTION_ASSET_ROOT` and the pinned Zig `0.16.0` path in `HOLO_V86_ZIG_PATH` for the private Guest gate/FUSE conformance overlay. This fixture must not enter a production image.
 - The shared v86 capability bridge owns one `/workspace` FUSE mount, TCP/UDP/DNS, Host Device/System projection, and descendant admission. Backend launch validation must reject any mount capable of shadowing image executables.
 - A later descriptor version must distinguish static containment, observation-only, and pre-execution authorization. Do not infer one level from `processTree`, `shell`, or signal support.
-- After that shared descendant/lifecycle contract stabilizes, resume agentOS as a Node/Desktop Experimental process/stdio/FS track. Resume WASIX only after the current SDK serialization regression and Worker/process-tree termination gaps are closed.
+- agentOS and WASIX stay research-only. Do not resume implementation on either family unless a new design decision adds it to an active milestone and assigns platform E2E ownership.

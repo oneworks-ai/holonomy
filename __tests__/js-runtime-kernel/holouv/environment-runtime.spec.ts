@@ -93,4 +93,40 @@ describe('holouv environment runtime', () => {
     await expect(runtime.acquire(request('runtime'), 'process-2').environment).resolves.toBeDefined()
     expect(attempts).toBe(2)
   })
+
+  it('shares one in-flight close and waits for every environment', async () => {
+    let finishClose: (() => void) | undefined
+    let closeCalls = 0
+    const runtime = new HoloUvEnvironmentRuntimeV1<Configuration, Executable>({
+      async open() {
+        return {
+          close() {
+            closeCalls += 1
+            return new Promise<void>(resolve => {
+              finishClose = resolve
+            })
+          },
+          async spawn() {
+            throw new Error('unused')
+          }
+        }
+      }
+    })
+    await runtime.acquire(request('runtime'), 'process-1').environment
+
+    const first = runtime.close()
+    const second = runtime.close()
+    let secondSettled = false
+    void second.then(() => {
+      secondSettled = true
+    })
+    await Promise.resolve()
+
+    expect(first).toBe(second)
+    expect(closeCalls).toBe(1)
+    expect(secondSettled).toBe(false)
+    finishClose?.()
+    await Promise.all([first, second])
+    expect(secondSettled).toBe(true)
+  })
 })

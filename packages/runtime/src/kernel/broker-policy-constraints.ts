@@ -131,7 +131,8 @@ const processConstraints = (input: MaterializationInputV1, name: BuiltInCapabili
         ports: [resource.port],
         transport: endpoint.transport
       }],
-      maxSockets: policy.network.maxSockets
+      maxSockets: policy.network.maxSockets,
+      privateNetwork: policy.network.privateNetwork
     } as unknown as Readonly<Record<string, JsonValueV1>>
   }
   if (name === 'host.process.execute') {

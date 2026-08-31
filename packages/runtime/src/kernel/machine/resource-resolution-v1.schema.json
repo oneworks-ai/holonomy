@@ -283,6 +283,193 @@
                   "type": "string"
                 },
                 "kind": {
+                  "const": "networkAddress"
+                }
+              },
+              "required": [
+                "bindingId",
+                "evidenceDigest",
+                "kind"
+              ],
+              "type": "object"
+            },
+            "parentRequestId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            "reason": {
+              "const": "networkAddress"
+            },
+            "requested": {
+              "additionalProperties": false,
+              "properties": {
+                "display": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "schemaVersion": {
+                  "const": 1
+                },
+                "semanticId": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "semanticResourceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "hostname": {
+                  "maxLength": 253,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "processNetworkEndpoint"
+                },
+                "port": {
+                  "maximum": 65535,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "transport": {
+                  "enum": [
+                    "tcp",
+                    "tls",
+                    "udp"
+                  ]
+                }
+              },
+              "required": [
+                "display",
+                "schemaVersion",
+                "semanticId",
+                "semanticResourceDigest",
+                "hostname",
+                "kind",
+                "port",
+                "transport"
+              ],
+              "type": "object"
+            },
+            "resolved": {
+              "additionalProperties": false,
+              "properties": {
+                "display": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ],
+                  "type": "object"
+                },
+                "schemaVersion": {
+                  "const": 1
+                },
+                "semanticId": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "semanticResourceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "hostname": {
+                  "maxLength": 253,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "processNetworkEndpoint"
+                },
+                "port": {
+                  "maximum": 65535,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "transport": {
+                  "enum": [
+                    "tcp",
+                    "tls",
+                    "udp"
+                  ]
+                }
+              },
+              "required": [
+                "display",
+                "schemaVersion",
+                "semanticId",
+                "semanticResourceDigest",
+                "hostname",
+                "kind",
+                "port",
+                "transport"
+              ],
+              "type": "object"
+            },
+            "schemaVersion": {
+              "const": 1
+            },
+            "sequence": {
+              "maximum": 32,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "challengeId",
+            "evidence",
+            "parentRequestId",
+            "reason",
+            "requested",
+            "resolved",
+            "schemaVersion",
+            "sequence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "challengeId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            "evidence": {
+              "additionalProperties": false,
+              "properties": {
+                "bindingId": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                  "type": "string"
+                },
+                "evidenceDigest": {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "kind": {
                   "const": "filesystemTarget"
                 }
               },

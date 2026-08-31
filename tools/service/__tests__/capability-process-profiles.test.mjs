@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'vitest'
 
+import { createNewcArchiveFromEntriesV1 } from '../../../backends/v86/images/newc.mjs'
 import { readServiceProcessBackendsV1 } from '../capability-process-backends.mjs'
 import { readServiceProcessProfilesV1 } from '../capability-process-profiles.mjs'
 
@@ -64,9 +65,73 @@ describe('service Process profile manifest', () => {
     const directory = await mkdtemp(join(tmpdir(), 'holonomy-v86-profile-'))
     const backendPath = join(directory, 'process-backends.json')
     const profilePath = join(directory, 'process-profiles.json')
-    const values = Object.fromEntries(
-      ['bios', 'initrd', 'kernel', 'wasm'].map(id => [id, Buffer.from(`verified-${id}`)])
-    )
+    const profileDigest = '1'.repeat(64)
+    const supervisorSha256 = '2'.repeat(64)
+    const executable = { executableId: 'cat', path: '/usr/bin/cat', shell: false }
+    const embedded = Buffer.from(`${
+      JSON.stringify(
+        {
+          architecture: 'linux-x86-32',
+          executables: [executable],
+          packages: [],
+          profileDigest,
+          profileId: 'agent',
+          schemaVersion: 1,
+          supervisor: { path: '/sbin/holo-uvd', sha256: supervisorSha256 }
+        },
+        null,
+        2
+      )
+    }\n`)
+    const initrd = createNewcArchiveFromEntriesV1([
+      { bytes: Buffer.from([0x7F, 0x45, 0x4C, 0x46]), mode: 0o100755, name: 'sbin/holo-uvd' },
+      { bytes: Buffer.from([0x7F, 0x45, 0x4C, 0x46]), mode: 0o100755, name: 'usr/bin/cat' },
+      { bytes: embedded, mode: 0o100444, name: 'etc/holo/image-profile-v1.json' }
+    ])
+    const initrdSha256 = createHash('sha256').update(initrd).digest('hex')
+    const sbom = Buffer.from(`${
+      JSON.stringify(
+        {
+          documentNamespace: `https://holonomy.dev/spdx/v86/agent/${initrdSha256}`,
+          packages: [],
+          spdxVersion: 'SPDX-2.3'
+        },
+        null,
+        2
+      )
+    }\n`)
+    const manifest = Buffer.from(`${
+      JSON.stringify(
+        {
+          architecture: 'linux-x86-32',
+          artifact: { name: 'agent.cpio', sha256: initrdSha256, size: initrd.byteLength },
+          capabilityClientSha256: '3'.repeat(64),
+          executables: [executable],
+          kernel: null,
+          packageCount: 0,
+          profileDigest,
+          profileId: 'agent',
+          rootfs: null,
+          sbom: {
+            name: 'agent.spdx.json',
+            sha256: createHash('sha256').update(sbom).digest('hex'),
+            size: sbom.byteLength
+          },
+          schemaVersion: 1,
+          supervisorSha256
+        },
+        null,
+        2
+      )
+    }\n`)
+    const values = {
+      'agent.cpio': initrd,
+      'agent.manifest.json': manifest,
+      'agent.spdx.json': sbom,
+      bios: Buffer.from('verified-bios'),
+      kernel: Buffer.from('verified-kernel'),
+      wasm: Buffer.from('verified-wasm')
+    }
     const artifact = artifactId => ({
       artifactId,
       sha256: createHash('sha256').update(values[artifactId]).digest('hex')
@@ -98,7 +163,7 @@ describe('service Process profile manifest', () => {
                 configuration: {
                   artifacts: {
                     bios: artifact('bios'),
-                    initrd: artifact('initrd'),
+                    initrd: artifact('agent.cpio'),
                     kernel: artifact('kernel'),
                     wasm: artifact('wasm')
                   },
@@ -132,7 +197,7 @@ describe('service Process profile manifest', () => {
       assert.equal(profiles.linux.backend.backendId, 'experimental.v86-v1')
       assert.equal(profiles.linux.executables[0].executable.path, '/usr/bin/cat')
 
-      await writeFile(join(directory, 'kernel'), 'tampered', { mode: 0o600 })
+      await writeFile(join(directory, 'agent.cpio'), 'tampered', { mode: 0o600 })
       await assert.rejects(
         readServiceProcessProfilesV1(profilePath, {
           processBackendInstallations: backends.installations,

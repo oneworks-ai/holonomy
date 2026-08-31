@@ -122,7 +122,8 @@ test('rechecks Process authority before every inherited resource side effect', a
     executableId: 'tool',
     linuxPid: 902,
     parentLinuxPid: 901,
-    path: '/virtual/tool'
+    path: '/virtual/tool',
+    processStartTimeTicks: 10_002
   })
   const descendantContext = Object.freeze({
     ...context('process.program.spawn', descendantArguments),
@@ -132,9 +133,11 @@ test('rechecks Process authority before every inherited resource side effect', a
       environmentScope: 'processTree',
       executableId: 'tool',
       kind: 'linuxProcess',
-      linuxPid: 901,
+      linuxPid: 902,
       parentLinuxPid: 901,
+      processStartTimeTicks: 10_002,
       processResourceId: 'process-1',
+      rootLinuxPid: 901,
       syntheticProcessId: 41
     })
   })
@@ -157,13 +160,34 @@ test('rechecks Process authority before every inherited resource side effect', a
   assert.throws(() =>
     provider.invoke({
       ...descendantContext,
+      source: { ...descendantContext.source, executableId: 'different-tool' }
+    }, authority(['tool'])), error => error.code === 'policy.denied')
+  assert.throws(() =>
+    provider.invoke({
+      ...descendantContext,
+      arguments: { ...descendantArguments, processStartTimeTicks: 20_002 },
+      source: { ...descendantContext.source, processStartTimeTicks: 20_002 }
+    }, authority(['tool'])), error => error.code === 'resource.handle_limit')
+  assert.throws(() =>
+    provider.invoke({
+      ...descendantContext,
       arguments: { ...descendantArguments, path: '/virtual/other' }
     }, authority(['tool'])), error => error.code === 'policy.denied')
   assert.throws(() =>
     provider.invoke({
       ...descendantContext,
-      arguments: { ...descendantArguments, linuxPid: 903, parentLinuxPid: 902 },
-      source: { ...descendantContext.source, parentLinuxPid: 902 }
+      arguments: {
+        ...descendantArguments,
+        linuxPid: 903,
+        parentLinuxPid: 902,
+        processStartTimeTicks: 10_003
+      },
+      source: {
+        ...descendantContext.source,
+        linuxPid: 903,
+        parentLinuxPid: 902,
+        processStartTimeTicks: 10_003
+      }
     }, authority(['tool'])), error => error.code === 'resource.handle_limit')
 
   assert.throws(() =>

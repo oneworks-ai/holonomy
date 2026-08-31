@@ -144,7 +144,8 @@ static int handle_control(
         result = holo_capability_bridge_response(capability, &frame);
     } else if (
         (frame.operation == HOLO_STDIN || frame.operation == HOLO_STDIN_CLOSE ||
-         frame.operation == HOLO_SIGNAL || frame.operation == HOLO_EXEC_RESPONSE) &&
+         frame.operation == HOLO_SIGNAL || frame.operation == HOLO_EXEC_RESPONSE ||
+         frame.operation == HOLO_NETWORK_RESPONSE) &&
         frame.process_id != 0 && frame.request_id != 0
     ) {
         result = holo_process_command(table, fd, &frame);
@@ -247,7 +248,7 @@ int main(void) {
                 running = 0;
             }
         }
-        if (running && holo_process_exec_timeouts(&table) != 0) {
+        if (running && holo_process_exec_timeouts(&table, control_fd) != 0) {
             dprintf(STDERR_FILENO, "holo-uvd: exec gate timeout errno=%d\n", errno);
             failed = 1;
             break;

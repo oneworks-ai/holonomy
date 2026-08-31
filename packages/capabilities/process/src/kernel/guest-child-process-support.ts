@@ -8,7 +8,7 @@ export interface ChildProcessEnvironmentConfigurationV1 {
   readonly defaultScope: ChildProcessEnvironmentScopeV1
 }
 
-export const childProcessEnvironmentV1 = Symbol('holo.childProcessEnvironment')
+export const childProcessEnvironmentV1 = Symbol.for('holo.childProcessEnvironment')
 
 const DEFAULT_CHILD_PROCESS_ENVIRONMENT_V1: ChildProcessEnvironmentConfigurationV1 = Object.freeze({
   allowedScopes: Object.freeze(['processTree'] as const),

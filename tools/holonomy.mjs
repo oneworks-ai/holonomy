@@ -16,7 +16,20 @@ const main = async () => {
   }
   const managementResult = await parseAndRunHolonomyManagementCommand(arguments_, process)
   if (managementResult != null) return
-  process.exitCode = await runHolonomyRuntimeCommand(parseHolonomyArgs(arguments_), process)
+  const abort = new AbortController()
+  const interrupt = signal => abort.abort(signal)
+  const interruptSignal = () => interrupt('SIGINT')
+  const terminateSignal = () => interrupt('SIGTERM')
+  process.once('SIGINT', interruptSignal)
+  process.once('SIGTERM', terminateSignal)
+  try {
+    process.exitCode = await runHolonomyRuntimeCommand(parseHolonomyArgs(arguments_), process, {
+      signal: abort.signal
+    })
+  } finally {
+    process.off('SIGINT', interruptSignal)
+    process.off('SIGTERM', terminateSignal)
+  }
 }
 
 main().catch(error => failHolonomyCommand(error instanceof Error ? error.message : 'Holonomy command failed'))

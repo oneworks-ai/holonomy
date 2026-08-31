@@ -3,6 +3,8 @@ package ai.oneworks.holonomy.v86
 import android.util.Base64
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.atomic.AtomicBoolean
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -13,9 +15,16 @@ internal data class AndroidV86Executable(
     val shell: Boolean,
 )
 
+internal data class AndroidV86LinuxProcessIdentity(
+    val depth: Int,
+    val executableId: String,
+    val processStartTimeTicks: Long?,
+)
+
 internal class AndroidV86ProcessState(
     val executableId: String,
     val executableDigest: String,
+    val environment: AndroidV86EnvironmentLease,
     val facade: JSONObject,
     val resourceId: String,
     val childEvents: AndroidV86EventChannel,
@@ -24,10 +33,14 @@ internal class AndroidV86ProcessState(
     val stderrEvents: AndroidV86EventChannel,
     val stdin: AndroidV86StdinQueue,
 ) {
-    val linuxDepthByPid = ConcurrentHashMap<Int, Int>()
+    val linuxProcessesByPid = ConcurrentHashMap<Int, AndroidV86LinuxProcessIdentity>()
     @Volatile var backendProcessId: Int? = null
     @Volatile var closed = false
     @Volatile var linuxPid: Int? = null
+    @Volatile var submittedSignal: String? = null
+    @Volatile var terminalSignal: String? = null
+    @Volatile var timeout: ScheduledFuture<*>? = null
+    val outputLimitExceeded = AtomicBoolean(false)
 
     fun channel(bindingId: String): AndroidV86EventChannel? = when (bindingId) {
         childBindingId -> childEvents

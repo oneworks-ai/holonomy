@@ -3,9 +3,12 @@
 import {
   ProcessSupervisorFrameDecoderV1,
   decodeProcessSupervisorExecRequestV1,
+  decodeProcessSupervisorExecResultV1,
+  decodeProcessSupervisorNetworkRequestV1,
   decodeProcessSupervisorReadyPayloadV1,
   encodeProcessSupervisorExecResponseV1,
-  encodeProcessSupervisorFrameV1
+  encodeProcessSupervisorFrameV1,
+  encodeProcessSupervisorNetworkResponseV1
 } from '@holonomyjs/capability-process'
 import type {
   ProcessBackendEnvironmentFactoryV1,
@@ -16,6 +19,7 @@ import type {
   ProcessSupervisorExecRequestV1,
   ProcessSupervisorFrameV1,
   ProcessSupervisorKernelCapabilityV1,
+  ProcessSupervisorNetworkRequestV1,
   ProcessSupervisorOperationV1
 } from '@holonomyjs/capability-process'
 
@@ -42,6 +46,13 @@ interface HoloUvProcessSourceV1 {
   readonly processResourceId: string
 }
 
+export interface HoloUvLinuxProcessSourceV1 extends HoloUvProcessSourceV1 {
+  readonly linuxPid: number
+  readonly parentLinuxPid: number
+  readonly processStartTimeTicks: number
+  readonly rootLinuxPid: number
+}
+
 interface CommandPendingV1 {
   readonly kind: 'command'
   readonly processId: number
@@ -60,6 +71,20 @@ interface ConfigurationPendingV1 {
   readonly terminal: DeferredV1<void>
 }
 
+interface PendingExecutionCommitV1 {
+  readonly caller: HoloUvLinuxProcessSourceV1
+  readonly processId: number
+  readonly targetExecutableId: string
+}
+
+interface HoloUvNetworkAdmissionV1 extends HoloUvLinuxProcessSourceV1 {
+  readonly address: string
+  readonly expiresAt: number
+  readonly port: number
+  readonly processId: number
+  readonly transport: ProcessSupervisorNetworkRequestV1['transport']
+}
+
 type PendingV1 = CommandPendingV1 | ConfigurationPendingV1 | SpawnPendingV1
 
 export interface HoloUvSupervisorFilesystemRequestV1 {
@@ -72,6 +97,7 @@ export interface HoloUvSupervisorFilesystemRequestV1 {
   readonly processId: number
   readonly processResourceId?: string
   readonly requestId: number
+  readonly resolveLinuxProcessSource: (linuxPid: number) => HoloUvLinuxProcessSourceV1
   readonly scope: 'processTree' | 'runtime'
   readonly signal: AbortSignal
 }
@@ -81,19 +107,34 @@ export interface HoloUvSupervisorCapabilityRequestV1 {
   readonly executableId: string
   readonly generation: number
   readonly linuxPid: number
+  readonly parentLinuxPid: number
   readonly payload: Uint8Array
   readonly policy: unknown
   readonly processId: number
   readonly processResourceId: string
+  readonly processStartTimeTicks: number
   readonly requestId: number
+  readonly rootLinuxPid: number
   readonly scope: 'processTree' | 'runtime'
   readonly signal: AbortSignal
 }
 
 export interface HoloUvSupervisorExecutionRequestV1<TExecutable> extends ProcessSupervisorExecRequestV1 {
+  readonly callerExecutableId: string
+  readonly environmentId: string
+  readonly executables: ProcessBackendEnvironmentOpenRequestV1<unknown, TExecutable>['executables']
+  readonly generation: number
+  readonly policy: unknown
+  readonly processId: number
+  readonly processResourceId: string
+  readonly rootLinuxPid: number
+  readonly scope: 'processTree' | 'runtime'
+  readonly signal: AbortSignal
+}
+
+export interface HoloUvSupervisorNetworkAttributionRequestV1 extends ProcessSupervisorNetworkRequestV1 {
   readonly environmentId: string
   readonly executableId: string
-  readonly executables: ProcessBackendEnvironmentOpenRequestV1<unknown, TExecutable>['executables']
   readonly generation: number
   readonly policy: unknown
   readonly processId: number
@@ -115,6 +156,11 @@ export interface HoloUvSupervisorTransportOpenRequestV1<TConfiguration, TExecuta
   readonly onBytes: (bytes: Uint8Array) => void
   readonly onClose: () => void
   readonly onError: () => void
+  readonly consumeNetworkAdmission: (input: {
+    readonly address: string
+    readonly port: number
+    readonly transport: 'tcp' | 'udp'
+  }) => HoloUvLinuxProcessSourceV1 & { readonly processId: number }
   readonly resolveProcessSource: () => HoloUvProcessSourceV1 & { readonly processId: number }
 }
 
@@ -131,6 +177,9 @@ export interface HoloUvSupervisorEnvironmentFactoryOptionsV1<
   readonly handleFilesystemRequest?: (
     request: HoloUvSupervisorFilesystemRequestV1
   ) => Uint8Array | Promise<Uint8Array>
+  readonly handleNetworkAttribution?: (
+    request: HoloUvSupervisorNetworkAttributionRequestV1
+  ) => void | Promise<void>
   readonly createConfiguration?: (
     request: ProcessBackendEnvironmentOpenRequestV1<TConfiguration, TExecutable>
   ) => Uint8Array | Promise<Uint8Array>
@@ -169,16 +218,21 @@ export class HoloUvSupervisorEnvironmentV1<
   readonly #decoder = new ProcessSupervisorFrameDecoderV1()
   readonly #capability?: (frame: ProcessSupervisorFrameV1) => Uint8Array | Promise<Uint8Array>
   readonly #execution?: (
-    request: ProcessSupervisorExecRequestV1 & HoloUvProcessSourceV1 & {
+    request: ProcessSupervisorExecRequestV1 & Omit<HoloUvProcessSourceV1, 'linuxPid'> & {
+      readonly callerExecutableId: string
       readonly processId: number
       readonly rootLinuxPid: number
     }
-  ) => unknown | Promise<unknown>
+  ) => string | Promise<string>
   readonly #filesystem?: (frame: ProcessSupervisorFrameV1) => Uint8Array | Promise<Uint8Array>
+  readonly #networkAttribution?: (frame: ProcessSupervisorFrameV1) => void | Promise<void>
   #kernelCapabilities: readonly ProcessSupervisorKernelCapabilityV1[] = Object.freeze([])
   #nextRequestId = 1
   readonly #pending = new Map<number, PendingV1>()
+  readonly #pendingExecutionCommits = new Map<number, PendingExecutionCommitV1>()
+  readonly #networkAdmissions: HoloUvNetworkAdmissionV1[] = []
   readonly #processes = new Map<number, HoloUvSupervisorProcessV1>()
+  readonly #linuxProcessSources = new Map<number, Map<number, HoloUvLinuxProcessSourceV1>>()
   readonly #processSources = new Map<number, HoloUvProcessSourceV1>()
   readonly #ready = deferred<readonly ProcessSupervisorKernelCapabilityV1[]>()
   #readyReceived = false
@@ -186,19 +240,24 @@ export class HoloUvSupervisorEnvironmentV1<
   #transport?: HoloUvSupervisorTransportV1
   #transportClose?: Promise<void>
   #closed = false
+  #closePromise?: Promise<void>
 
   constructor(
     readyTimeoutMs: number,
     filesystem?: (frame: ProcessSupervisorFrameV1) => Uint8Array | Promise<Uint8Array>,
     capability?: (frame: ProcessSupervisorFrameV1) => Uint8Array | Promise<Uint8Array>,
+    networkAttribution?: (frame: ProcessSupervisorFrameV1) => void | Promise<void>,
     execution?: (
-      request: ProcessSupervisorExecRequestV1 & HoloUvProcessSourceV1 & { readonly processId: number } & {
+      request: ProcessSupervisorExecRequestV1 & Omit<HoloUvProcessSourceV1, 'linuxPid'> & {
+        readonly callerExecutableId: string
+        readonly processId: number
         readonly rootLinuxPid: number
       }
-    ) => unknown | Promise<unknown>
+    ) => string | Promise<string>
   ) {
     this.#filesystem = filesystem
     this.#capability = capability
+    this.#networkAttribution = networkAttribution
     this.#execution = execution
     this.#readyTimer = setTimeout(() => this.fail(failure('supervisor.ready_timeout')), readyTimeoutMs)
   }
@@ -216,8 +275,14 @@ export class HoloUvSupervisorEnvironmentV1<
     if (this.#closed) void this.#closeTransport('supervisor-closed')
   }
 
-  async close(reason: 'cancelled' | 'generation-stale' | 'process-complete'): Promise<void> {
-    if (this.#closed) return
+  close(reason: 'cancelled' | 'generation-stale' | 'process-complete'): Promise<void> {
+    if (this.#closePromise != null) return this.#closePromise
+    if (this.#closed) return this.#transportClose ?? Promise.resolve()
+    this.#closePromise = this.#close(reason)
+    return this.#closePromise
+  }
+
+  async #close(reason: 'cancelled' | 'generation-stale' | 'process-complete'): Promise<void> {
     if (this.#transport != null) {
       await this.#write('shutdown', 0, 0, new Uint8Array()).catch(() => undefined)
     }
@@ -268,8 +333,11 @@ export class HoloUvSupervisorEnvironmentV1<
     this.#ready.reject(normalized)
     for (const pending of this.#pending.values()) pending.terminal.reject(normalized)
     this.#pending.clear()
+    this.#pendingExecutionCommits.clear()
+    this.#networkAdmissions.splice(0)
     for (const process of this.#processes.values()) process.fail(normalized)
     this.#processes.clear()
+    this.#linuxProcessSources.clear()
     this.#processSources.clear()
     void this.#closeTransport(closeReason)
   }
@@ -284,10 +352,41 @@ export class HoloUvSupervisorEnvironmentV1<
     return Object.freeze({ ...source, processId })
   }
 
+  consumeNetworkAdmission(input: {
+    readonly address: string
+    readonly port: number
+    readonly transport: 'tcp' | 'udp'
+  }): HoloUvLinuxProcessSourceV1 & { readonly processId: number } {
+    const now = Date.now()
+    for (let index = this.#networkAdmissions.length - 1; index >= 0; index -= 1) {
+      if (this.#networkAdmissions[index]!.expiresAt <= now) this.#networkAdmissions.splice(index, 1)
+    }
+    const index = this.#networkAdmissions.findIndex(admission =>
+      admission.address === input.address && admission.port === input.port &&
+      (admission.transport === input.transport || admission.transport === 'connect')
+    )
+    if (index < 0) throw failure('supervisor.network_attribution_unavailable')
+    const [admission] = this.#networkAdmissions.splice(index, 1)
+    if (admission == null) throw failure('supervisor.network_attribution_unavailable')
+    const { address: _address, expiresAt: _expiresAt, port: _port, transport: _transport, ...source } = admission
+    return Object.freeze(source)
+  }
+
   processSource(processId: number): HoloUvProcessSourceV1 | undefined {
     if (processId === 0) return undefined
     const source = this.#processSources.get(processId)
     if (source == null) throw failure('supervisor.protocol_error')
+    return source
+  }
+
+  linuxProcessSource(processId: number, linuxPid: number): HoloUvLinuxProcessSourceV1 {
+    if (
+      [...this.#pendingExecutionCommits.values()].some(commit =>
+        commit.processId === processId && commit.caller.linuxPid === linuxPid
+      )
+    ) throw failure('supervisor.process_attribution_unavailable')
+    const source = this.#linuxProcessSources.get(processId)?.get(linuxPid)
+    if (source == null) throw failure('supervisor.process_attribution_unavailable')
     return source
   }
 
@@ -355,6 +454,8 @@ export class HoloUvSupervisorEnvironmentV1<
     if (frame.operation === 'filesystemRequest') return this.#receiveFilesystem(frame)
     if (frame.operation === 'capabilityRequest') return this.#receiveCapability(frame)
     if (frame.operation === 'execRequest') return this.#receiveExecution(frame)
+    if (frame.operation === 'execResult') return this.#receiveExecutionResult(frame)
+    if (frame.operation === 'networkRequest') return this.#receiveNetworkAttribution(frame)
     const pending = this.#pending.get(frame.requestId)
     if (frame.operation === 'ack') return this.#receiveAck(frame, pending)
     if (frame.operation === 'spawned') return this.#receiveSpawned(frame, pending)
@@ -372,6 +473,15 @@ export class HoloUvSupervisorEnvironmentV1<
         process.close(terminal.code, terminal.signal)
         this.#processes.delete(frame.processId)
         this.#processSources.delete(frame.processId)
+        this.#linuxProcessSources.delete(frame.processId)
+        for (let index = this.#networkAdmissions.length - 1; index >= 0; index -= 1) {
+          if (this.#networkAdmissions[index]!.processId === frame.processId) {
+            this.#networkAdmissions.splice(index, 1)
+          }
+        }
+        for (const [requestId, commit] of this.#pendingExecutionCommits) {
+          if (commit.processId === frame.processId) this.#pendingExecutionCommits.delete(requestId)
+        }
       }
       return
     }
@@ -411,16 +521,31 @@ export class HoloUvSupervisorEnvironmentV1<
     const source = this.processSource(frame.processId)
     if (source == null) throw failure('supervisor.protocol_error')
     const request = decodeProcessSupervisorExecRequestV1(frame.payload)
+    const caller = this.#resolveLinuxProcessSource(frame.processId, source, request)
     Promise.resolve()
       .then(() =>
         this.#execution?.(Object.freeze({
           ...source,
           ...request,
+          callerExecutableId: caller.executableId,
           processId: frame.processId,
           rootLinuxPid: source.linuxPid
         }))
       )
-      .then(() => true, () => false)
+      .then(targetExecutableId => {
+        if (typeof targetExecutableId !== 'string' || targetExecutableId.length === 0) {
+          throw failure('supervisor.protocol_error')
+        }
+        this.#pendingExecutionCommits.set(
+          frame.requestId,
+          Object.freeze({
+            caller,
+            processId: frame.processId,
+            targetExecutableId
+          })
+        )
+        return true
+      }, () => false)
       .then(allowed => {
         if (!this.#closed && this.#processes.has(frame.processId)) {
           return this.#write(
@@ -428,15 +553,121 @@ export class HoloUvSupervisorEnvironmentV1<
             frame.processId,
             frame.requestId,
             encodeProcessSupervisorExecResponseV1(allowed)
-          )
+          ).catch(error => {
+            this.#pendingExecutionCommits.delete(frame.requestId)
+            throw error
+          })
         }
       })
       .catch(error => this.fail(error))
   }
 
+  #receiveExecutionResult(frame: ProcessSupervisorFrameV1): void {
+    const committed = decodeProcessSupervisorExecResultV1(frame.payload)
+    const pending = this.#pendingExecutionCommits.get(frame.requestId)
+    if (pending == null) {
+      if (committed) throw failure('supervisor.protocol_error')
+      return
+    }
+    if (pending.processId !== frame.processId) throw failure('supervisor.protocol_error')
+    this.#pendingExecutionCommits.delete(frame.requestId)
+    if (!committed) return
+    this.#linuxProcessSources.get(frame.processId)?.set(
+      pending.caller.linuxPid,
+      Object.freeze({ ...pending.caller, executableId: pending.targetExecutableId })
+    )
+  }
+
+  #resolveLinuxProcessSource(
+    processId: number,
+    root: HoloUvProcessSourceV1,
+    request: Pick<
+      ProcessSupervisorExecRequestV1,
+      'linuxPid' | 'parentLinuxPid' | 'processStartTimeTicks'
+    >
+  ): HoloUvLinuxProcessSourceV1 {
+    const tree = this.#linuxProcessSources.get(processId)
+    if (tree == null) throw failure('supervisor.process_attribution_unavailable')
+    const existing = tree.get(request.linuxPid)
+    if (
+      existing != null &&
+      existing.processStartTimeTicks === request.processStartTimeTicks
+    ) {
+      return Object.freeze({ ...existing, parentLinuxPid: request.parentLinuxPid })
+    }
+    if (request.linuxPid === root.linuxPid) {
+      if (existing != null && existing.processStartTimeTicks !== 0) {
+        throw failure('supervisor.process_attribution_unavailable')
+      }
+      const value = Object.freeze({
+        ...root,
+        parentLinuxPid: request.parentLinuxPid,
+        processStartTimeTicks: request.processStartTimeTicks,
+        rootLinuxPid: root.linuxPid
+      })
+      tree.set(request.linuxPid, value)
+      return value
+    }
+    const parent = tree.get(request.parentLinuxPid)
+    if (parent == null) throw failure('supervisor.process_attribution_unavailable')
+    const value = Object.freeze({
+      ...root,
+      executableId: parent.executableId,
+      linuxPid: request.linuxPid,
+      parentLinuxPid: request.parentLinuxPid,
+      processStartTimeTicks: request.processStartTimeTicks,
+      rootLinuxPid: root.linuxPid
+    })
+    tree.set(request.linuxPid, value)
+    return value
+  }
+
+  #receiveNetworkAttribution(frame: ProcessSupervisorFrameV1): void {
+    const request = decodeProcessSupervisorNetworkRequestV1(frame.payload)
+    const root = this.processSource(frame.processId)
+    if (root == null) throw failure('supervisor.protocol_error')
+    const source = this.#resolveLinuxProcessSource(frame.processId, root, request)
+    if (this.#networkAttribution == null) {
+      void this.#write(
+        'networkResponse',
+        frame.processId,
+        frame.requestId,
+        encodeProcessSupervisorNetworkResponseV1(false)
+      ).catch(error => this.fail(error))
+      return
+    }
+    Promise.resolve().then(() => this.#networkAttribution?.(frame)).then(() => {
+      const now = Date.now()
+      for (let index = this.#networkAdmissions.length - 1; index >= 0; index -= 1) {
+        if (this.#networkAdmissions[index]!.expiresAt <= now) this.#networkAdmissions.splice(index, 1)
+      }
+      if (this.#networkAdmissions.length >= 64) throw failure('supervisor.network_attribution_limit')
+      this.#networkAdmissions.push(Object.freeze({
+        ...source,
+        address: request.address,
+        expiresAt: now + 5_000,
+        port: request.port,
+        processId: frame.processId,
+        transport: request.transport
+      }))
+      return this.#write(
+        'networkResponse',
+        frame.processId,
+        frame.requestId,
+        encodeProcessSupervisorNetworkResponseV1(true)
+      )
+    }, () =>
+      this.#write(
+        'networkResponse',
+        frame.processId,
+        frame.requestId,
+        encodeProcessSupervisorNetworkResponseV1(false)
+      )).catch(error => this.fail(error))
+  }
+
   #receiveFilesystem(frame: ProcessSupervisorFrameV1): void {
     if (this.#filesystem == null) throw failure('supervisor.filesystem_unavailable')
-    Promise.resolve(this.#filesystem(frame)).then(payload => {
+    Promise.resolve().then(() => this.#filesystem?.(frame)).then(payload => {
       if (!(payload instanceof Uint8Array)) throw failure('supervisor.protocol_error')
       if (!this.#closed) return this.#write('filesystemResponse', frame.processId, frame.requestId, payload)
     }).catch(error => this.fail(error))
@@ -452,7 +683,7 @@ export class HoloUvSupervisorEnvironmentV1<
       ).catch(error => this.fail(error))
       return
     }
-    Promise.resolve(this.#capability(frame)).then(payload => {
+    Promise.resolve().then(() => this.#capability?.(frame)).then(payload => {
       if (!(payload instanceof Uint8Array)) throw failure('supervisor.protocol_error')
       if (!this.#closed && this.#processes.has(frame.processId)) {
         return this.#write('capabilityResponse', frame.processId, frame.requestId, payload)
@@ -484,6 +715,19 @@ export class HoloUvSupervisorEnvironmentV1<
     this.#pending.delete(frame.requestId)
     this.#processes.set(spawned.processId, process)
     this.#processSources.set(spawned.processId, Object.freeze({ ...pending.source, linuxPid: spawned.linuxPid }))
+    this.#linuxProcessSources.set(
+      spawned.processId,
+      new Map([[
+        spawned.linuxPid,
+        Object.freeze({
+          ...pending.source,
+          linuxPid: spawned.linuxPid,
+          parentLinuxPid: 1,
+          processStartTimeTicks: 0,
+          rootLinuxPid: spawned.linuxPid
+        })
+      ]])
+    )
     pending.terminal.resolve(process)
   }
 
@@ -520,7 +764,8 @@ export const createHoloUvSupervisorEnvironmentFactoryV1 = <
     options.createConfiguration != null && typeof options.createConfiguration !== 'function' ||
     options.handleCapabilityRequest != null && typeof options.handleCapabilityRequest !== 'function' ||
     options.handleExecutionRequest != null && typeof options.handleExecutionRequest !== 'function' ||
-    options.handleFilesystemRequest != null && typeof options.handleFilesystemRequest !== 'function'
+    options.handleFilesystemRequest != null && typeof options.handleFilesystemRequest !== 'function' ||
+    options.handleNetworkAttribution != null && typeof options.handleNetworkAttribution !== 'function'
   ) throw new TypeError('Invalid HoloUV supervisor transport')
   const readyTimeoutMs = options.readyTimeoutMs ?? 30_000
   if (!Number.isInteger(readyTimeoutMs) || readyTimeoutMs < 1 || readyTimeoutMs > 120_000) {
@@ -545,6 +790,10 @@ export const createHoloUvSupervisorEnvironmentFactoryV1 = <
               policy: request.policy,
               processId: frame.processId,
               requestId: frame.requestId,
+              resolveLinuxProcessSource: linuxPid => {
+                if (holder.current == null) return invalidPayload()
+                return holder.current.linuxProcessSource(frame.processId, linuxPid)
+              },
               scope: request.scope,
               signal: request.signal
             })) ?? invalidPayload()
@@ -552,7 +801,7 @@ export const createHoloUvSupervisorEnvironmentFactoryV1 = <
         options.handleCapabilityRequest == null
           ? undefined
           : frame => {
-            const source = holder.current?.processSource(frame.processId)
+            const source = holder.current?.linuxProcessSource(frame.processId, frame.sequence)
             if (source == null) return invalidPayload()
             return options.handleCapabilityRequest?.(Object.freeze({
               environmentId: request.environmentId,
@@ -566,10 +815,30 @@ export const createHoloUvSupervisorEnvironmentFactoryV1 = <
               signal: request.signal
             })) ?? invalidPayload()
           },
+        options.handleNetworkAttribution == null
+          ? undefined
+          : frame => {
+            const root = holder.current?.processSource(frame.processId)
+            if (root == null || holder.current == null) return invalidPayload()
+            const network = decodeProcessSupervisorNetworkRequestV1(frame.payload)
+            const source = holder.current.linuxProcessSource(frame.processId, network.linuxPid)
+            return options.handleNetworkAttribution?.(Object.freeze({
+              ...network,
+              ...source,
+              environmentId: request.environmentId,
+              generation: request.generation,
+              policy: request.policy,
+              processId: frame.processId,
+              processResourceId: source.processResourceId,
+              rootLinuxPid: root.linuxPid,
+              scope: request.scope,
+              signal: request.signal
+            }))
+          },
         options.handleExecutionRequest == null
           ? undefined
-          : input =>
-            options.handleExecutionRequest?.(Object.freeze({
+          : async input => {
+            await options.handleExecutionRequest?.(Object.freeze({
               ...input,
               environmentId: request.environmentId,
               executables: request.executables,
@@ -579,6 +848,13 @@ export const createHoloUvSupervisorEnvironmentFactoryV1 = <
               scope: request.scope,
               signal: request.signal
             }))
+            const executable = request.executables.find(candidate =>
+              candidate.executable.kind === 'guestPath' && candidate.executable.path === input.path &&
+              candidate.shell !== true
+            )
+            if (executable == null) return invalidPayload()
+            return executable.executableId
+          }
       )
       holder.current = environment
       try {
@@ -587,6 +863,7 @@ export const createHoloUvSupervisorEnvironmentFactoryV1 = <
           onBytes: (bytes: Uint8Array) => environment.receive(bytes),
           onClose: () => environment.fail(failure('supervisor.transport_closed')),
           onError: () => environment.fail(failure('supervisor.transport_failed')),
+          consumeNetworkAdmission: input => environment.consumeNetworkAdmission(input),
           resolveProcessSource: () => environment.networkProcessSource(request.scope)
         }))
         environment.attach(transport)

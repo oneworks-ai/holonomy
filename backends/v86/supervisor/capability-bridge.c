@@ -123,7 +123,7 @@ static int dispatch_request(struct holo_capability_bridge *bridge, struct holo_p
         HOLO_CAPABILITY_REQUEST,
         request_id,
         client->process_id,
-        0,
+        (uint32_t)client->pid,
         client->request,
         (uint32_t)client->request_length
     );

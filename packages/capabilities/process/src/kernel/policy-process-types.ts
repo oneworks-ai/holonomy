@@ -25,6 +25,7 @@ export type ProcessNetworkPolicyV2 =
     access: 'restricted'
     endpoints: readonly ProcessNetworkEndpointV2[]
     maxSockets: number
+    privateNetwork: 'allow' | 'deny'
   }>
 
 export interface ProcessEnvironmentPolicyV2 {

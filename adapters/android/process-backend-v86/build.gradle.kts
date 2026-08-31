@@ -56,5 +56,6 @@ dependencies {
     api(project(":host-core"))
     implementation(project(":network-host"))
     implementation("com.caoccao.javet:javet-v8-android:5.0.10")
+    testImplementation("com.google.code.gson:gson:2.10.1")
     testImplementation("junit:junit:4.13.2")
 }

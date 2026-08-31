@@ -38,6 +38,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -45,7 +46,11 @@ import org.junit.runner.RunWith
 class CapabilityRuntimeKernelInstrumentationTest {
     @Test
     fun publicV86ChildProcessEventsReachGuestFacade() {
-        if (!AndroidV86AssetStore(targetContext().assets).available) return
+        val available = AndroidV86AssetStore(targetContext().assets).available
+        if (InstrumentationRegistry.getArguments().getString("holonomyRequireV86") == "true") {
+            assertTrue("The required v86 production assets were not packaged", available)
+        }
+        assumeTrue("The optional v86 production assets were not packaged", available)
         val fixture = fixture()
         val harness = SessionSupervisorInstrumentationHarness(targetContext())
         val network = V86NetworkFixtureServer()
@@ -60,7 +65,7 @@ class CapabilityRuntimeKernelInstrumentationTest {
             ) { snapshot ->
                 snapshot.events.any { event ->
                     event.generation == 1L &&
-                        event.chunk.contains("V86_CONFORMANCE_EVENT:descendant:allow-deny:ok")
+                        event.chunk.contains("V86_CONFORMANCE_EVENT:process-control:timeout-abort-flow:ok")
                 }
             }
             val trace = output.events.filter { event ->
@@ -73,9 +78,11 @@ class CapabilityRuntimeKernelInstrumentationTest {
                     "V86_CONFORMANCE_EVENT:child:exit:2",
                     "V86_CONFORMANCE_EVENT:child:close:2",
                     "V86_CONFORMANCE_EVENT:callback:3:ok",
+                    "V86_CONFORMANCE_EVENT:scope:process-tree-shell:ok",
                     "V86_CONFORMANCE_EVENT:network:tcp-udp:ok",
                     "V86_CONFORMANCE_EVENT:capability:device-system:ok",
                     "V86_CONFORMANCE_EVENT:descendant:allow-deny:ok",
+                    "V86_CONFORMANCE_EVENT:process-control:timeout-abort-flow:ok",
                 )
             ) assertTrue("missing $marker in $trace", trace.contains(marker))
         } finally {
@@ -469,7 +476,7 @@ class CapabilityRuntimeKernelInstrumentationTest {
         assertEquals("ABORT_ERR", filesystemM3.getJSONObject("writeAbort").getString("code"))
         assertEquals("AbortError", filesystemM3.getJSONObject("writeAbort").getString("name"))
         val conformance = result.getJSONObject("guestConformance")
-        val expectedTests = if (expectsV86) 11 else 7
+        val expectedTests = if (expectsV86) 13 else 7
         assertEquals(0, conformance.getInt("failed"))
         assertEquals(expectedTests, conformance.getInt("passed"))
         assertEquals(expectedTests, conformance.getInt("total"))

@@ -12,7 +12,7 @@ Package the digest-bound assets explicitly:
 ./gradlew -Pholonomy.v86.assetsDir=/absolute/trusted/v86-assets :app:assembleDebug
 ```
 
-The directory must contain `libv86.mjs`, `v86.wasm`, `seabios.bin`, `kernel.bin`, and `supervisor.cpio`. The Host then
+The directory must contain `libv86.mjs`, `v86.wasm`, `seabios.bin`, `kernel.bin`, and `agent.cpio`. The Host then
 supplies `AndroidV86RuntimeServicesFactory` to `RuntimeEngineFactory.create()`. A Process policy of `none` creates no
 extra V8. A sandboxed profile selecting `experimental.v86-v1` validates the assets and required kernel capabilities
 before accepting process work.

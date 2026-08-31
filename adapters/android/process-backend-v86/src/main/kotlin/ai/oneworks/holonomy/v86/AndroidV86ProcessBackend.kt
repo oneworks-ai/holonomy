@@ -27,6 +27,9 @@ fun interface AndroidV86NetworkEventSink {
 }
 
 interface AndroidV86NetworkTransport : AutoCloseable {
+    /** Resolution-only preflight. Implementations must not open a socket or produce external side effects. */
+    fun resolve(hostname: String): List<String> = emptyList()
+
     fun execute(request: JSONObject, authorizationTerminal: JSONObject): JSONObject
 
     fun open(
@@ -56,7 +59,8 @@ class AndroidV86ProcessBackend(
     private val configuration: JSONObject,
     private val eventSink: AndroidV86ProcessEventSink,
     private val networkTransport: AndroidV86NetworkTransport? = null,
-) : RuntimeTrustedBackend {
+    private val ownsNetworkTransport: Boolean = true,
+) : RuntimeTrustedBackend, AndroidV86EnvironmentBackend {
     private val closed = AtomicBoolean(false)
     private val commands = ConcurrentLinkedQueue<String>()
     private val failure = AtomicReference<Throwable?>()
@@ -80,7 +84,7 @@ class AndroidV86ProcessBackend(
         return readiness
     }
 
-    fun submit(command: JSONObject) {
+    override fun submit(command: JSONObject) {
         check(started.get() && !closed.get() && failure.get() == null && worker.get()?.isAlive == true) {
             "Android v86 Backend is unavailable"
         }
@@ -90,7 +94,7 @@ class AndroidV86ProcessBackend(
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
         readiness.completeExceptionally(IllegalStateException("Android v86 Backend closed before readiness"))
-        runCatching { networkTransport?.close() }
+        if (ownsNetworkTransport) runCatching { networkTransport?.close() }
         networkExecutor.shutdownNow()
         worker.get()?.let { thread ->
             if (thread !== Thread.currentThread()) {

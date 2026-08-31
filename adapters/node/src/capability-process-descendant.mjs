@@ -27,7 +27,9 @@ export const authorizeNodeProcessDescendantV1 = ({
   if (
     executable == null || executable.shell === true || executable.executable.kind !== 'guestPath' ||
     executable.executable.path !== args.path || source?.kind !== 'linuxProcess' ||
-    source.executableId !== resource.executableId || source.environmentId !== args.environmentId ||
+    !manifest.has(source.executableId) ||
+    source.linuxPid !== args.linuxPid || source.processStartTimeTicks !== args.processStartTimeTicks ||
+    source.rootLinuxPid == null || source.environmentId !== args.environmentId ||
     source.parentLinuxPid !== args.parentLinuxPid || resource.environmentScope !== args.environmentScope ||
     !profile.environment.allowedScopes.includes(resource.environmentScope)
   ) throw new CapabilityInvocationError('policy.denied', context.operation)

@@ -83,7 +83,8 @@ export const PROCESS_ARGUMENT_SCHEMAS_V1: Readonly<Record<string, JsonSchema>> =
     executableId: IDENTIFIER_SCHEMA_V1,
     linuxPid: integerSchema(1, 0x7FFF_FFFF),
     parentLinuxPid: integerSchema(1, 0x7FFF_FFFF),
-    path: { maxLength: 4096, minLength: 1, pattern: '^/', type: 'string' }
+    path: { maxLength: 4096, minLength: 1, pattern: '^/', type: 'string' },
+    processStartTimeTicks: integerSchema(1, Number.MAX_SAFE_INTEGER)
   }),
   ProcessNetworkAuthorizationArgsV1: strictObject({
     hostname: { maxLength: 253, minLength: 1, type: 'string' },

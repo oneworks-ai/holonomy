@@ -63,7 +63,8 @@ const satisfiesProcessNetwork = (
   return (required.endpoints as readonly Readonly<Record<string, JsonValueV1>>[]).every(endpoint => {
     const ports = availableEndpoints.get(`${endpoint.transport}\0${endpoint.hostname}`)
     return ports != null && (endpoint.ports as readonly number[]).every(port => (ports as unknown[]).includes(port))
-  }) && (available.maxSockets as number) >= (required.maxSockets as number)
+  }) && (available.maxSockets as number) >= (required.maxSockets as number) &&
+    (required.privateNetwork !== 'allow' || available.privateNetwork === 'allow')
 }
 
 export const capabilitySatisfiesV1 = (

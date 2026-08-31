@@ -29,7 +29,7 @@ const metadata = value => {
   return Object.freeze({ kind: value.kind, size: value.size })
 }
 
-export class V86FuseBridgeV1 {
+class V86FuseEnvironmentBridgeV1 {
   #dispatch
   #handles = new Map()
   #inodes = new Map([[1n, '/workspace']])
@@ -44,19 +44,22 @@ export class V86FuseBridgeV1 {
 
   async handle(input) {
     const request = decodeV86FuseRequestV1(input.payload)
-    const common = Object.freeze({
-      environmentId: input.environmentId,
-      executableId: input.executableId,
-      generation: input.generation,
-      linuxPid: request.pid,
-      policy: input.policy,
-      processId: input.processId,
-      processResourceId: input.processResourceId,
-      requestId: input.requestId,
-      scope: input.scope,
-      signal: input.signal
-    })
     try {
+      const attributed = typeof input.resolveLinuxProcessSource === 'function'
+        ? input.resolveLinuxProcessSource(request.pid)
+        : input
+      const common = Object.freeze({
+        environmentId: input.environmentId,
+        executableId: attributed.executableId,
+        generation: input.generation,
+        linuxPid: request.pid,
+        policy: input.policy,
+        processId: input.processId,
+        processResourceId: attributed.processResourceId,
+        requestId: input.requestId,
+        scope: input.scope,
+        signal: input.signal
+      })
       return await this.#handle(request, common)
     } catch (error) {
       return encodeV86FuseErrorV1(request, errno(error))
@@ -285,5 +288,34 @@ export class V86FuseBridgeV1 {
       throw Object.assign(new TypeError('Invalid FUSE write'), { errno: 5 })
     }
     return encodeV86FuseWriteV1(request, written)
+  }
+}
+
+/** Keeps kernel inode and handle identities isolated to one v86 environment. */
+export class V86FuseBridgeV1 {
+  #dispatch
+  #environments = new Map()
+
+  constructor(dispatch) {
+    if (typeof dispatch !== 'function') throw new TypeError('Invalid v86 FUSE dispatch')
+    this.#dispatch = dispatch
+  }
+
+  handle(input) {
+    const environmentId = input?.environmentId ?? 'legacy-test-environment'
+    if (typeof environmentId !== 'string' || environmentId.length === 0 || environmentId.length > 256) {
+      throw new TypeError('Invalid v86 FUSE environment')
+    }
+    let environment = this.#environments.get(environmentId)
+    if (environment == null) {
+      environment = new V86FuseEnvironmentBridgeV1(this.#dispatch)
+      this.#environments.set(environmentId, environment)
+    }
+    return environment.handle(input)
+  }
+
+  releaseEnvironment(environmentId) {
+    if (typeof environmentId !== 'string') return false
+    return this.#environments.delete(environmentId)
   }
 }

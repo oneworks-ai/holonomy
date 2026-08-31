@@ -10,7 +10,7 @@ Service 负责 ADB 设备发现、安装、command-v2 传输、forward/reverse�
 
 网络 Provider 独立执行 authority、DNS 地址准入、socket/TLS、配额、取消和流式 credit。Fetch、redirect、Request、Response 与 Abort 语义仍由共享 JavaScript Runtime 负责。
 
-Android 支持由 Host 在启动前提供 `holo-plugins:///` Bundle。Javet 使用 Host 生成的只读静态 plugin manifest，在独立于 Guest 的 Host V8 realm 中同步完成 Cordis Context 安装；插件 global 对 Guest 不可见。返回 Promise 的异步初始化会在 Guest entry 前稳定失败。当前不支持 Capability interception、运行中插件图替换或 `--watch`。
+Android 支持由 Host 在启动前提供 `holo-plugins:///` Bundle。Javet 使用 Host 生成的只读静态 plugin manifest，在独立于 Guest 的 Host V8 realm 中同步完成 Cordis Context 安装；插件 global 对 Guest 不可见。返回 Promise 的异步初始化会在 Guest entry 前稳定失败。静态同步插件可以拦截 Capability 调用；当前不支持运行中插件图替换或 `--watch`。
 
 实验 v86 由可选生产模块 `process-backend-v86` 提供。Android Host 在 Runtime 创建时装配
 `AndroidV86RuntimeServicesFactory`；Process Policy 为 `none` 时不会读取资产或创建额外 V8，选择

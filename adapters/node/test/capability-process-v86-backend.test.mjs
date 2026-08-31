@@ -20,6 +20,18 @@ const configuration = {
   supervisor: { protocolVersion: 1 }
 }
 
+const fuseRequest = (opcode, nodeId, body = new Uint8Array()) => {
+  const payload = new Uint8Array(40 + body.byteLength)
+  const view = new DataView(payload.buffer)
+  view.setUint32(0, payload.byteLength, true)
+  view.setUint32(4, opcode, true)
+  view.setBigUint64(8, 1n, true)
+  view.setBigUint64(16, nodeId, true)
+  view.setUint32(32, 42, true)
+  payload.set(body, 40)
+  return payload
+}
+
 const environmentFactory = {
   async open() {
     return {
@@ -157,4 +169,35 @@ test('negotiates atomic truncation because Host open owns O_TRUNC', async () => 
   const response = new DataView(output.buffer, output.byteOffset, output.byteLength)
   assert.equal(response.getInt32(4, true), 0)
   assert.equal(response.getUint32(28, true) & (1 << 3), 1 << 3)
+})
+
+test('isolates FUSE inode and handle state between v86 environments', async () => {
+  const bridge = new V86FuseBridgeV1(async input => {
+    assert.equal(input.operation, 'lookup')
+    return { kind: 'file', size: 3 }
+  })
+  const attributed = environmentId => ({
+    environmentId,
+    executableId: 'fixture',
+    generation: 1,
+    linuxPid: 42,
+    policy: {},
+    processId: 1,
+    processResourceId: 'process-1',
+    requestId: 1,
+    scope: 'processTree',
+    signal: new AbortController().signal
+  })
+  const lookup = fuseRequest(1, 1n, new TextEncoder().encode('item\0'))
+
+  const created = await bridge.handle({ ...attributed('environment-a'), payload: lookup })
+  assert.equal(new DataView(created.buffer, created.byteOffset).getBigUint64(16, true), 2n)
+
+  const getattr = fuseRequest(3, 2n)
+  const isolated = await bridge.handle({ ...attributed('environment-b'), payload: getattr })
+  assert.equal(new DataView(isolated.buffer, isolated.byteOffset).getInt32(4, true), -2)
+
+  assert.equal(bridge.releaseEnvironment('environment-a'), true)
+  const released = await bridge.handle({ ...attributed('environment-a'), payload: getattr })
+  assert.equal(new DataView(released.buffer, released.byteOffset).getInt32(4, true), -2)
 })

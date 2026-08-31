@@ -1,4 +1,9 @@
-import type { FilesystemResourceV1, NetworkResourceV1, OpaqueHandleResourceV1 } from './resource-types.js'
+import type {
+  FilesystemResourceV1,
+  NetworkResourceV1,
+  OpaqueHandleResourceV1,
+  ProcessNetworkEndpointResourceV1
+} from './resource-types.js'
 
 export interface NetworkAddressEvidenceV1 {
   readonly addresses: readonly string[]
@@ -42,8 +47,8 @@ export type ResolvedResourceChallengeV1 =
     ChallengeBaseV1 & {
       evidence: ResolutionEvidenceBindingV1 & { readonly kind: 'networkAddress' }
       reason: 'networkAddress'
-      requested: NetworkResourceV1
-      resolved: NetworkResourceV1
+      requested: NetworkResourceV1 | ProcessNetworkEndpointResourceV1
+      resolved: NetworkResourceV1 | ProcessNetworkEndpointResourceV1
     }
   >
   | Readonly<

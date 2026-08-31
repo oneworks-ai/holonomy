@@ -255,7 +255,10 @@ int holo_process_command(struct holo_process_table *table, int control_fd, const
         return result;
     }
     if (frame->operation == HOLO_EXEC_RESPONSE) {
-        return holo_exec_gate_response(&process->exec_gate, frame);
+        return holo_exec_gate_response(&process->exec_gate, control_fd, frame);
+    }
+    if (frame->operation == HOLO_NETWORK_RESPONSE) {
+        return holo_network_gate_response(&process->exec_gate, frame);
     }
     return holo_write_error(control_fd, frame->request_id, frame->process_id, "operation.unsupported");
 }

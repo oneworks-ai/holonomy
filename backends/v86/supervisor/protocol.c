@@ -70,7 +70,7 @@ int holo_read_frame(int fd, struct holo_frame *frame) {
         return -1;
     }
     if (read_u32(body) != HOLO_MAGIC || body[4] != 1 || read_u16(body + 6) != 0 ||
-        body[5] < HOLO_ACK || body[5] > HOLO_CAPABILITY_RESPONSE) {
+        body[5] < HOLO_ACK || body[5] > HOLO_NETWORK_RESPONSE) {
         free(body);
         return -1;
     }
@@ -95,7 +95,7 @@ int holo_write_frame(int fd, uint8_t operation, uint32_t request_id, uint32_t pr
                      uint32_t sequence, const void *payload, uint32_t payload_length) {
     uint8_t header[4 + HOLO_HEADER_BYTES];
     uint32_t length = HOLO_HEADER_BYTES + payload_length;
-    if (length > HOLO_MAX_FRAME_BYTES || operation < HOLO_ACK || operation > HOLO_CAPABILITY_RESPONSE) return -1;
+    if (length > HOLO_MAX_FRAME_BYTES || operation < HOLO_ACK || operation > HOLO_NETWORK_RESPONSE) return -1;
     holo_u32_write(header, length);
     holo_u32_write(header + 4, HOLO_MAGIC);
     header[8] = 1;

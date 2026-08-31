@@ -81,9 +81,10 @@ export const createAndroidHostProviderV1 = (host, module) =>
     preflight(context, authority) {
       const filesystem = module === 'host.fs'
       const network = module === 'host.network' && context.operation === 'network.fetch.request'
-      if ((!filesystem && !network) || context.resource.inheritedBindingId != null) return undefined
+      const processNetwork = module === 'host.process' && context.operation === 'process.network.connect'
+      if ((!filesystem && !network && !processNetwork) || context.resource.inheritedBindingId != null) return undefined
       const terminal = callHost(host, context, authority, module, {
-        ...(network ? { brokerMonotonicMs: monotonicNow() } : {}),
+        ...(network || processNetwork ? { brokerMonotonicMs: monotonicNow() } : {}),
         providerPhase: 'preflight'
       })
       if (!Array.isArray(terminal.value?.requests) || terminal.value.requests.length < 1) {

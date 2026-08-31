@@ -31,8 +31,9 @@ const network = Object.freeze({
         minItems: 0,
         type: 'array'
       },
-      maxSockets: integerSchema(1, 256)
-    })
+      maxSockets: integerSchema(1, 256),
+      privateNetwork: { enum: ['allow', 'deny'] }
+    }, ['access', 'endpoints', 'maxSockets'])
   ]
 })
 

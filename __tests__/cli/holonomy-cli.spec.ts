@@ -190,6 +190,12 @@ describe('holonomy CLI module graph', () => {
 
   it('keeps the guest process exitCode in the run wrapper', () => {
     expect(runWrapperSource('app+local://workspace/entry.mjs')).toContain('process.exit(process.exitCode)')
+    expect(runWrapperSource('app+local://workspace/entry.mjs', true)).toContain(
+      'setInterval(() => {}, 2_147_483_647)'
+    )
+    expect(runWrapperSource('app+local://workspace/entry.mjs', true)).not.toContain(
+      'process.exit(process.exitCode)'
+    )
   })
 
   it('keeps TAP and JSON rendering in the CLI-generated test entry', () => {

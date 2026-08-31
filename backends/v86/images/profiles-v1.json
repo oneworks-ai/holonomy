@@ -24,6 +24,31 @@
           "shell": false
         },
         {
+          "executableId": "ls",
+          "path": "/bin/ls",
+          "shell": false
+        },
+        {
+          "executableId": "mkdir",
+          "path": "/bin/mkdir",
+          "shell": false
+        },
+        {
+          "executableId": "mv",
+          "path": "/bin/mv",
+          "shell": false
+        },
+        {
+          "executableId": "rm",
+          "path": "/bin/rm",
+          "shell": false
+        },
+        {
+          "executableId": "rmdir",
+          "path": "/bin/rmdir",
+          "shell": false
+        },
+        {
           "executableId": "shell",
           "path": "/bin/sh",
           "shell": true
@@ -66,8 +91,33 @@
           "shell": false
         },
         {
+          "executableId": "ls",
+          "path": "/bin/ls",
+          "shell": false
+        },
+        {
+          "executableId": "mkdir",
+          "path": "/bin/mkdir",
+          "shell": false
+        },
+        {
+          "executableId": "mv",
+          "path": "/bin/mv",
+          "shell": false
+        },
+        {
           "executableId": "nc",
           "path": "/usr/bin/nc",
+          "shell": false
+        },
+        {
+          "executableId": "rm",
+          "path": "/bin/rm",
+          "shell": false
+        },
+        {
+          "executableId": "rmdir",
+          "path": "/bin/rmdir",
           "shell": false
         },
         {

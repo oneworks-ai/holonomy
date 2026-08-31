@@ -151,7 +151,8 @@ const parseAddress = (input: string) => {
   if (ipv4 != null) return { normalized: ipv4.normalized, public: isPublicIpv4Value(ipv4.value) }
   const ipv6 = parseIpv6(input)
   if (ipv6 == null) return undefined
-  return { normalized: ipv6.map(value => value.toString(16)).join(':'), public: isPublicIpv6(ipv6) }
+  const normalized = new URL(`http://[${input}]/`).hostname.slice(1, -1)
+  return { normalized, public: isPublicIpv6(ipv6) }
 }
 
 export const isPrivateNetworkHost = (input: string) => {

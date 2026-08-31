@@ -101,7 +101,8 @@ const meetProcessNetwork = (
   if (endpoints.length === 0) return null
   return deepFreeze({
     endpoints,
-    maxSockets: Math.min(left.maxSockets as number, right.maxSockets as number)
+    maxSockets: Math.min(left.maxSockets as number, right.maxSockets as number),
+    privateNetwork: left.privateNetwork === 'allow' && right.privateNetwork === 'allow' ? 'allow' : 'deny'
   })
 }
 

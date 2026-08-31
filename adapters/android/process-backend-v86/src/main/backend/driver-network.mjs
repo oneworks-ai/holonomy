@@ -72,17 +72,35 @@
     }
   }
 
-  globalThis.__holoCreateV86NetworkBridge = ({ common, dispatch, processes }) => ({
+  globalThis.__holoCreateV86NetworkBridge = ({ common, consumeNetworkAdmission, dispatch }) => ({
     Headers: BackendHeaders,
     URL: BackendURL,
     fetch: async (input, init = {}) => {
-      if (processes.size !== 1) throw new Error('v86 network process attribution unavailable')
-      const [processId, source] = processes.entries().next().value
       const url = String(input)
       const parsed = new BackendURL(url)
       const port = Number(parsed.port || (parsed.protocol === 'https:' ? 443 : 80))
+      // The v86 fetch hook terminates the Guest's fixed internal HTTP proxy.
+      // Network Policy below still evaluates the original target URL.
+      const [processId, source] = consumeNetworkAdmission({
+        address: '192.168.86.1',
+        port: 80,
+        transport: 'tcp'
+      })
+      const body = init.body == null
+        ? new Uint8Array()
+        : typeof init.body === 'string'
+        ? new TextEncoder().encode(init.body)
+        : init.body instanceof ArrayBuffer
+        ? new Uint8Array(init.body)
+        : ArrayBuffer.isView(init.body)
+        ? new Uint8Array(init.body.buffer, init.body.byteOffset, init.body.byteLength)
+        : (() => {
+          throw new TypeError('Invalid v86 request body')
+        })()
+      if (body.byteLength > 1024 * 1024) throw new TypeError('v86 request body is too large')
       const value = await dispatch('linuxProcessNetwork', {
         ...common(source, processId),
+        bodyBytes: [...body],
         headers: [...new BackendHeaders(init.headers).entries()],
         hostname: parsed.hostname,
         method: init.method ?? 'GET',
@@ -90,9 +108,9 @@
         transport: parsed.protocol === 'https:' ? 'tls' : 'tcp',
         url
       })
-      const body = Uint8Array.from(value.bodyBytes ?? [])
+      const responseBody = Uint8Array.from(value.bodyBytes ?? [])
       return Object.freeze({
-        arrayBuffer: async () => body.slice().buffer,
+        arrayBuffer: async () => responseBody.slice().buffer,
         body: null,
         headers: new BackendHeaders(value.headers ?? []),
         redirected: value.redirected === true,

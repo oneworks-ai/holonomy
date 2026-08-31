@@ -186,7 +186,8 @@ describe('capability invocation broker v1', () => {
           capabilityName: 'host.process.network',
           constraints: {
             endpoints: [{ hostname: '127.0.0.1', ports: [8123], transport: 'tcp' }],
-            maxSockets: 2
+            maxSockets: 2,
+            privateNetwork: 'deny'
           }
         })
       ])
@@ -194,6 +195,12 @@ describe('capability invocation broker v1', () => {
         authorized: true,
         generation: context.runtime.generation,
         invocationBindingDigest: authority.invocationBinding.invocationBindingDigest,
+        resolution: {
+          addresses: ['127.0.0.1'],
+          evidenceDigest: '3'.repeat(64),
+          expiresAtMonotonicMs: Number.MAX_SAFE_INTEGER,
+          resolverGeneration: context.runtime.generation
+        },
         semanticResourceDigest: endpoint.semanticResourceDigest
       }, 'result'))
     })
@@ -218,7 +225,8 @@ describe('capability invocation broker v1', () => {
         network: {
           access: 'restricted' as const,
           endpoints: [{ hostname: '127.0.0.1', ports: [8123], transport: 'tcp' as const }],
-          maxSockets: 2
+          maxSockets: 2,
+          privateNetwork: 'deny' as const
         },
         shell: { access: 'none' as const }
       }
@@ -478,7 +486,6 @@ describe('capability invocation broker v1', () => {
     await expect(cancelled).rejects.toMatchObject({ code: 'runtime.cancelled' })
     expect(() => cancelledComplete('late')).toThrow(expect.objectContaining({ code: 'runtime.cancelled' }))
   })
-
   it('maps Provider failures to a stable terminal without completing authority', async () => {
     const failed = provider('host.fs', 'async', 'unused', () => {
       throw new Error('PRIVATE_PROVIDER_FAILURE')

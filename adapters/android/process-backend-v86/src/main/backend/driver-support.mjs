@@ -36,6 +36,15 @@
       offset += 4
       return output
     }
+    const u64Value = () => {
+      if (offset + 8 > input.length) throw new TypeError('Invalid v86 payload')
+      const output = target.getBigUint64(offset)
+      offset += 8
+      if (output === 0n || output > BigInt(Number.MAX_SAFE_INTEGER)) {
+        throw new TypeError('Invalid v86 payload')
+      }
+      return Number(output)
+    }
     const text = () => {
       const length = u32Value()
       if (length === 0 || length > 4096 || offset + length > input.length) {
@@ -52,7 +61,8 @@
       text,
       u8,
       u16: u16Value,
-      u32: u32Value
+      u32: u32Value,
+      u64: u64Value
     })
   }
   const frame = (operation, requestId, processId, payload = new Uint8Array()) =>
@@ -107,6 +117,7 @@
     const input = reader(payload)
     const linuxPid = input.u32()
     const parentLinuxPid = input.u32()
+    const processStartTimeTicks = input.u64()
     const path = input.text()
     const cwd = input.text()
     const count = input.u16()
@@ -116,7 +127,29 @@
     const argv = Array.from({ length: count }, input.text)
     input.done()
     if (!path.startsWith('/') || !cwd.startsWith('/')) throw new TypeError('Invalid v86 exec request')
-    return Object.freeze({ argv, cwd, linuxPid, parentLinuxPid, path })
+    return Object.freeze({ argv, cwd, linuxPid, parentLinuxPid, path, processStartTimeTicks })
+  }
+  const networkRequest = payload => {
+    const input = reader(payload)
+    const linuxPid = input.u32()
+    const parentLinuxPid = input.u32()
+    const processStartTimeTicks = input.u64()
+    const transportId = input.u8()
+    const address = Array.from({ length: 4 }, input.u8).join('.')
+    const port = input.u16()
+    input.done()
+    if (
+      linuxPid === 0 || parentLinuxPid === 0 || port === 0 ||
+      transportId !== 1 && transportId !== 2 && transportId !== 3
+    ) throw new TypeError('Invalid v86 network attribution request')
+    return Object.freeze({
+      address,
+      linuxPid,
+      parentLinuxPid,
+      port,
+      processStartTimeTicks,
+      transport: transportId === 1 ? 'tcp' : transportId === 2 ? 'udp' : 'connect'
+    })
   }
   const capabilityRequest = payload => {
     const input = reader(payload)
@@ -197,6 +230,7 @@
     execResponse: allowed => Uint8Array.of(allowed ? 1 : 0),
     frame,
     join,
+    networkRequest,
     signalPayload: signal => string(signal),
     spawnPayload,
     view

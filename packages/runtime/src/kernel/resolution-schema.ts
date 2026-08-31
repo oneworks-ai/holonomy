@@ -2,7 +2,8 @@ import {
   DIGEST_V1_SCHEMA,
   FILESYSTEM_RESOURCE_V1_SCHEMA,
   NETWORK_RESOURCE_V1_SCHEMA,
-  OPAQUE_HANDLE_RESOURCE_V1_SCHEMA
+  OPAQUE_HANDLE_RESOURCE_V1_SCHEMA,
+  PROCESS_NETWORK_ENDPOINT_RESOURCE_V1_SCHEMA
 } from './resource-schema.js'
 import type { JsonSchema } from './schema-primitives.js'
 import { integerSchema, strictObject, stringSetSchema } from './schema-primitives.js'
@@ -64,6 +65,7 @@ const challenge = (
 export const RESOLVED_RESOURCE_CHALLENGE_V1_SCHEMA: JsonSchema = Object.freeze({
   oneOf: [
     challenge('networkAddress', 'networkAddress', NETWORK_RESOURCE_V1_SCHEMA),
+    challenge('networkAddress', 'networkAddress', PROCESS_NETWORK_ENDPOINT_RESOURCE_V1_SCHEMA),
     challenge('filesystemTarget', 'filesystemTarget', FILESYSTEM_RESOURCE_V1_SCHEMA),
     challenge('opaqueRebind', 'opaqueIdentity', OPAQUE_HANDLE_RESOURCE_V1_SCHEMA)
   ]

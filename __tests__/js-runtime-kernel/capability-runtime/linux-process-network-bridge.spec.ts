@@ -22,7 +22,8 @@ const policy = {
   network: {
     access: 'restricted' as const,
     endpoints: [{ hostname: 'api.example', ports: [443], transport: 'tls' as const }],
-    maxSockets: 1
+    maxSockets: 1,
+    privateNetwork: 'deny' as const
   },
   shell: { access: 'none' as const }
 }
@@ -49,6 +50,12 @@ describe('linux process network capability bridge', () => {
         authorized: true,
         generation: 2,
         invocationBindingDigest: '1'.repeat(64),
+        resolution: {
+          addresses: ['93.184.216.34'],
+          evidenceDigest: '3'.repeat(64),
+          expiresAtMonotonicMs: Number.MAX_SAFE_INTEGER,
+          resolverGeneration: 2
+        },
         semanticResourceDigest: '2'.repeat(64)
       })
     })

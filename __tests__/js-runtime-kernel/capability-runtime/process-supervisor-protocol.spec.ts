@@ -8,6 +8,12 @@ import {
   encodeProcessSupervisorExecResponseV1
 } from '../../../src/capability-runtime/process-supervisor-exec.js'
 import {
+  decodeProcessSupervisorNetworkRequestV1,
+  decodeProcessSupervisorNetworkResponseV1,
+  encodeProcessSupervisorNetworkRequestV1,
+  encodeProcessSupervisorNetworkResponseV1
+} from '../../../src/capability-runtime/process-supervisor-network.js'
+import {
   ProcessSupervisorFrameDecoderV1,
   decodeProcessSupervisorReadyPayloadV1,
   encodeProcessSupervisorFrameV1,
@@ -107,13 +113,39 @@ describe('process supervisor frame protocol', () => {
       cwd: '/workspace',
       linuxPid: 91,
       parentLinuxPid: 41,
-      path: '/bin/tool'
+      path: '/bin/tool',
+      processStartTimeTicks: 123
     }
     expect(decodeProcessSupervisorExecRequestV1(encodeProcessSupervisorExecRequestV1(request))).toEqual(request)
     expect(decodeProcessSupervisorExecResponseV1(encodeProcessSupervisorExecResponseV1(true))).toBe(true)
     expect(decodeProcessSupervisorExecResponseV1(encodeProcessSupervisorExecResponseV1(false))).toBe(false)
     expect(() => encodeProcessSupervisorExecRequestV1({ ...request, path: 'relative' })).toThrow(TypeError)
     expect(() => decodeProcessSupervisorExecResponseV1(Uint8Array.of(2))).toThrow(TypeError)
+  })
+
+  it('round-trips bounded Linux network attribution and rejects malformed endpoints', () => {
+    const request = {
+      address: '192.0.2.17',
+      linuxPid: 91,
+      parentLinuxPid: 41,
+      port: 443,
+      processStartTimeTicks: 123,
+      transport: 'tcp' as const
+    }
+    expect(
+      decodeProcessSupervisorNetworkRequestV1(encodeProcessSupervisorNetworkRequestV1(request))
+    ).toEqual(request)
+    expect(
+      decodeProcessSupervisorNetworkRequestV1(encodeProcessSupervisorNetworkRequestV1({
+        ...request,
+        address: '192.168.86.1',
+        port: 80,
+        transport: 'connect'
+      })).transport
+    ).toBe('connect')
+    expect(decodeProcessSupervisorNetworkResponseV1(encodeProcessSupervisorNetworkResponseV1(true))).toBe(true)
+    expect(() => encodeProcessSupervisorNetworkRequestV1({ ...request, address: '192.0.2.999' })).toThrow(TypeError)
+    expect(() => decodeProcessSupervisorNetworkResponseV1(Uint8Array.of(2))).toThrow(TypeError)
   })
 
   it('preserves the admitted Linux child pid in descendant authorization arguments', async () => {
@@ -129,12 +161,14 @@ describe('process supervisor frame protocol', () => {
     })
     await bridge.authorize({
       argv: ['/bin/tool', '--version'],
+      callerExecutableId: 'shell',
       cwd: '/workspace',
       environmentId: 'environment-1',
       executableId: 'tool',
       linuxPid: 91,
       parentLinuxPid: 41,
       path: '/bin/tool',
+      processStartTimeTicks: 123,
       policy: {
         access: 'sandboxed',
         environment: { allowedNames: [], maxValueBytes: 1 },
@@ -159,6 +193,7 @@ describe('process supervisor frame protocol', () => {
       rootLinuxPid: 40,
       scope: 'runtime'
     })
-    expect(invocation?.arguments).toMatchObject({ linuxPid: 91, parentLinuxPid: 41 })
+    expect(invocation?.arguments).toMatchObject({ linuxPid: 91, parentLinuxPid: 41, processStartTimeTicks: 123 })
+    expect(invocation?.source).toMatchObject({ executableId: 'shell', linuxPid: 91 })
   })
 })

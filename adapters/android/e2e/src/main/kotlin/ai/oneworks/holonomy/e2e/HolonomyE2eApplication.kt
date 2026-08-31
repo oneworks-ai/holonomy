@@ -1,6 +1,7 @@
 package ai.oneworks.holonomy.e2e
 
 import android.app.Application
+import android.util.Log
 import ai.oneworks.holonomy.session.HolonomySessionServiceDependencies
 import ai.oneworks.holonomy.session.HolonomySessionServiceProvider
 import ai.oneworks.holonomy.session.SessionNativeHostFactory
@@ -43,7 +44,7 @@ class HolonomyE2eApplication : Application(), HolonomySessionServiceProvider {
                         ) "host.network.mock" else "host.network",
                         capabilityDomains = setOf("device", "system"),
                         backendDiagnostics = true,
-                        networkTransport = v86NetworkTransport(configuration),
+                        networkTransportFactory = v86NetworkTransportFactory(configuration),
                     )
                 },
             )
@@ -55,25 +56,29 @@ class HolonomyE2eApplication : Application(), HolonomySessionServiceProvider {
         nativeHostFactory = SessionNativeHostFactory(::createE2eRuntimeNativeHost),
     )
 
-    private fun v86NetworkTransport(configuration: String): AndroidV86NetworkTransport? {
+    private fun v86NetworkTransportFactory(configuration: String): (() -> AndroidV86NetworkTransport)? {
         val process = JSONObject(configuration).getJSONObject("session")
             .getJSONObject("runtimeCreation").getJSONObject("configuration")
             .getJSONObject("sandboxPolicy").getJSONObject("process")
-        if (process.getString("access") != "sandboxed" ||
-            process.getJSONObject("network").getString("access") != "restricted"
-        ) return null
-        return AndroidV86HostNetworkTransport(
-            addressResolver = AndroidV86NetworkAddressResolver { hostname ->
-                if (hostname == V86_TEST_HOSTNAME) {
-                    listOf(InetAddress.getByName("127.0.0.1"))
-                } else {
-                    InetAddress.getAllByName(hostname).toList()
-                }
-            },
-        )
+        val network = process.getJSONObject("network")
+        if (process.getString("access") != "sandboxed" || network.getString("access") != "restricted") return null
+        return {
+            AndroidV86HostNetworkTransport(
+                allowPrivateNetwork = network.optString("privateNetwork", "deny") == "allow",
+                addressResolver = AndroidV86NetworkAddressResolver { hostname ->
+                    if (hostname == V86_TEST_HOSTNAME) {
+                        listOf(InetAddress.getByName("127.0.0.1"))
+                    } else {
+                        InetAddress.getAllByName(hostname).toList()
+                    }
+                },
+                diagnostic = { message -> Log.d(V86_NETWORK_TAG, message) },
+            )
+        }
     }
 
     private companion object {
         private const val V86_TEST_HOSTNAME = "android-v86.test"
+        private const val V86_NETWORK_TAG = "HolonomyV86Network"
     }
 }

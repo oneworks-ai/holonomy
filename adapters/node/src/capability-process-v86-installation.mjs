@@ -10,6 +10,7 @@ import { NodeV86CapabilityBrokerV1 } from './capability-process-v86-capability-b
 import { NodeV86ProcessExecutionBrokerV1 } from './capability-process-v86-execution-broker.mjs'
 import { NodeV86FilesystemBrokerV1 } from './capability-process-v86-filesystem-broker.mjs'
 import { V86FuseBridgeV1 } from './capability-process-v86-fuse.mjs'
+import { verifyInstalledV86ImageBundleV1 } from './capability-process-v86-image-bundle.mjs'
 import { NodeV86ProcessNetworkBrokerV1 } from './capability-process-v86-network-broker.mjs'
 
 const BACKEND_ID = 'experimental.v86-v1'
@@ -88,7 +89,8 @@ export const createInstalledV86ProcessBackendRuntimeV1 = (value, options = {}) =
     handleFilesystemRequest: input => fuse.handle(input),
     handleNetworkRequest: input => network.fetch(input),
     loadArtifact: artifact => readArtifact(installation, artifact),
-    loadV86
+    loadV86,
+    onEnvironmentClose: environmentId => fuse.releaseEnvironment(environmentId)
   })
   let bound = false
   return Object.freeze({
@@ -116,5 +118,9 @@ export const verifyInstalledV86ProcessProfileV1 = async (profile, value) => {
     const bytes = await readArtifact(installation, artifact)
     if (createHash('sha256').update(bytes).digest('hex') !== artifact.sha256) return invalid()
   }
+  await verifyInstalledV86ImageBundleV1(
+    profile,
+    artifactId => readArtifact(installation, { artifactId })
+  )
   await loadV86()
 }

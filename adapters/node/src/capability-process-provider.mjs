@@ -5,8 +5,10 @@ import { CapabilityInvocationError, trustedInvocationValueFromJsonV1 } from '../
 
 import { NODE_PROCESS_BACKEND_REGISTRY_V1 } from './capability-process-backend.mjs'
 import { authorizeNodeProcessDescendantV1 } from './capability-process-descendant.mjs'
+import { createNodeProcessNetworkResolutionV1 } from './capability-process-network-resolution.mjs'
 import { NodeProcessResourceManagerV1 } from './capability-process-resources.mjs'
-import { binary, exactEnvironment, nodeError } from './capability-process-support.mjs'
+import { exactEnvironment } from './capability-process-support.mjs'
+import { spawnNodeProcessSyncV1 } from './capability-process-sync.mjs'
 import { assertNodeProcessAuthorityV1, assertNodeProcessNetworkAuthorityV1 } from './capability-provider-authority.mjs'
 
 export class NodeProcessProviderV1 {
@@ -17,16 +19,18 @@ export class NodeProcessProviderV1 {
   #profile
   #resources
   #generation
+  #networkResolutionOptions
 
   #backend
 
-  constructor(profile, policy, generation, registry = NODE_PROCESS_BACKEND_REGISTRY_V1) {
+  constructor(profile, policy, generation, registry = NODE_PROCESS_BACKEND_REGISTRY_V1, options = {}) {
     this.#backend = registry.get(profile.backend.backendId)
     if (this.#backend == null) throw new TypeError('Node Process Backend is unavailable')
     this.#manifest = new Map(profile.executables.map(item => [item.executableId, item]))
     this.#generation = generation
     this.#policy = policy
     this.#profile = profile
+    this.#networkResolutionOptions = options.networkResolution ?? {}
     this.#resources = new NodeProcessResourceManagerV1(policy, this.#backend)
   }
 
@@ -38,13 +42,7 @@ export class NodeProcessProviderV1 {
   invoke(context, authority) {
     const resource = context.resource.requested
     if (resource.kind === 'processNetworkEndpoint') {
-      assertNodeProcessNetworkAuthorityV1(context, authority)
-      return authority.complete(trustedInvocationValueFromJsonV1({
-        authorized: true,
-        generation: context.runtime.generation,
-        invocationBindingDigest: authority.invocationBinding.invocationBindingDigest,
-        semanticResourceDigest: resource.semanticResourceDigest
-      }, 'result'))
+      throw new CapabilityInvocationError('provider.protocol_error', context.operation)
     }
     if (context.member === 'authorizeDescendantProcess') {
       return authorizeNodeProcessDescendantV1({
@@ -62,6 +60,44 @@ export class NodeProcessProviderV1 {
       throw new CapabilityInvocationError('resource.invalid', context.operation)
     }
     return this.#resources.invoke(context, authority, resource)
+  }
+
+  preflight(context, authority) {
+    const resource = context.resource.requested
+    if (resource.kind !== 'processNetworkEndpoint') return undefined
+    assertNodeProcessNetworkAuthorityV1(context, authority)
+    if (this.#policy.access !== 'sandboxed' || this.#policy.network.access !== 'restricted') {
+      throw new CapabilityInvocationError('policy.denied', context.operation)
+    }
+    return createNodeProcessNetworkResolutionV1({
+      context,
+      generation: this.#generation,
+      policy: this.#policy,
+      ...this.#networkResolutionOptions
+    }).then(resolution =>
+      Object.freeze({
+        execute: (resolvedContext, authorities) => {
+          const resolvedAuthority = authorities[0]
+          if (resolvedAuthority == null) {
+            throw new CapabilityInvocationError('provider.protocol_error', context.operation)
+          }
+          return resolvedAuthority.complete(trustedInvocationValueFromJsonV1({
+            authorized: true,
+            generation: resolvedContext.runtime.generation,
+            invocationBindingDigest: resolvedAuthority.invocationBinding.invocationBindingDigest,
+            resolution: resolution.receipt,
+            semanticResourceDigest: resource.semanticResourceDigest
+          }, 'result'))
+        },
+        requests: Object.freeze([Object.freeze({
+          evidence: resolution.evidence,
+          reason: 'networkAddress',
+          resolved: resource,
+          sideEffectCount: 0,
+          verify: resolution.verify
+        })])
+      })
+    )
   }
 
   #spawn(context, authority, resource) {
@@ -113,7 +149,16 @@ export class NodeProcessProviderV1 {
       }
       this.#resources.reserveSync(context.operation, stdio, authorityProcessLimit)
       return authority.complete(trustedInvocationValueFromJsonV1(
-        this.#spawnSync(context, launch, environment, stdio, options),
+        spawnNodeProcessSyncV1({
+          backend: this.#backend,
+          context,
+          env: environment,
+          launch,
+          options,
+          policy: this.#policy,
+          resources: this.#resources,
+          stdio
+        }),
         'result'
       ))
     }
@@ -128,60 +173,5 @@ export class NodeProcessProviderV1 {
       options,
       authorityProcessLimit
     )
-  }
-
-  #spawnSync(context, launch, env, stdio, options) {
-    const result = this.#backend.spawnSync(launch, {
-      cwd: launch.cwd,
-      encoding: options.encoding === 'utf8' ? 'utf8' : 'buffer',
-      env,
-      killSignal: 'SIGKILL',
-      maxBuffer: Math.min(
-        options.maxBufferBytes ?? this.#policy.limits.maxStdoutBytes,
-        this.#policy.limits.maxStdoutBytes,
-        this.#policy.limits.maxStderrBytes
-      ),
-      shell: false,
-      stdio,
-      timeout: Math.min(
-        options.timeoutMs ?? this.#policy.limits.maxExecutionTimeMs,
-        this.#policy.limits.maxExecutionTimeMs
-      )
-    })
-    const output = stream =>
-      options.encoding === 'utf8'
-        ? stream ?? ''
-        : binary(stream ?? Buffer.alloc(0))
-    const failure = () => {
-      if (result.error?.code === 'ENOBUFS') {
-        throw new CapabilityInvocationError('resource.byte_limit', context.operation)
-      }
-      if (result.error?.code === 'ETIMEDOUT') {
-        throw new CapabilityInvocationError('provider.timeout', context.operation)
-      }
-      throw new CapabilityInvocationError('provider.unavailable', context.operation)
-    }
-    if (context.member === 'execFileSync' || context.member === 'execSync') {
-      if (result.error != null || result.status !== 0) failure()
-      return output(result.stdout)
-    }
-    return {
-      ...(result.error == null
-        ? {}
-        : {
-          error: nodeError(
-            result.error.code === 'ENOBUFS'
-              ? 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER'
-              : result.error.code === 'ETIMEDOUT'
-              ? 'ETIMEDOUT'
-              : 'ERR_OPERATION_FAILED'
-          )
-        }),
-      pid: this.#resources.allocatePublicId(),
-      signal: result.signal,
-      status: result.status,
-      stderr: output(result.stderr),
-      stdout: output(result.stdout)
-    }
   }
 }

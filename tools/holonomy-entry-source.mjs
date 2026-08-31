@@ -35,11 +35,17 @@ run().then(summary => {
 })
 `
 
-export const runWrapperSource = entryUrl => `
+export const runWrapperSource = (entryUrl, watch = false) => `
 import process from 'node:process'
 import ${JSON.stringify(entryUrl)}
 
-try {
+${
+  watch
+    ? `// Keep the Runtime event loop active after entry evaluation so the Host
+// can replace Cordis plugin scopes without blocking launch admission.
+setInterval(() => {}, 2_147_483_647)`
+    : `try {
   process.exit(process.exitCode)
-} catch {}
+} catch {}`
+}
 `

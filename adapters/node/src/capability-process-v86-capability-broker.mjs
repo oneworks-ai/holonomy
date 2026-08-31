@@ -11,7 +11,10 @@ const source = input =>
     executableId: input.executableId,
     kind: 'linuxProcess',
     linuxPid: input.linuxPid,
+    parentLinuxPid: input.parentLinuxPid,
+    ...(input.processStartTimeTicks > 0 ? { processStartTimeTicks: input.processStartTimeTicks } : {}),
     processResourceId: input.processResourceId,
+    rootLinuxPid: input.rootLinuxPid,
     syntheticProcessId: input.processId
   })
 

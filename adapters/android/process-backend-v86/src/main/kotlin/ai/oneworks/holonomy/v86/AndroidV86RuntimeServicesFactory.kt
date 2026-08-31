@@ -25,7 +25,7 @@ class AndroidV86RuntimeServicesFactory(
     private val generation: Long,
     private val principal: String,
     private val expectedNetworkProvider: String,
-    private val networkTransport: AndroidV86NetworkTransport? = null,
+    private val networkTransportFactory: (() -> AndroidV86NetworkTransport)? = null,
     private val capabilityDomains: Set<String> = emptySet(),
     private val backendDiagnostics: Boolean = false,
     private val backendStartupTimeoutMs: Long = 300_000L,
@@ -53,7 +53,10 @@ class AndroidV86RuntimeServicesFactory(
         require(processPolicy.getString("access") == "sandboxed")
         val processNetwork = processPolicy.getJSONObject("network")
         val effectiveNetworkTransport = if (processNetwork.getString("access") == "restricted") {
-            networkTransport ?: AndroidV86HostNetworkTransport(maxSockets = processNetwork.getInt("maxSockets"))
+            networkTransportFactory?.invoke() ?: AndroidV86HostNetworkTransport(
+                allowPrivateNetwork = processNetwork.optString("privateNetwork", "deny") == "allow",
+                maxSockets = processNetwork.getInt("maxSockets"),
+            )
         } else {
             null
         }
@@ -62,13 +65,11 @@ class AndroidV86RuntimeServicesFactory(
             require(backend.getString("backendId") == BACKEND_ID)
         }.getJSONObject("configuration")
         val assets = AndroidV86AssetStore(context.assets)
-        assets.requireBackend(backendConfiguration)
+        assets.requireBackend(backendConfiguration, profile)
         AndroidV86ProcessBackendFeature.enable()
         val sink = AtomicReference<AndroidV86ProcessEventSink>()
-        val backend = AndroidV86ProcessBackend(
-            assetStore = assets,
-            configuration = JSONObject()
-                .put("environmentId", "$processId:$generation:android-v86")
+        val environment = profile.getJSONObject("environment")
+        val baseBackendConfiguration = JSONObject()
                 .put("generation", generation)
                 .put("memoryBytes", backendConfiguration.getInt("memoryBytes"))
                 .put("startupTimeoutMs", backendStartupTimeoutMs)
@@ -80,15 +81,31 @@ class AndroidV86RuntimeServicesFactory(
                 .put("executables", processExecutables(profile))
                 .put("hosts", environmentHosts(processPolicy))
                 .put("requiredKernelCapabilities", backendConfiguration.getJSONArray("requiredKernelCapabilities"))
-                .put("scope", profile.getJSONObject("environment").getString("defaultScope")),
+        val backend = AndroidV86EnvironmentManager(
+            processId = processId,
+            generation = generation,
+            defaultScope = environment.getString("defaultScope"),
+            startupTimeoutMs = backendStartupTimeoutMs,
             eventSink = AndroidV86ProcessEventSink { event -> sink.get()?.emit(event) },
             networkTransport = effectiveNetworkTransport,
+            backendFactory = { environmentId, scope, eventSink ->
+                AndroidV86ProcessBackend(
+                    assetStore = assets,
+                    configuration = JSONObject(baseBackendConfiguration.toString())
+                        .put("environmentId", environmentId)
+                        .put("scope", scope),
+                    eventSink = eventSink,
+                    networkTransport = effectiveNetworkTransport,
+                    ownsNetworkTransport = false,
+                )
+            },
         )
         val provider = AndroidV86ProcessProvider(
             generation,
             processPolicy,
             profile,
             backend,
+            networkTransport = effectiveNetworkTransport,
             diagnostics = backendDiagnostics,
         )
         sink.set(provider)

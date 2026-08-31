@@ -64,7 +64,10 @@ size_t holo_process_poll_fds(struct holo_process_table *table, struct pollfd *fd
             fds[offset] = (struct pollfd){ process->stderr_fd, POLLIN, 0 };
             targets[offset++] = (struct holo_poll_target){ process, HOLO_POLL_STDERR };
         }
-        if (process->exec_gate.listener_fd >= 0 && !process->exec_gate.pending) {
+        if (
+            process->exec_gate.listener_fd >= 0 && !process->exec_gate.pending &&
+            !process->exec_gate.commit_pending
+        ) {
             fds[offset] = (struct pollfd){ process->exec_gate.listener_fd, POLLIN, 0 };
             targets[offset++] = (struct holo_poll_target){ process, HOLO_POLL_EXEC };
         }
@@ -161,11 +164,14 @@ int holo_process_exec_poll_event(
     );
 }
 
-int holo_process_exec_timeouts(struct holo_process_table *table) {
+int holo_process_exec_timeouts(struct holo_process_table *table, int control_fd) {
     size_t index;
     for (index = 0; index < HOLO_MAX_PROCESSES; index += 1) {
         struct holo_process *process = &table->entries[index];
-        if (process->used && holo_exec_gate_timeout(&process->exec_gate) != 0) return -1;
+        if (
+            process->used &&
+            holo_exec_gate_progress(&process->exec_gate, control_fd, process->id) != 0
+        ) return -1;
     }
     return 0;
 }

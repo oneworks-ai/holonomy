@@ -106,7 +106,7 @@ export const normalizeProcessSandbox = (
     return Object.freeze({ guestPath: guestPath(required(mount, 'guestPath')), rights, rootId })
   }).sort((left, right) => left.guestPath.localeCompare(right.guestPath))
   if (new Set(mounts.map(mount => mount.guestPath)).size !== mounts.length) return invalidPolicy()
-  const networkInput = exact(required(input, 'network'), ['access', 'endpoints', 'maxSockets'])
+  const networkInput = exact(required(input, 'network'), ['access', 'endpoints', 'maxSockets', 'privateNetwork'])
   const networkAccess = literal(required(networkInput, 'access'), ['none', 'restricted'] as const)
   const network = networkAccess === 'none'
     ? (() => {
@@ -128,7 +128,8 @@ export const normalizeProcessSandbox = (
           })
         })
       ),
-      maxSockets: integer(required(networkInput, 'maxSockets'), 1, 256)
+      maxSockets: integer(required(networkInput, 'maxSockets'), 1, 256),
+      privateNetwork: literal(networkInput.privateNetwork ?? 'deny', ['allow', 'deny'] as const)
     })
   const environmentInput = exact(required(input, 'environment'), ['allowedNames', 'maxValueBytes'])
   const allowedNames = array(required(environmentInput, 'allowedNames'), 0, 256).map(value => {

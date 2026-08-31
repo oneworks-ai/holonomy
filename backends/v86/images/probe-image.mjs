@@ -43,6 +43,7 @@ const backend = createV86ProcessBackendV1({
     if (input.path !== '/bin/cat' || input.argv.join('\0') !== '/bin/cat') {
       throw new TypeError('Unexpected image probe descendant')
     }
+    return 'cat'
   },
   loadArtifact: input => values.get(input.artifactId),
   readyTimeoutMs: 90_000

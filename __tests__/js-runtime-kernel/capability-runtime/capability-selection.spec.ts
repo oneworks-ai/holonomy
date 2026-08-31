@@ -115,7 +115,8 @@ describe('capability definition and selection v1', () => {
   it('uses endpoint and port intersections for Linux process network authority', () => {
     const processNetwork = (ports: number[], maxSockets = 4) => ({
       endpoints: [{ hostname: 'api.example', ports, transport: 'tls' }],
-      maxSockets
+      maxSockets,
+      privateNetwork: 'deny'
     })
     expect(capabilitySatisfiesV1(
       'host.process.network',
@@ -133,7 +134,8 @@ describe('capability definition and selection v1', () => {
       processNetwork([443, 9443], 2)
     )).toEqual({
       endpoints: [{ hostname: 'api.example', ports: [443], transport: 'tls' }],
-      maxSockets: 2
+      maxSockets: 2,
+      privateNetwork: 'deny'
     })
   })
 

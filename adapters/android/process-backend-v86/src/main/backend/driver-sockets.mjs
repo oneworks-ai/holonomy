@@ -57,25 +57,39 @@
     return output
   }
 
-  globalThis.__holoCreateV86SocketBridge = ({ common, configuration, dispatch, emit, processes, vm }) => {
+  globalThis.__holoCreateV86SocketBridge = ({
+    common,
+    configuration,
+    consumeNetworkAdmission,
+    dispatch,
+    emit,
+    vm
+  }) => {
     const tcp = new Map()
     const udp = new Map()
     const hostLookup = new Map(configuration.hosts.map(item => [item.address, item.hostname]))
     const synthetic = value => /^192\.168\.(?:87|88)\./u.test(value)
-    const source = () => {
-      if (processes.size !== 1) throw new Error('v86 network process attribution unavailable')
-      return processes.entries().next().value
-    }
     const invoke = (channel, input) => dispatch(channel, input).catch(() => undefined)
     const install = () => {
       const adapter = vm.network_adapter
       if (adapter == null || typeof adapter.send !== 'function') return false
       adapter.on_tcp_connection = (connection, packet) => {
         if (connection.sport === 80) return
-        const [processId, processSource] = source()
         const address = packet.ipv4.dest.join('.')
         const hostname = hostLookup.get(address) ?? address
         if (synthetic(address) && !hostLookup.has(address)) return
+        let processId
+        let processSource
+        try {
+          ;[processId, processSource] = consumeNetworkAdmission({
+            address,
+            port: connection.sport,
+            transport: 'tcp'
+          })
+        } catch {
+          connection.close()
+          return
+        }
         if (configuration.diagnostics === true) {
           emit({ event: 'backend-diagnostic', line: `network tcp syn ${hostname}:${connection.sport}` })
         }
@@ -137,7 +151,17 @@
           })
           return
         }
-        const [processId, processSource] = source()
+        let processId
+        let processSource
+        try {
+          ;[processId, processSource] = consumeNetworkAdmission({
+            address,
+            port: packet.destinationPort,
+            transport: 'udp'
+          })
+        } catch {
+          return
+        }
         dispatch('linuxProcessNetwork', {
           ...common(processSource, processId),
           hostname,

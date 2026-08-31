@@ -110,6 +110,18 @@ const processResults: Readonly<Record<string, JsonSchema>> = {
     authorized: { const: true },
     generation: integerSchema(1, Number.MAX_SAFE_INTEGER),
     invocationBindingDigest: DIGEST_SCHEMA_V1,
+    resolution: strictObject({
+      addresses: {
+        items: { maxLength: 64, minLength: 2, type: 'string' },
+        maxItems: 64,
+        minItems: 1,
+        type: 'array',
+        uniqueItems: true
+      },
+      evidenceDigest: DIGEST_SCHEMA_V1,
+      expiresAtMonotonicMs: { maximum: Number.MAX_SAFE_INTEGER, minimum: 0, type: 'number' },
+      resolverGeneration: integerSchema(0, Number.MAX_SAFE_INTEGER)
+    }),
     semanticResourceDigest: DIGEST_SCHEMA_V1
   }),
   ProcessSyncOutputV1: { oneOf: [{ type: 'string' }, BINARY_SCHEMA_V1] },

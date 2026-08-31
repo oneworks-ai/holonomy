@@ -5,7 +5,12 @@ import type {
   ResolutionEvidenceV1,
   ResolvedResourceChallengeV1
 } from './resolution-types.js'
-import type { FilesystemResourceV1, NetworkResourceV1, OpaqueHandleResourceV1 } from './resource-types.js'
+import type {
+  FilesystemResourceV1,
+  NetworkResourceV1,
+  OpaqueHandleResourceV1,
+  ProcessNetworkEndpointResourceV1
+} from './resource-types.js'
 import { deepFreeze, exact, finiteNumber, identifier, integer, literal, required, string } from './validation.js'
 
 const digest = (value: unknown): string => {
@@ -50,15 +55,19 @@ export const normalizeResolvedResourceChallengeV1 = (
     sequence: integer(required(input, 'sequence'), 1, 32)
   }
   if (reason === 'networkAddress') {
-    const requested = resource<NetworkResourceV1>(required(input, 'requested'), 'network')
-    const resolved = resource<NetworkResourceV1>(required(input, 'resolved'), 'network')
-    if (requested.semanticResourceDigest !== resolved.semanticResourceDigest) return invalidPolicy()
+    const requested = validateCanonicalResourceV1(required(input, 'requested'))
+    const resolved = validateCanonicalResourceV1(required(input, 'resolved'))
+    if (
+      !['network', 'processNetworkEndpoint'].includes(requested.kind) ||
+      requested.kind !== resolved.kind ||
+      requested.semanticResourceDigest !== resolved.semanticResourceDigest
+    ) return invalidPolicy()
     return deepFreeze({
       ...base,
       evidence: binding(required(input, 'evidence'), 'networkAddress'),
       reason,
-      requested,
-      resolved
+      requested: requested as NetworkResourceV1 | ProcessNetworkEndpointResourceV1,
+      resolved: resolved as NetworkResourceV1 | ProcessNetworkEndpointResourceV1
     })
   }
   if (reason === 'filesystemTarget') {

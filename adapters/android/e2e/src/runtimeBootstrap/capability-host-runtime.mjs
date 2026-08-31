@@ -76,7 +76,10 @@ const linuxCapabilitySource = input =>
     executableId: input.executableId,
     kind: 'linuxProcess',
     linuxPid: input.linuxPid,
+    ...(input.parentLinuxPid == null ? {} : { parentLinuxPid: input.parentLinuxPid }),
+    ...(input.processStartTimeTicks > 0 ? { processStartTimeTicks: input.processStartTimeTicks } : {}),
     processResourceId: input.processResourceId,
+    ...(input.rootLinuxPid == null ? {} : { rootLinuxPid: input.rootLinuxPid }),
     syntheticProcessId: input.processId
   })
 

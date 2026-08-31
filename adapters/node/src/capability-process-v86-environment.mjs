@@ -117,6 +117,7 @@ export const createV86ProcessEnvironmentFactoryV1 = options => {
     options.handleNetworkConnection != null && typeof options.handleNetworkConnection !== 'function' ||
     options.handleNetworkDatagram != null && typeof options.handleNetworkDatagram !== 'function' ||
     options.handleNetworkRequest != null && typeof options.handleNetworkRequest !== 'function' ||
+    options.onEnvironmentClose != null && typeof options.onEnvironmentClose !== 'function' ||
     options.onKernelCapabilities != null && typeof options.onKernelCapabilities !== 'function'
   ) return invalid()
   return createHoloUvSupervisorEnvironmentFactoryV1({
@@ -136,6 +137,12 @@ export const createV86ProcessEnvironmentFactoryV1 = options => {
     ...(options.handleFilesystemRequest == null
       ? {}
       : { handleFilesystemRequest: options.handleFilesystemRequest }),
+    ...(
+      options.handleNetworkRequest == null && options.handleNetworkConnection == null &&
+        options.handleNetworkDatagram == null
+        ? {}
+        : { handleNetworkAttribution() {} }
+    ),
     readyTimeoutMs: options.readyTimeoutMs,
     validateReady(environment, request) {
       if (
@@ -172,16 +179,26 @@ export const createV86ProcessEnvironmentFactoryV1 = options => {
             if (typeof vm.network_adapter?.fetch !== 'function') return false
             if (options.handleNetworkRequest != null) {
               vm.network_adapter.fetch = (url, init) => {
-                const source = request.resolveProcessSource()
+                // v86's fetch hook is the far side of its in-Guest HTTP proxy.
+                // The syscall gate sees the proxy connection, while Policy
+                // below still authorizes the original URL and resolved target.
+                const source = request.consumeNetworkAdmission({
+                  address: '192.168.86.1',
+                  port: 80,
+                  transport: 'tcp'
+                })
                 return options.handleNetworkRequest(Object.freeze({
                   environmentId: request.environmentId,
                   executableId: source.executableId,
                   generation: request.generation,
                   init,
                   linuxPid: source.linuxPid,
+                  parentLinuxPid: source.parentLinuxPid,
                   policy: request.policy,
                   processId: source.processId,
                   processResourceId: source.processResourceId,
+                  processStartTimeTicks: source.processStartTimeTicks,
+                  rootLinuxPid: source.rootLinuxPid,
                   scope: request.scope,
                   signal: request.signal,
                   url: String(url)
@@ -205,7 +222,11 @@ export const createV86ProcessEnvironmentFactoryV1 = options => {
                 if (networkSockets.size + pendingNetworkSockets >= maximum) return
                 let source
                 try {
-                  source = request.resolveProcessSource()
+                  source = request.consumeNetworkAdmission({
+                    address: destination,
+                    port: connection.sport,
+                    transport: 'tcp'
+                  })
                 } catch {
                   return
                 }
@@ -243,10 +264,13 @@ export const createV86ProcessEnvironmentFactoryV1 = options => {
                   generation: request.generation,
                   hostname,
                   linuxPid: source.linuxPid,
+                  parentLinuxPid: source.parentLinuxPid,
                   policy: request.policy,
                   port: connection.sport,
                   processId: source.processId,
                   processResourceId: source.processResourceId,
+                  processStartTimeTicks: source.processStartTimeTicks,
+                  rootLinuxPid: source.rootLinuxPid,
                   scope: request.scope,
                   signal: request.signal
                 }))).then(value => {
@@ -263,8 +287,13 @@ export const createV86ProcessEnvironmentFactoryV1 = options => {
                   socket.once('close', () => networkSockets.delete(socket))
                   if (closed) socket.destroy()
                   else for (const bytes of pending) socket.write(bytes)
-                }).catch(() => {
+                }).catch(error => {
                   settlePending()
+                  if (process.env.HOLO_V86_TRACE === '1') {
+                    process.stderr.write(
+                      `[v86:tcp-error] ${hostname}:${connection.sport} ${String(error?.code ?? error)}\n`
+                    )
+                  }
                   connection.close()
                 })
               }
@@ -313,7 +342,11 @@ export const createV86ProcessEnvironmentFactoryV1 = options => {
                 if (networkSockets.size + pendingNetworkSockets + udpFlows.size >= maximum) return
                 let source
                 try {
-                  source = request.resolveProcessSource()
+                  source = request.consumeNetworkAdmission({
+                    address: destination,
+                    port: packet.destinationPort,
+                    transport: 'udp'
+                  })
                 } catch {
                   return
                 }
@@ -333,10 +366,13 @@ export const createV86ProcessEnvironmentFactoryV1 = options => {
                   generation: request.generation,
                   hostname,
                   linuxPid: source.linuxPid,
+                  parentLinuxPid: source.parentLinuxPid,
                   policy: request.policy,
                   port: packet.destinationPort,
                   processId: source.processId,
                   processResourceId: source.processResourceId,
+                  processStartTimeTicks: source.processStartTimeTicks,
+                  rootLinuxPid: source.rootLinuxPid,
                   scope: request.scope,
                   signal: request.signal
                 }))).then(socket => {
@@ -410,7 +446,11 @@ export const createV86ProcessEnvironmentFactoryV1 = options => {
           vm.remove_listener('serial1-output-byte', output)
           vm.remove_listener('download-error', downloadError)
           vm.remove_listener('emulator-stopped', stopped)
-          await vm.destroy()
+          try {
+            await vm.destroy()
+          } finally {
+            options.onEnvironmentClose?.(request.environmentId)
+          }
         },
         ...(options.handleNetworkRequest == null && options.handleNetworkConnection == null &&
             options.handleNetworkDatagram == null

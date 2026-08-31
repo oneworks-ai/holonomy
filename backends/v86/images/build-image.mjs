@@ -43,6 +43,17 @@ const outputRoot = resolve(outputInput)
 const cacheRoot = resolve(cacheInput ?? join(tmpdir(), 'holonomy-v86-image-cache-v1'))
 const staging = await mkdtemp(join(tmpdir(), 'holonomy-v86-image-'))
 
+const replaceReadonlyArtifact = async (target, value) => {
+  const temporary = `${target}.${process.pid}.tmp`
+  try {
+    await writeFile(temporary, value, { flag: 'wx', mode: 0o600 })
+    await chmod(temporary, 0o444)
+    await rename(temporary, target)
+  } finally {
+    await rm(temporary, { force: true })
+  }
+}
+
 const download = async ({ sha256: expected, url }) => {
   await mkdir(cacheRoot, { recursive: true })
   const target = join(cacheRoot, expected)
@@ -232,11 +243,13 @@ try {
       if (error?.code !== 'ENOENT') throw error
     }
   }
+  const profileDigest = sha256(new TextEncoder().encode(canonicalJson(profile)))
   const embedded = Object.freeze({
     architecture: 'linux-x86-32',
     executables: profile.executables,
     kernel: profile.rootfs === 'empty' ? null : kernelLock,
     packages: [...packages.values()].sort((left, right) => left.name.localeCompare(right.name)),
+    profileDigest,
     profileId: profile.id,
     rootfs: profile.rootfs === 'empty' ? null : lock.rootfs,
     schemaVersion: 1,
@@ -294,7 +307,7 @@ try {
       release: kernelLock.release
     }),
     packageCount: embedded.packages.length + (profile.rootfs === 'empty' ? 0 : 1),
-    profileDigest: sha256(new TextEncoder().encode(canonicalJson(profile))),
+    profileDigest,
     profileId: profile.id,
     rootfs: profile.rootfs,
     schemaVersion: 1,
@@ -304,9 +317,9 @@ try {
   })
   await mkdir(outputRoot, { recursive: true })
   await Promise.all([
-    writeFile(join(outputRoot, imageName), image, { mode: 0o444 }),
-    writeFile(join(outputRoot, manifestName), canonicalJson(manifest), { mode: 0o444 }),
-    writeFile(join(outputRoot, spdxName), spdxBytes, { mode: 0o444 })
+    replaceReadonlyArtifact(join(outputRoot, imageName), image),
+    replaceReadonlyArtifact(join(outputRoot, manifestName), canonicalJson(manifest)),
+    replaceReadonlyArtifact(join(outputRoot, spdxName), spdxBytes)
   ])
   process.stdout.write(`${
     canonicalJson({

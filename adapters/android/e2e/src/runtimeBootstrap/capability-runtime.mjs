@@ -50,6 +50,9 @@ export const createAndroidCapabilityRuntime = (host, platformConfiguration = {})
   const guestConfiguration = Object.freeze({
     context: creation.configuration.context.guest ?? null,
     ...(processProfile == null ? {} : { processEnvironment: processProfile.environment }),
+    ...(processProfile?.defaultShellExecutableId == null
+      ? {}
+      : { processShellExecutableId: processProfile.defaultShellExecutableId }),
     ...(processEnabled
       ? {
         process: platformConfiguration.process,

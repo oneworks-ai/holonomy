@@ -73,7 +73,7 @@ int holo_process_exec_poll_event(
     uint32_t timeout_ms
 );
 int holo_process_reap(struct holo_process_table *table, int control_fd);
-int holo_process_exec_timeouts(struct holo_process_table *table);
+int holo_process_exec_timeouts(struct holo_process_table *table, int control_fd);
 void holo_process_shutdown(struct holo_process_table *table);
 
 #endif

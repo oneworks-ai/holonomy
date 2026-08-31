@@ -2,6 +2,7 @@
 
 import { fork } from 'node:child_process'
 import { EventEmitter } from 'node:events'
+import process from 'node:process'
 
 import { verifyInstalledV86ProcessProfileV1 } from './capability-process-v86-installation.mjs'
 import { normalizeNodeRuntimePluginUpdateV1 } from './capability-runtime-plugins.mjs'
@@ -55,7 +56,10 @@ export class NodeRuntimeSupervisor extends EventEmitter {
     this.#rulesRevision = 0
     this.#setState('starting')
     const child = fork(CHILD_URL, [], {
-      env: { NODE_NO_WARNINGS: '1' },
+      env: {
+        NODE_NO_WARNINGS: '1',
+        ...(process.env.HOLO_V86_TRACE === '1' ? { HOLO_V86_TRACE: '1' } : {})
+      },
       execArgv: [
         session.inspector.enabled ? '--inspect=127.0.0.1:0' : '',
         '--experimental-vm-modules',

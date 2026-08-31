@@ -26,12 +26,16 @@ try {
   })
   const result = JSON.parse(output)[0]
   const files = new Set(result.files.map(file => file.path))
+  assert.ok(!files.has('tools/v86-acceptance.mjs'))
+  assert.ok(!files.has('tools/v86-acceptance-plan.mjs'))
   for (
     const required of [
       '.oo/skills/manage-runtime-process/references/process-api.md',
+      'adapters/android/capability-host/src/main/kotlin/ai/oneworks/holonomy/capability/AndroidProcessCapabilityProvider.kt',
       'adapters/android/e2e/tools/prepare-runtime-assets.mjs',
       'adapters/android/gradle/wrapper/gradle-wrapper.jar',
       'adapters/android/gradlew',
+      'adapters/android/process-backend-v86/src/main/kotlin/ai/oneworks/holonomy/v86/AndroidV86RuntimeServicesFactory.kt',
       'adapters/android/session-host/src/main/AndroidManifest.xml',
       'adapters/node/src/index.mjs',
       'conformance/capabilities/filesystem-v1.test.mjs',

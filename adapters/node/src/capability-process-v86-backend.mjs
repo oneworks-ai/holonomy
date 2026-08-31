@@ -107,7 +107,7 @@ export const V86_PROCESS_BACKEND_DESCRIPTOR_V1 = Object.freeze({
     pty: false,
     shell: true,
     signals: true,
-    snapshots: true,
+    snapshots: false,
     synchronousSpawn: false
   }),
   platforms: Object.freeze(['android', 'desktop', 'node']),

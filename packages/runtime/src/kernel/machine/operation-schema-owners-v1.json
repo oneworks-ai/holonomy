@@ -9716,6 +9716,11 @@
           "minLength": 1,
           "pattern": "^/",
           "type": "string"
+        },
+        "processStartTimeTicks": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
         }
       },
       "required": [
@@ -9726,7 +9731,8 @@
         "executableId",
         "linuxPid",
         "parentLinuxPid",
-        "path"
+        "path",
+        "processStartTimeTicks"
       ],
       "type": "object"
     },
@@ -10610,6 +10616,43 @@
           "pattern": "^[0-9a-f]{64}$",
           "type": "string"
         },
+        "resolution": {
+          "additionalProperties": false,
+          "properties": {
+            "addresses": {
+              "items": {
+                "maxLength": 64,
+                "minLength": 2,
+                "type": "string"
+              },
+              "maxItems": 64,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "evidenceDigest": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "expiresAtMonotonicMs": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "number"
+            },
+            "resolverGeneration": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "addresses",
+            "evidenceDigest",
+            "expiresAtMonotonicMs",
+            "resolverGeneration"
+          ],
+          "type": "object"
+        },
         "semanticResourceDigest": {
           "pattern": "^[0-9a-f]{64}$",
           "type": "string"
@@ -10619,6 +10662,7 @@
         "authorized",
         "generation",
         "invocationBindingDigest",
+        "resolution",
         "semanticResourceDigest"
       ],
       "type": "object"

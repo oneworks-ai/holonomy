@@ -12,6 +12,7 @@
     execResponse,
     frame,
     join,
+    networkRequest,
     signalPayload,
     spawnPayload,
     view
@@ -21,7 +22,10 @@
     const configuration = JSON.parse(configurationJson)
     const events = []
     const pending = new Map()
+    const pendingExecCommits = new Map()
+    const networkAdmissions = []
     const processes = new Map()
+    const linuxProcesses = new Map()
     let buffer = new Uint8Array()
     let nextRequestId = 1
     let failed = false
@@ -41,21 +45,82 @@
       if (source == null) throw new Error('v86 process attribution unavailable')
       return source
     }
+    const linuxProcessKey = (processId, linuxPid) => `${processId}:${linuxPid}`
+    const linuxProcessSource = (processId, linuxPid) => {
+      if (
+        [...pendingExecCommits.values()].some(commit =>
+          commit.processId === processId && commit.caller.linuxPid === linuxPid
+        )
+      ) throw new Error('v86 Linux process attribution is pending exec commit')
+      const source = linuxProcesses.get(linuxProcessKey(processId, linuxPid))
+      if (source == null) throw new Error('v86 Linux process attribution unavailable')
+      return source
+    }
+    const executionSource = (processId, root, input) => {
+      const key = linuxProcessKey(processId, input.linuxPid)
+      const existing = linuxProcesses.get(key)
+      if (existing?.processStartTimeTicks === input.processStartTimeTicks) {
+        return Object.freeze({ ...existing, parentLinuxPid: input.parentLinuxPid })
+      }
+      if (input.linuxPid === root.linuxPid) {
+        if (existing != null && existing.processStartTimeTicks !== 0) {
+          throw new Error('v86 root process identity changed')
+        }
+        const value = Object.freeze({
+          ...root,
+          parentLinuxPid: input.parentLinuxPid,
+          processStartTimeTicks: input.processStartTimeTicks,
+          rootLinuxPid: root.linuxPid
+        })
+        linuxProcesses.set(key, value)
+        return value
+      }
+      const parent = linuxProcessSource(processId, input.parentLinuxPid)
+      const value = Object.freeze({
+        ...root,
+        executableId: parent.executableId,
+        linuxPid: input.linuxPid,
+        parentLinuxPid: input.parentLinuxPid,
+        processStartTimeTicks: input.processStartTimeTicks,
+        rootLinuxPid: root.linuxPid
+      })
+      linuxProcesses.set(key, value)
+      return value
+    }
     const common = (source, processId) => ({
       environmentId: configuration.environmentId,
       executableId: source.executableId,
       generation: configuration.generation,
       linuxPid: source.linuxPid,
+      ...(source.parentLinuxPid == null ? {} : { parentLinuxPid: source.parentLinuxPid }),
       policy: configuration.policy,
       processId,
       processResourceId: source.resourceId,
+      ...(source.processStartTimeTicks == null
+        ? {}
+        : { processStartTimeTicks: source.processStartTimeTicks }),
+      ...(source.rootLinuxPid == null ? {} : { rootLinuxPid: source.rootLinuxPid }),
       scope: configuration.scope
     })
+    const consumeNetworkAdmission = input => {
+      const now = Date.now()
+      for (let index = networkAdmissions.length - 1; index >= 0; index -= 1) {
+        if (networkAdmissions[index].expiresAt <= now) networkAdmissions.splice(index, 1)
+      }
+      const index = networkAdmissions.findIndex(admission =>
+        admission.address === input.address && admission.port === input.port &&
+        (admission.transport === input.transport || admission.transport === 'connect')
+      )
+      if (index < 0) throw new Error('v86 network process attribution unavailable')
+      const [admission] = networkAdmissions.splice(index, 1)
+      return [admission.processId, admission.source]
+    }
     const fuse = globalThis.__holoCreateV86FuseBridge((input, attribution) => {
-      const source = attribution.source ?? processSource(attribution.processId)
+      const source = attribution.resolveSource?.(input.linuxPid) ?? attribution.source ??
+        processSource(attribution.processId)
       return dispatch('linuxFilesystem', { ...input, ...common(source, attribution.processId) })
     })
-    const network = globalThis.__holoCreateV86NetworkBridge({ common, dispatch, processes })
+    const network = globalThis.__holoCreateV86NetworkBridge({ common, consumeNetworkAdmission, dispatch })
 
     const send = (operation, requestId, processId, payload) => {
       vm.serial_send_bytes(1, frame(operation, requestId, processId, payload))
@@ -106,7 +171,10 @@
         const sequence = view(item).getUint32(20)
         const payload = item.slice(24)
         const request = pending.get(requestId)
-        if (configuration.diagnostics === true && [1, 2, 3, 4, 5, 9, 10, 13, 14, 16, 19].includes(operation)) {
+        if (
+          configuration.diagnostics === true &&
+          [1, 2, 3, 4, 5, 9, 10, 13, 14, 16, 19, 21, 22].includes(operation)
+        ) {
           const code = operation === 3 ? errorCode(payload) : null
           const fuseOpcode = operation === 14 && payload.length >= 8 ? view(payload).getUint32(4, true) : null
           emit({
@@ -155,6 +223,17 @@
               resourceId: request.resourceId
             })
           )
+          linuxProcesses.set(
+            linuxProcessKey(processId, linuxPid),
+            Object.freeze({
+              executableId: configuration.processes[request.resourceId].executableId,
+              linuxPid,
+              parentLinuxPid: 1,
+              processStartTimeTicks: 0,
+              resourceId: request.resourceId,
+              rootLinuxPid: linuxPid
+            })
+          )
           emit({ event: 'spawn', linuxPid, processId, resourceId: request.resourceId })
         } else if (operation === 1 && request?.kind === 'configure') {
           pending.delete(requestId)
@@ -178,7 +257,11 @@
         } else if (operation === 14) {
           setTimeout(async () => {
             try {
-              const terminal = await fuse.handle(payload, { processId, source: processes.get(processId) ?? null })
+              const terminal = await fuse.handle(payload, {
+                processId,
+                resolveSource: linuxPid => linuxProcessSource(processId, linuxPid),
+                source: processes.get(processId) ?? null
+              })
               if (configuration.diagnostics === true) {
                 emit({
                   event: 'backend-diagnostic',
@@ -204,25 +287,73 @@
             try {
               const source = processSource(processId)
               const input = execRequest(payload)
+              const caller = executionSource(processId, source, input)
               const executable = configuration.executables.find(candidate =>
                 candidate.path === input.path && candidate.shell !== true
               )
               if (executable != null) {
                 const result = await dispatch('linuxProcessExecution', {
-                  ...common(source, processId),
+                  ...common(caller, processId),
                   ...input,
+                  callerExecutableId: caller.executableId,
                   executableId: executable.executableId,
                   rootLinuxPid: source.linuxPid
                 })
                 allowed = result?.authorized === true
+                if (allowed) {
+                  pendingExecCommits.set(
+                    requestId,
+                    Object.freeze({
+                      caller,
+                      executableId: executable.executableId,
+                      processId
+                    })
+                  )
+                }
               }
             } catch {}
             send(17, requestId, processId, execResponse(allowed))
           }, 0)
+        } else if (operation === 21) {
+          const committed = payload.length === 1 && payload[0] === 1
+          if (payload.length !== 1 || payload[0] > 1) throw new Error('Invalid v86 exec result')
+          const pendingCommit = pendingExecCommits.get(requestId)
+          pendingExecCommits.delete(requestId)
+          if (pendingCommit == null) {
+            if (committed) throw new Error('Unknown v86 exec result')
+          } else if (pendingCommit.processId !== processId) {
+            throw new Error('Mismatched v86 exec result')
+          } else if (committed) {
+            linuxProcesses.set(
+              linuxProcessKey(processId, pendingCommit.caller.linuxPid),
+              Object.freeze({ ...pendingCommit.caller, executableId: pendingCommit.executableId })
+            )
+          }
+        } else if (operation === 22) {
+          let allowed = false
+          try {
+            const root = processSource(processId)
+            const input = networkRequest(payload)
+            const source = executionSource(processId, root, input)
+            const now = Date.now()
+            for (let index = networkAdmissions.length - 1; index >= 0; index -= 1) {
+              if (networkAdmissions[index].expiresAt <= now) networkAdmissions.splice(index, 1)
+            }
+            if (networkAdmissions.length < 64) {
+              networkAdmissions.push(Object.freeze({
+                ...input,
+                expiresAt: now + 5_000,
+                processId,
+                source
+              }))
+              allowed = true
+            }
+          } catch {}
+          send(23, requestId, processId, execResponse(allowed))
         } else if (operation === 19) {
           setTimeout(async () => {
             try {
-              const source = processSource(processId)
+              const source = linuxProcessSource(processId, sequence)
               const input = capabilityRequest(payload)
               const allowed = configuration.capabilityDomains.includes(input.command[0])
               if (!allowed) {
@@ -246,6 +377,15 @@
           const source = processes.get(processId)
           emit({ ...terminal, event: operation === 4 ? 'exit' : 'close', processId })
           if (operation === 2) {
+            for (const [pendingRequestId, commit] of pendingExecCommits) {
+              if (commit.processId === processId) pendingExecCommits.delete(pendingRequestId)
+            }
+            for (const key of [...linuxProcesses.keys()]) {
+              if (key.startsWith(`${processId}:`)) linuxProcesses.delete(key)
+            }
+            for (let index = networkAdmissions.length - 1; index >= 0; index -= 1) {
+              if (networkAdmissions[index].processId === processId) networkAdmissions.splice(index, 1)
+            }
             processes.delete(processId)
             if (source != null) delete configuration.processes[source.resourceId]
           }
@@ -298,7 +438,14 @@
       })
     }
     if (configuration.network) {
-      const sockets = globalThis.__holoCreateV86SocketBridge({ common, configuration, dispatch, emit, processes, vm })
+      const sockets = globalThis.__holoCreateV86SocketBridge({
+        common,
+        configuration,
+        consumeNetworkAdmission,
+        dispatch,
+        emit,
+        vm
+      })
       globalThis.__holoV86BackendNetworkEvent = sockets.receive
     } else globalThis.__holoV86BackendNetworkEvent = () => false
     globalThis.__holoV86BackendVm = vm

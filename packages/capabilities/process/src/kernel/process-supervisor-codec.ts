@@ -49,8 +49,11 @@ export const normalizeProcessSupervisorFrameV1 = (value: unknown): ProcessSuperv
         'configure',
         'execRequest',
         'execResponse',
+        'execResult',
         'filesystemRequest',
         'filesystemResponse',
+        'networkRequest',
+        'networkResponse',
         'signal',
         'spawned',
         'stdin',
@@ -63,7 +66,10 @@ export const normalizeProcessSupervisorFrameV1 = (value: unknown): ProcessSuperv
         'capabilityResponse',
         'execRequest',
         'execResponse',
+        'execResult',
         'exit',
+        'networkRequest',
+        'networkResponse',
         'signal',
         'spawned',
         'stderr',
@@ -73,7 +79,8 @@ export const normalizeProcessSupervisorFrameV1 = (value: unknown): ProcessSuperv
       ]
         .includes(frame.operation) && frame.processId === 0 ||
     ['close', 'exit', 'stderr', 'stdout'].includes(frame.operation) && frame.requestId !== 0 ||
-    !['stderr', 'stdout'].includes(frame.operation) && frame.sequence !== 0
+    frame.operation === 'capabilityRequest' && frame.sequence === 0 ||
+    !['capabilityRequest', 'stderr', 'stdout'].includes(frame.operation) && frame.sequence !== 0
   ) return invalid()
   return Object.freeze(frame)
 }

@@ -924,6 +924,12 @@
                   "maximum": 256,
                   "minimum": 1,
                   "type": "integer"
+                },
+                "privateNetwork": {
+                  "enum": [
+                    "allow",
+                    "deny"
+                  ]
                 }
               },
               "required": [
@@ -2789,6 +2795,12 @@
                   "maximum": 256,
                   "minimum": 1,
                   "type": "integer"
+                },
+                "privateNetwork": {
+                  "enum": [
+                    "allow",
+                    "deny"
+                  ]
                 }
               },
               "required": [
@@ -4592,6 +4604,12 @@
                   "maximum": 256,
                   "minimum": 1,
                   "type": "integer"
+                },
+                "privateNetwork": {
+                  "enum": [
+                    "allow",
+                    "deny"
+                  ]
                 }
               },
               "required": [
@@ -6217,6 +6235,12 @@
                               "maximum": 256,
                               "minimum": 1,
                               "type": "integer"
+                            },
+                            "privateNetwork": {
+                              "enum": [
+                                "allow",
+                                "deny"
+                              ]
                             }
                           },
                           "required": [
@@ -7956,6 +7980,12 @@
                         "maximum": 256,
                         "minimum": 1,
                         "type": "integer"
+                      },
+                      "privateNetwork": {
+                        "enum": [
+                          "allow",
+                          "deny"
+                        ]
                       }
                     },
                     "required": [
@@ -9826,6 +9856,12 @@
                         "maximum": 256,
                         "minimum": 1,
                         "type": "integer"
+                      },
+                      "privateNetwork": {
+                        "enum": [
+                          "allow",
+                          "deny"
+                        ]
                       }
                     },
                     "required": [
@@ -11647,6 +11683,12 @@
                                   "maximum": 256,
                                   "minimum": 1,
                                   "type": "integer"
+                                },
+                                "privateNetwork": {
+                                  "enum": [
+                                    "allow",
+                                    "deny"
+                                  ]
                                 }
                               },
                               "required": [

@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict'
 import { Buffer } from 'node:buffer'
-import { createHash } from 'node:crypto'
 import { once } from 'node:events'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
-import { pathToFileURL } from 'node:url'
 
 import { createV86ProcessBackendV1 } from '../../adapters/node/src/capability-process-v86-backend.mjs'
 import { createV86FuseBrokerProbeV1 } from './probe-fuse-broker.mjs'
 import { createV86FuseMemoryProbeV1 } from './probe-fuse-memory.mjs'
+import { createV86ProbeLaunchV1, loadV86ProbeArtifactsV1 } from './probe-real-launch.mjs'
+import { createV86ProbeTraceV1 } from './probe-trace.mjs'
 
 const usage = () => {
   throw new TypeError(
@@ -23,41 +23,15 @@ const main = async () => {
   if (paths.length !== 5) usage()
 
   const [modulePath, wasmPath, biosPath, kernelPath, initrdPath] = paths
-  const { V86: ImportedV86 } = await import(pathToFileURL(modulePath).href)
-  const values = new Map(
-    await Promise.all(
-      [
-        ['wasm', wasmPath],
-        ['bios', biosPath],
-        ['kernel', kernelPath],
-        ['initrd', initrdPath]
-      ].map(async ([artifactId, filePath]) => [artifactId, await readFile(filePath)])
-    )
-  )
-  const artifact = artifactId => ({
-    artifactId,
-    sha256: createHash('sha256').update(values.get(artifactId)).digest('hex')
+  const { artifact, V86: ImportedV86, values } = await loadV86ProbeArtifactsV1({
+    biosPath,
+    initrdPath,
+    kernelPath,
+    modulePath,
+    wasmPath
   })
 
-  let serial0Tail = ''
-  class ProbeV86 extends ImportedV86 {
-    constructor(options) {
-      super(options)
-      this.add_listener('serial0-output-byte', byte => {
-        const value = String.fromCharCode(byte)
-        serial0Tail = (serial0Tail + value).slice(-16_384)
-        if (process.env.HOLO_V86_TRACE === '1') process.stderr.write(value)
-      })
-      if (process.env.HOLO_V86_TRACE === '1') {
-        this.add_listener('serial1-output-byte', byte => {
-          process.stderr.write(byte.toString(16).padStart(2, '0'))
-        })
-        for (const event of ['emulator-ready', 'emulator-started', 'download-error']) {
-          this.add_listener(event, () => process.stderr.write(`[v86:${event}]\n`))
-        }
-      }
-    }
-  }
+  const trace = createV86ProbeTraceV1(ImportedV86)
 
   let supervisorKernelCapabilities = []
   const fuseRoot = process.env.HOLO_V86_BROKER_FS === '1'
@@ -66,8 +40,12 @@ const main = async () => {
   const fuse = fuseRoot == null
     ? createV86FuseMemoryProbeV1()
     : await createV86FuseBrokerProbeV1(fuseRoot)
+  const executionRequests = []
   const backend = createV86ProcessBackendV1({
-    V86: ProbeV86,
+    V86: trace.V86,
+    handleExecutionRequest(input) {
+      executionRequests.push(input)
+    },
     loadArtifact: input => values.get(input.artifactId),
     handleFilesystemRequest: fuse.handleFilesystemRequest,
     onKernelCapabilities: value => {
@@ -90,20 +68,11 @@ const main = async () => {
     supervisor: { protocolVersion: 1 }
   })
 
-  const launch = (resourceId, executablePath, runtimeArgs) =>
-    backend.spawn(
-      backend.prepareLaunch({
-        configuration,
-        environmentScope: 'processTree',
-        executable: backend.normalizeExecutable({ kind: 'guestPath', path: executablePath }),
-        executableId: resourceId,
-        generation: 1,
-        policy: fuse.policy ?? { access: 'sandboxed' },
-        runtimeArgs
-      }),
-      { cwd: '/', env: { LANG: 'C' }, stdio: ['pipe', 'pipe', 'pipe'] },
-      { processResourceId: resourceId }
-    )
+  const launch = createV86ProbeLaunchV1({
+    backend,
+    configuration,
+    policy: fuse.policy ?? { access: 'sandboxed' }
+  })
 
   try {
     if (process.env.HOLO_V86_HANDSHAKE_ONLY === '1') {
@@ -162,11 +131,50 @@ const main = async () => {
     assert.ok(fuse.events.some(event => attributed(event, ['write', 'filesystem.file.write'])))
     assert.equal(backend.descriptor.features.filesystemBridge, true)
 
+    const execveatProcess = launch('v86-real-execveat', '/usr/bin/holo-v86-selftest', ['execveat'])
+    const execveatOutput = []
+    execveatProcess.child.stdout.on('data', value => execveatOutput.push(value))
+    const [execveatCode, execveatSignal] = await once(execveatProcess.child, 'close')
+    assert.equal(execveatCode, 0)
+    assert.equal(execveatSignal, null)
+    assert.equal(
+      Buffer.concat(execveatOutput).toString(),
+      'EXECVEAT_ABSOLUTE_ALLOWED\nEXECVEAT_RELATIVE_DENIED\nEXECVEAT_DIRFD_DENIED\n' +
+        'EXECVEAT_EMPTY_PATH_DENIED\n'
+    )
+
+    const failedExecProcess = launch(
+      'v86-real-exec-failure',
+      '/usr/bin/holo-v86-selftest',
+      ['exec-failure']
+    )
+    const failedExecOutput = []
+    failedExecProcess.child.stdout.on('data', value => failedExecOutput.push(value))
+    const [failedExecCode, failedExecSignal] = await once(failedExecProcess.child, 'close')
+    assert.equal(failedExecCode, 0)
+    assert.equal(failedExecSignal, null)
+    assert.equal(
+      Buffer.concat(failedExecOutput).toString(),
+      'EXEC_FAILURE_RETURNED\nEXEC_FAILURE_IDENTITY_RECOVERED\n'
+    )
+    const failedRequestIndex = executionRequests.findIndex(
+      value => value.path === '/usr/bin/holo-v86-invalid-executable'
+    )
+    const failedRequest = executionRequests[failedRequestIndex]
+    const recoveryRequest = executionRequests.slice(failedRequestIndex + 1).find(value =>
+      value.path === '/usr/bin/holo-v86-selftest' && value.linuxPid === failedRequest?.linuxPid &&
+      value.argv[1] === 'descendant-child'
+    )
+    assert.equal(failedRequest?.callerExecutableId, 'v86-real-exec-failure')
+    assert.equal(recoveryRequest?.callerExecutableId, 'v86-real-exec-failure')
+
     assert.ok(requiredKernelCapabilities.every(value => supervisorKernelCapabilities.includes(value)))
     process.stdout.write(`${
       JSON.stringify({
         backendId: backend.descriptor.backendId,
         code,
+        execFailureIdentity: true,
+        execveat: true,
         fuseEvents: fuse.events.length,
         filesystemBridge: backend.descriptor.features.filesystemBridge,
         fuseMode: fuseRoot == null ? 'memory' : 'broker',
@@ -178,7 +186,7 @@ const main = async () => {
       })
     }\n`)
   } catch (error) {
-    process.stderr.write(`${serial0Tail}\n`)
+    process.stderr.write(`${trace.serial0Tail()}\n`)
     throw error
   } finally {
     await backend.closeGeneration(1)

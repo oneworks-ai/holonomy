@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, resolve } from 'node:path'
@@ -33,7 +34,28 @@ for (
   record(resolve(sourceRoot, name), name, 'runtime')
 }
 if (externalRoot !== '') {
-  for (const name of ['libv86.mjs', 'v86.wasm', 'seabios.bin', 'kernel.bin', 'agent.cpio']) {
+  const verified = spawnSync(
+    process.execPath,
+    [
+      new URL('../../../../backends/v86/images/verify-image.mjs', import.meta.url).pathname,
+      resolve(externalRoot, 'agent.manifest.json')
+    ],
+    { encoding: 'utf8' }
+  )
+  if (verified.status !== 0) {
+    throw new Error(`Android v86 image bundle verification failed: ${verified.stderr}`)
+  }
+  for (
+    const name of [
+      'libv86.mjs',
+      'v86.wasm',
+      'seabios.bin',
+      'kernel.bin',
+      'agent.cpio',
+      'agent.manifest.json',
+      'agent.spdx.json'
+    ]
+  ) {
     record(resolve(externalRoot, name), name, 'backend')
   }
 }

@@ -7,7 +7,9 @@ export interface LinuxProcessInvocationSourceV1 {
   readonly kind: 'linuxProcess'
   readonly linuxPid: number
   readonly parentLinuxPid?: number
+  readonly processStartTimeTicks?: number
   readonly processResourceId: string
+  readonly rootLinuxPid?: number
   readonly syntheticProcessId: number
 }
 
@@ -39,12 +41,14 @@ export const normalizeCapabilityInvocationSourceV1 = (value: unknown): Capabilit
     'kind',
     'linuxPid',
     'parentLinuxPid',
+    'processStartTimeTicks',
     'processResourceId',
+    'rootLinuxPid',
     'syntheticProcessId'
   ]
   if (
     Object.keys(input).some(key => !keys.includes(key)) ||
-    Object.keys(input).length !== keys.length && Object.keys(input).length !== keys.length - 1
+    Object.keys(input).length < keys.length - 3 || Object.keys(input).length > keys.length
   ) {
     throw new CapabilityInvocationError('argument.invalid', 'runtime.invoke')
   }
@@ -59,7 +63,18 @@ export const normalizeCapabilityInvocationSourceV1 = (value: unknown): Capabilit
     kind: 'linuxProcess',
     linuxPid: unsigned(input.linuxPid),
     ...(input.parentLinuxPid == null ? {} : { parentLinuxPid: unsigned(input.parentLinuxPid) }),
+    ...(input.processStartTimeTicks == null
+      ? {}
+      : { processStartTimeTicks: unsignedSafe(input.processStartTimeTicks) }),
     processResourceId: text(input.processResourceId, 256),
+    ...(input.rootLinuxPid == null ? {} : { rootLinuxPid: unsigned(input.rootLinuxPid) }),
     syntheticProcessId: unsigned(input.syntheticProcessId)
   })
+}
+
+const unsignedSafe = (value: unknown): number => {
+  if (!Number.isSafeInteger(value) || (value as number) < 1) {
+    throw new CapabilityInvocationError('argument.invalid', 'runtime.invoke')
+  }
+  return value as number
 }

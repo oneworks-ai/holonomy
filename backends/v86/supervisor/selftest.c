@@ -10,7 +10,13 @@ enum {
     HOLO_SYS_WAITPID = 7,
     HOLO_SYS_EXECVE = 11,
     HOLO_SYS_PAUSE = 29,
-    HOLO_SYS_SOCKETCALL = 102
+    HOLO_SYS_SOCKETCALL = 102,
+    HOLO_SYS_EXECVEAT = 358
+};
+
+enum {
+    HOLO_AT_FDCWD = -100,
+    HOLO_AT_EMPTY_PATH = 0x1000
 };
 
 enum {
@@ -52,6 +58,24 @@ static int syscall3(int number, unsigned long first, unsigned long second, unsig
     int result;
     __asm__ volatile(
         "int $0x80" : "=a"(result) : "0"(number), "b"(first), "c"(second), "d"(third) : "memory"
+    );
+    return result;
+}
+
+static int syscall5(
+    int number,
+    unsigned long first,
+    unsigned long second,
+    unsigned long third,
+    unsigned long fourth,
+    unsigned long fifth
+) {
+    int result;
+    __asm__ volatile(
+        "int $0x80"
+        : "=a"(result)
+        : "0"(number), "b"(first), "c"(second), "d"(third), "S"(fourth), "D"(fifth)
+        : "memory"
     );
     return result;
 }
@@ -224,6 +248,93 @@ static void descendant_denied_selftest(char **envp) {
     syscall1(HOLO_SYS_EXIT, 0);
 }
 
+static void execveat_selftest(char **envp) {
+    static const char executable[] = "/usr/bin/holo-v86-selftest";
+    static const char relative_executable[] = "usr/bin/holo-v86-selftest";
+    static const char empty_path[] = "";
+    static const char output[] =
+        "EXECVEAT_ABSOLUTE_ALLOWED\nEXECVEAT_RELATIVE_DENIED\nEXECVEAT_DIRFD_DENIED\n"
+        "EXECVEAT_EMPTY_PATH_DENIED\n";
+    char *allowed_argv[] = { (char *)executable, "descendant-child", 0 };
+    int status = 0;
+    int pid = syscall0(HOLO_SYS_FORK);
+    if (pid < 0) syscall1(HOLO_SYS_EXIT, 90);
+    if (pid == 0) {
+        int result = syscall5(
+            HOLO_SYS_EXECVEAT,
+            (unsigned long)HOLO_AT_FDCWD,
+            (unsigned long)executable,
+            (unsigned long)allowed_argv,
+            (unsigned long)envp,
+            0
+        );
+        syscall1(HOLO_SYS_EXIT, result < 0 ? 100 - result : 91);
+    }
+    if (syscall3(HOLO_SYS_WAITPID, (unsigned long)pid, (unsigned long)&status, 0) != pid || status != (13 << 8)) {
+        int child_code = (status >> 8) & 255;
+        syscall1(HOLO_SYS_EXIT, child_code == 0 ? 92 : child_code);
+    }
+    if (syscall5(
+        HOLO_SYS_EXECVEAT,
+        (unsigned long)HOLO_AT_FDCWD,
+        (unsigned long)relative_executable,
+        (unsigned long)allowed_argv,
+        (unsigned long)envp,
+        0
+    ) >= 0) syscall1(HOLO_SYS_EXIT, 93);
+    if (syscall5(
+        HOLO_SYS_EXECVEAT,
+        0,
+        (unsigned long)relative_executable,
+        (unsigned long)allowed_argv,
+        (unsigned long)envp,
+        0
+    ) >= 0) syscall1(HOLO_SYS_EXIT, 94);
+    if (syscall5(
+        HOLO_SYS_EXECVEAT,
+        0,
+        (unsigned long)empty_path,
+        (unsigned long)allowed_argv,
+        (unsigned long)envp,
+        HOLO_AT_EMPTY_PATH
+    ) >= 0) syscall1(HOLO_SYS_EXIT, 95);
+    write_all(1, output, sizeof(output) - 1U);
+    syscall1(HOLO_SYS_EXIT, 0);
+}
+
+static void exec_failure_selftest(char **envp) {
+    static const char invalid_executable[] = "/usr/bin/holo-v86-invalid-executable";
+    static const char executable[] = "/usr/bin/holo-v86-selftest";
+    static const char returned[] = "EXEC_FAILURE_RETURNED\n";
+    static const char recovered[] = "EXEC_FAILURE_IDENTITY_RECOVERED\n";
+    char *invalid_argv[] = { (char *)invalid_executable, 0 };
+    char *valid_argv[] = { (char *)executable, "descendant-child", 0 };
+    int status = 0;
+    int pid = syscall0(HOLO_SYS_FORK);
+    if (pid < 0) syscall1(HOLO_SYS_EXIT, 96);
+    if (pid == 0) {
+        if (syscall3(
+            HOLO_SYS_EXECVE,
+            (unsigned long)invalid_executable,
+            (unsigned long)invalid_argv,
+            (unsigned long)envp
+        ) >= 0) syscall1(HOLO_SYS_EXIT, 97);
+        write_all(1, returned, sizeof(returned) - 1U);
+        syscall3(
+            HOLO_SYS_EXECVE,
+            (unsigned long)executable,
+            (unsigned long)valid_argv,
+            (unsigned long)envp
+        );
+        syscall1(HOLO_SYS_EXIT, 98);
+    }
+    if (syscall3(HOLO_SYS_WAITPID, (unsigned long)pid, (unsigned long)&status, 0) != pid || status != (13 << 8)) {
+        syscall1(HOLO_SYS_EXIT, 99);
+    }
+    write_all(1, recovered, sizeof(recovered) - 1U);
+    syscall1(HOLO_SYS_EXIT, 0);
+}
+
 void holo_selftest_start(unsigned long *stack) {
     int argc = (int)stack[0];
     char **argv = (char **)&stack[1];
@@ -233,6 +344,8 @@ void holo_selftest_start(unsigned long *stack) {
     if (argc == 3 && string_equal(argv[1], "network")) network_selftest(argv[2]);
     if (argc == 2 && string_equal(argv[1], "descendant")) descendant_selftest(envp);
     if (argc == 2 && string_equal(argv[1], "descendant-denied")) descendant_denied_selftest(envp);
+    if (argc == 2 && string_equal(argv[1], "execveat")) execveat_selftest(envp);
+    if (argc == 2 && string_equal(argv[1], "exec-failure")) exec_failure_selftest(envp);
     if (argc == 2 && string_equal(argv[1], "descendant-child")) syscall1(HOLO_SYS_EXIT, 13);
     if (argc == 2 && string_equal(argv[1], "sleep")) {
         for (;;) syscall0(HOLO_SYS_PAUSE);

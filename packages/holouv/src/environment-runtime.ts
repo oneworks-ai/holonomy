@@ -56,6 +56,7 @@ export class HoloUvEnvironmentRuntimeV1<TConfiguration = unknown, TExecutable = 
   readonly #factory: ProcessBackendEnvironmentFactoryV1<TConfiguration, TExecutable>
   readonly #records = new Map<string, EnvironmentRecordV1<TExecutable>>()
   #closed = false
+  #closePromise?: Promise<void>
 
   constructor(factory: ProcessBackendEnvironmentFactoryV1<TConfiguration, TExecutable>) {
     if (factory == null || typeof factory !== 'object' || typeof factory.open !== 'function') invalid()
@@ -113,11 +114,14 @@ export class HoloUvEnvironmentRuntimeV1<TConfiguration = unknown, TExecutable = 
     return Object.freeze([...this.#records.keys()].sort())
   }
 
-  async close(reason: 'cancelled' | 'generation-stale' = 'cancelled'): Promise<void> {
-    if (this.#closed) return
+  close(reason: 'cancelled' | 'generation-stale' = 'cancelled'): Promise<void> {
+    if (this.#closePromise != null) return this.#closePromise
     this.#closed = true
     for (const record of this.#records.values()) this.#closedGenerations.add(record.generation)
-    await Promise.all([...this.#records.values()].map(record => this.#closeRecord(record, reason)))
+    this.#closePromise = Promise.all(
+      [...this.#records.values()].map(record => this.#closeRecord(record, reason))
+    ).then(() => undefined)
+    return this.#closePromise
   }
 
   async closeGeneration(generationValue: number): Promise<void> {

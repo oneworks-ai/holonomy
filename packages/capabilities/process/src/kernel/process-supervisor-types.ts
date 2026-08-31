@@ -32,7 +32,10 @@ export const PROCESS_SUPERVISOR_OPERATIONS_V1 = Object.freeze(
     'execResponse',
     'configure',
     'capabilityRequest',
-    'capabilityResponse'
+    'capabilityResponse',
+    'execResult',
+    'networkRequest',
+    'networkResponse'
   ] as const
 )
 

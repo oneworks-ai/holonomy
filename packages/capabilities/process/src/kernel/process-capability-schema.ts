@@ -43,8 +43,9 @@ const processNetwork = strictObject({
     type: 'array',
     uniqueItems: true
   },
-  maxSockets: integerSchema(1, 256)
-})
+  maxSockets: integerSchema(1, 256),
+  privateNetwork: { enum: ['allow', 'deny'] }
+}, ['endpoints', 'maxSockets'])
 
 export const processCapabilityConstraintsSchema = (name: string): JsonSchema | undefined => {
   if (name === 'host.process.execute') return processExecution
