@@ -35,9 +35,9 @@ jobs:
       - run: pnpm rfc:check
       - run: pnpm docs:check
       - run: pnpm test
+      - run: pnpm test:adapter:node
       - run: pnpm test:service
       - run: pnpm test:adapter:desktop:unit
-      - run: pnpm test:adapter:node
       - run: pnpm test:native:packaging
 
   native:

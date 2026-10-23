@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'vitest'
 
+import { NodeProcessBackendRegistryV1 } from '../../../adapters/node/src/capability-process-backend.mjs'
 import { createNodeProcessBackendRegistryForInstallationV1 } from '../../../adapters/node/src/capability-process-v86-installation.mjs'
 import { createServiceCapabilityRuntimeManagerV1 } from '../capability-runtime-manager.mjs'
 import { materializeNativeLaunch } from '../native-launch-materialization.mjs'
@@ -345,19 +346,16 @@ describe('service capability Runtime launch manager', () => {
     }
   })
 
-  it.skipIf(process.platform === 'darwin')(
-    'rejects the Darwin Process profile when its Backend is not installed on this Host',
-    () => {
-      const manager = createServiceCapabilityRuntimeManagerV1({
-        processProfiles: { developer: nativeProcessProfile }
-      })
-      const input = { ...request(processPolicy()), processProfileId: 'developer' }
-      assert.throws(
-        () => manager.admit(input, processInput('node')),
-        error => error.code === 'sandbox.capability_unsupported'
-      )
-    }
-  )
+  it('rejects unavailable Darwin Process profiles during Host configuration', () => {
+    assert.throws(
+      () =>
+        createServiceCapabilityRuntimeManagerV1({
+          processBackendRegistry: new NodeProcessBackendRegistryV1(),
+          processProfiles: { developer: nativeProcessProfile }
+        }),
+      { message: 'Invalid Node capability Runtime session', name: 'TypeError' }
+    )
+  })
 
   it('rejects transport widening and unsupported execution surfaces before entry', () => {
     const manager = createServiceCapabilityRuntimeManagerV1()
