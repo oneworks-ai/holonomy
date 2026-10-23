@@ -4,15 +4,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { watchV86Child } from '../../../../../conformance/capabilities/process-v86-watchdog.mjs'
 
 const budget = { cleanupGraceMs: 15, watchdogMs: 100 }
-const actualFacade = ({ removalError, neverClose = false } = {}) => {
+const actualFacade = ({ minimal = false, removalError, neverClose = false } = {}) => {
   const listeners = new Map()
   const child = eventTarget(listeners, Object.create(null))
   const data = vi.fn()
   const kill = vi.fn(() => {
-    if (!neverClose) emit(listeners, 'close', null, 'SIGKILL')
+    if (!neverClose) emit(listeners, child, 'close', null, 'SIGKILL')
     return true
   })
   child.kill = kill
+  if (minimal) {
+    for (
+      const method of [
+        'addListener',
+        'eventNames',
+        'listeners',
+        'listenerCount',
+        'off',
+        'removeAllListeners',
+        'removeListener'
+      ]
+    ) {
+      delete child[method]
+    }
+  }
   if (removalError) {
     child.removeListener = () => {
       throw removalError
@@ -32,21 +47,33 @@ const actualFacade = ({ removalError, neverClose = false } = {}) => {
   }, error => {
     terminal = { error }
   })
-  return { child, data, kill, promise, scope, terminal: () => terminal, emit: (...args) => emit(listeners, ...args) }
+  return {
+    child,
+    data,
+    emit: (event, ...args) => emit(listeners, child, event, ...args),
+    kill,
+    promise,
+    scope,
+    terminal: () => terminal
+  }
 }
 
 describe('watchdog compatibility with the actual shared ChildProcess event target', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => {
-    expect(vi.getTimerCount()).toBe(0)
-    vi.restoreAllMocks()
-    vi.useRealTimers()
+    try {
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.restoreAllMocks()
+      vi.useRealTimers()
+    }
   })
 
-  it('settles normal close with only on/once and deactivates late callbacks', async () => {
+  it('settles normal close with the full shared facade and deactivates late callbacks', async () => {
     const h = actualFacade()
-    expect(h.child.removeListener).toBeUndefined()
-    expect(h.child.off).toBeUndefined()
+    expect(h.child.addListener).toBeTypeOf('function')
+    expect(h.child.off).toBeTypeOf('function')
+    expect(h.child.removeListener).toBeTypeOf('function')
     h.emit('close', 0, null) // actual emit swallows listener exceptions, as in the device facade
     await Promise.resolve()
     expect(h.terminal()).toEqual({ value: 'closed' })
@@ -55,8 +82,19 @@ describe('watchdog compatibility with the actual shared ChildProcess event targe
     expect(h.kill).not.toHaveBeenCalled()
   })
 
+  it('settles normal close with an on/once-only minimal facade', async () => {
+    const h = actualFacade({ minimal: true })
+    expect(h.child.addListener).toBeUndefined()
+    expect(h.child.off).toBeUndefined()
+    expect(h.child.removeListener).toBeUndefined()
+    h.emit('close', 0, null)
+    await expect(h.promise).resolves.toBe('closed')
+    h.emit('data', 'late')
+    expect(h.data).not.toHaveBeenCalled()
+  })
+
   it('keeps timeout failure when kill synchronously closes the minimal facade', async () => {
-    const h = actualFacade()
+    const h = actualFacade({ minimal: true })
     await vi.advanceTimersByTimeAsync(100)
     await expect(h.promise).rejects.toThrow('Timed out waiting for minimal ChildProcess')
     expect(h.kill).toHaveBeenCalledWith('SIGKILL')
@@ -65,7 +103,7 @@ describe('watchdog compatibility with the actual shared ChildProcess event targe
   })
 
   it('fails within cleanup grace when the minimal facade never closes', async () => {
-    const h = actualFacade({ neverClose: true })
+    const h = actualFacade({ minimal: true, neverClose: true })
     await vi.advanceTimersByTimeAsync(100)
     expect(h.terminal()).toBeUndefined()
     h.emit('data', 'after timeout')
