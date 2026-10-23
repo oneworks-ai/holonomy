@@ -8,6 +8,10 @@ The standalone Rust/V8 `holo` also connects this Backend's bounded macOS subset:
 
 ## Inside the Runtime
 
+ChildProcess and stdout/stderr support string-event on/addListener, once, off/removeListener, removeAllListeners, listenerCount, listeners and eventNames. Duplicates retain order; removal selects the latest match, and once remains removable by its original function. Callback this is the corresponding façade. Dispatch snapshots records; reentrant additions wait and cannot fire once twice. Close clears local records. These methods neither acquire authority nor physically cancel Host subscriptions. Symbols, public emit, prepend, rawListeners and max-listener configuration remain unsupported; this is not complete EventEmitter.
+
+One shared JS workload runs through Node Adapter and real Rust/V8 under an explicit /bin/echo profile. pnpm test:native:process-listeners checks actual stdio, removal/snapshot and close without assuming one OS write means one data frame.
+
 The entry points remain Node-compatible:
 
 ```js

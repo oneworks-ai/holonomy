@@ -8,6 +8,7 @@ import { types } from 'node:util'
 import vm from 'node:vm'
 
 import { NodeCapabilityRuntimeHostV1 } from './capability-host.mjs'
+import { installNodeCryptoBridge } from './node-crypto-bridge.mjs'
 import { createNodeNetworkPort } from './node-network-transport.mjs'
 import { createRuntimeConfiguration } from './runtime-configuration.mjs'
 import { createNativeEventValue, installRuntimeHostBridge } from './runtime-context.mjs'
@@ -16,6 +17,7 @@ import { cancelRuntimeTimer } from './runtime-timers.mjs'
 
 export class NodeRuntimeHostController {
   #disposeGuest
+  #crypto
   #capabilityRuntime
   #emitLog
   #emitNetwork
@@ -55,9 +57,11 @@ export class NodeRuntimeHostController {
       capabilityResolution: (bindingId, url) => this.#capabilityRuntime?.networkResolution(bindingId, url)
     })
     installRuntimeHostBridge(runtimeContext, this.#operations())
+    if (session.crypto?.enabled === true) this.#crypto = installNodeCryptoBridge(runtimeContext)
   }
 
   async dispose() {
+    this.#crypto?.dispose()
     await this.#plugins.close()
     await this.#capabilityRuntime?.close()
     clearTimeout(this.#eventLoopWakeup)
@@ -121,6 +125,7 @@ export class NodeRuntimeHostController {
   #terminate(reason) {
     if (this.#terminated) return null
     this.#terminated = true
+    this.#crypto?.dispose()
     const message = String(reason)
     this.#emitLog({ level: 'error', text: `Runtime terminated: ${message}` })
     // Start the existing Host generation's synchronous revocation prefix before

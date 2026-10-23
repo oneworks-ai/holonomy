@@ -10,6 +10,8 @@ Service 负责 ADB 设备发现、安装、command-v2 传输、forward/reverse�
 
 嵌入自己的 Android App 时使用生产 [`runtime-host` 源码 SDK](../../../../adapters/android/runtime-host/README.zh-Hans.md)，而不是 E2E APK。它打包共享 Runtime 与生产 bootstrap，不携带测试控制器、fixture 或 Linux 镜像。要求 API 29+、JDK 17、SDK 35 和固定 Javet 5.0.10；AAR 不是包含全部传递依赖的单文件 SDK。
 
+也可使用 [SDK 打包命令](../../../../adapters/android/sdk/README.zh-Hans.md)生成八个开发 AAR、双语指南和独立 consumer。`pnpm package:android --output <新目录>` 默认执行源码构建；独立校验只证明归档清单、字节和生产资源摘要，不自动证明设备运行或发布验收。
+
 Host 可以逐 generation 显式安装 `crypto-host`，提供同步 SHA-1/SHA-256、HMAC-SHA-256、AES-256-GCM、随机数和定时安全比较；默认不安装。另可安装 [`storage-host`](../../../../adapters/android/storage-host/README.zh-Hans.md)，通过共享 Policy/Broker 与异步原生 worker 提供持久二进制 KV。KV 默认 namespace 为 `default`，SQLite 和凭据仍不支持；添加模块不自动授予权限。两者已在 API 35 arm64 模拟器的生产 bootstrap 中运行共享 JS 合同及 generation 重建测试，不代表物理设备验收。
 
 网络 Provider 独立执行 authority、DNS 地址准入、socket/TLS、配额、取消和流式 credit。Fetch、redirect、Request、Response 与 Abort 语义仍由共享 JavaScript Runtime 负责。

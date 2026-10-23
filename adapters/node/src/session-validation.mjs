@@ -6,6 +6,7 @@ import { createNodeModuleLaunchV1, normalizeNodeCapabilityRuntimeSession } from 
 import { copyJsonValue } from './json-value.mjs'
 import { normalizeModuleGraphRoot } from './module-root-validation.mjs'
 import { NetworkRuleContractError, normalizeNetworkRuleSet } from './network-rule-contract.mjs'
+import { normalizeNodeCryptoOptions } from './node-crypto-options.mjs'
 import { normalizeNodeSandboxSession } from './sandbox-session.mjs'
 import { readArgv, readEnv } from './session-process-input.mjs'
 import { readSyntheticModules } from './synthetic-module-validation.mjs'
@@ -82,6 +83,7 @@ export function normalizeNodeRuntimeSession(input) {
     [
       'argv',
       'capabilityRuntime',
+      'crypto',
       'entryUrl',
       'env',
       'inspector',
@@ -162,6 +164,7 @@ export function normalizeNodeRuntimeSession(input) {
   return Object.freeze({
     argv: readArgv(copied.argv, userEntryUrl),
     ...(capabilityRuntime == null ? {} : { capabilityRuntime }),
+    ...(copied.crypto === undefined ? {} : { crypto: normalizeNodeCryptoOptions(copied.crypto) }),
     entryUrl: copied.entryUrl,
     env: readEnv(copied.env),
     inspector,

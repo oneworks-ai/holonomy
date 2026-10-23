@@ -8,6 +8,10 @@ M3.5 发布的是一个显式 opt-in 的 Process profile，而不是宿主 `chil
 
 ## Runtime 内使用
 
+ChildProcess 与 stdout/stderr 支持字符串事件的 on/addListener、once、off/removeListener、removeAllListeners、listenerCount、listeners 和 eventNames。重复注册按顺序保留，移除最近一次匹配；once 可用原函数移除，回调的 this 是对应 façade。派发先快照，重入添加下次生效，重入也不会使 once 执行两次。关闭后本地记录清空；这些方法不额外获取权限，也不立即物理取消 Host 订阅。Symbol、公开 emit、prepend、rawListeners 和 max-listener 配置仍不支持，不是完整 EventEmitter。
+
+同一共享 JS 用例已接入 Node Adapter 与真实 Rust/V8 的显式 /bin/echo profile；pnpm test:native:process-listeners 验证真实 stdio 输出和移除/快照/关闭行为，不假设一次 OS 写入必然对应一个 data 帧。
+
 入口保持 Node 兼容：
 
 ```js

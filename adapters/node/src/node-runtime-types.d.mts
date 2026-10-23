@@ -122,6 +122,8 @@ export interface NodeRuntimeObserverBindingV1 {
 
 export declare class NodeRuntimeSupervisor extends EventEmitter {
   constructor(options?: {
+    /** Host opt-in for the fixed shared crypto subset; absent by default. */
+    readonly crypto?: Readonly<{ readonly enabled: true }>
     readonly engineGate?: (request: Readonly<NodeEngineGateRequestV1>) =>
       | Promise<Readonly<{ action: 'allow' } | { action: 'deny'; reasonCode: string }>>
       | Readonly<{ action: 'allow' } | { action: 'deny'; reasonCode: string }>

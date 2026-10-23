@@ -17,6 +17,8 @@ Node Adapter 会让每个 Holonomy Runtime 运行在独立的 Node 子进程中�
 
 新建的 Guest Context 不会获得 Node 环境中的 `process`、`require`、`Buffer` 或宿主 `fetch`。共享 Runtime 会在该 Context 内安装自己的有界 globals 和显式、冻结的 `node:*` registry。内部 Runtime 模块使用 `holonomy:///runtime/*`；用户模块保留调用方提供的绝对 URL。Adapter 会拒绝调用方替换内部 Runtime 模块图。
 
+Crypto 默认不安装。可信 Host 可通过 `new NodeRuntimeSupervisor({ crypto: { enabled: true } })`，在共享 provider 完整自检通过后安装既有 `node:crypto` facade 和 `globalThis.crypto`。固定同步子集包括 SHA-1/SHA-256、HMAC-SHA256、AES-256-GCM（32 字节 key、12 字节 IV、16 字节 tag）、操作系统安全随机字节/UUID，以及原生常量时间字节比较。WebCrypto 提供 `getRandomValues` 和 `randomUUID`；不支持 `subtle`、RSA/ECDSA、PBKDF2、其他 cipher 或异步 Node crypto。共享配额继续生效，包括最多 64 个活动 context、每次 update 1 MiB、每次随机请求 64 KiB。会话数据不能启用或替换 provider；每代 child 使用全新原生 context，停止、失败与终止会撤销它们。原生 Node 对象不会进入 Guest realm。这沿用既有 child/VM 边界，不增加物理隔离承诺；根 CLI/Service 的选项接线属于后续集成。
+
 Service 是唯一的 SandboxPolicy 编译器。它向 Adapter 传入不可变 policy 及其 generation 绑定的编译计划；直接调用方不能替换 authority。默认计划不安装 Fetch 能力；`mockOnly` 安装共享 Fetch facade 和 mock router，但不会构造 Node HTTP Provider；只有 `restricted` 会为策略中的精确规范 origin、scheme、私网选择和配额启用 HTTP(S) host。规则 revision 仍只属于当前进程 generation。
 
 文件监听是尽力投递：若宿主不产生原生 `fs.watch` 回调，Adapter 会轮询被监听文件或目录自身的元数据，不扫描目录。此时目录事件的 `filename` 可能是 `null`，目录内既有文件的原位内容修改也可能没有事件；消费者应在收到无文件名事件后重新读取状态，不应把监听事件当成完整变更日志。

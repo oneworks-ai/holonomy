@@ -57,7 +57,7 @@ Native Service 还可按真实平台描述允许 [Host 插件 Observer](../../..
 | target-required Device Provider   | ✅ Headless            | ✅             | Node/Desktop当前发布Headless Node descriptor；Android required读数、真实change、revision/resync与fencing闭合                     |
 | Network Broker continuation v1    | ✅                     | ✅             | real/mock、redirect 每跳、DNS/private-IP、Response body/clone、取消、诊断与 Rules revision                                       |
 | Android 源码 Runtime SDK          | 不适用                 | 🟡             | 独立生产 bootstrap/AAR；API 29+，当前设备证据为 API 35 arm64；不是 Maven 发布或单文件 SDK                                        |
-| Crypto primitive Provider         | 🟡 仅 Native           | 🟡 显式安装    | 独立 Rust/V8 与 Android JCA 复用共享 facade；不代表 Node Adapter 已安装 Provider；SHA/HMAC/AES-GCM 等明确子集                    |
+| Crypto primitive Provider         | 🟡 显式安装            | 🟡 显式安装    | Native、Android JCA 与 Node 可信 constructor 复用共享 SHA/HMAC/AES-GCM 子集；Node CLI/Service 不自动安装，不能由 session 启用    |
 | 持久 Storage Provider             | 🟡 仅 Native KV/SQLite | 🟡 显式 KV     | Android 仅 default namespace 二进制 KV；Node Adapter 未安装内置 Provider；Android SQLite、凭据与物理设备不在该声明内             |
 | 受控 `node:child_process` profile | 🟡                     | 🧪             | macOS Native profile 是显式 opt-in Stable；Android 可选 v86 AAR 为 Experimental                                                  |
 | 实验 v86 Linux Backend            | 🧪                     | 🧪             | 升级镜像已通过 Node 生产门禁 6/6 和 Android API 35 arm64 模拟器共享 JS 13/13；Native 仅有声明的局部 E2E                          |

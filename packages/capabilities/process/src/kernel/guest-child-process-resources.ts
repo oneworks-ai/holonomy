@@ -9,7 +9,7 @@ import {
 import type { JsonValueV1 } from '@holonomyjs/runtime/kernel/json-types'
 import { attachChildProcessAbortV1 } from './guest-child-process-abort.js'
 import type { PreparedChildProcessAbortSignalV1 } from './guest-child-process-abort.js'
-import { emit, errorFrom, eventTarget } from './guest-child-process-events.js'
+import { childProcessListeners, clearListeners, emit, errorFrom, eventTarget } from './guest-child-process-events.js'
 import {
   childProcessCallbackV1,
   childProcessInvalidStateV1,
@@ -63,18 +63,19 @@ export const createChildProcessResourceFactoryV1 = (
   const readable = (snapshot: unknown) => {
     if (snapshot == null) return null
     const fields = capabilityResourceFieldsV1(snapshot, 'process.readable')
-    const listeners = new Map<string, Set<Listener>>()
+    const listeners = childProcessListeners()
     const api = eventTarget(listeners, Object.create(null) as Record<string, unknown>)
     let closed = false
     const close = () => {
       closed = true
+      clearListeners(listeners)
       subscriptionDisposers.get(fields.bindingId)?.()
     }
     subscribe(fields.bindingId, source => {
       const event = childProcessRecordV1(readCapabilityResourceEventV1(source))
       const tuple = Array.isArray(event.tuple) ? event.tuple : []
       if (event.event === 'end' || event.event === 'close') closed = true
-      emit(listeners, String(event.event), ...(event.event === 'error' ? [errorFrom(tuple[0])] : tuple))
+      emit(listeners, api, String(event.event), ...(event.event === 'error' ? [errorFrom(tuple[0])] : tuple))
       if (event.event === 'close') close()
     })
     const control = (member: string) => {
@@ -165,13 +166,13 @@ export const createChildProcessResourceFactoryV1 = (
       source.stdout == null ? undefined : capabilityResourceFieldsV1(source.stdout, 'process.readable').bindingId,
       source.stderr == null ? undefined : capabilityResourceFieldsV1(source.stderr, 'process.readable').bindingId
     ].filter((value): value is string => value != null)
-    const listeners = new Map<string, Set<Listener>>()
+    const listeners = childProcessListeners()
     const api = eventTarget(listeners, Object.create(null) as Record<string, unknown>)
     let errorDelivered = false
     const deliverError = (error: Error) => {
       if (errorDelivered) return
       errorDelivered = true
-      emit(listeners, 'error', error)
+      emit(listeners, api, 'error', error)
     }
     const stdout = readable(source.stdout)
     const stderr = readable(source.stderr)
@@ -191,10 +192,14 @@ export const createChildProcessResourceFactoryV1 = (
       }
       const deliver = () => {
         if (event.event === 'error') deliverError(errorFrom(tuple[0]))
-        else emit(listeners, String(event.event), ...tuple)
+        else emit(listeners, api, String(event.event), ...tuple)
       }
-      if (event.event === 'close') scheduleCallback(deliver)
-      else deliver()
+      if (event.event === 'close') {
+        scheduleCallback(() => {
+          deliver()
+          clearListeners(listeners)
+        })
+      } else deliver()
       if (event.event === 'close') {
         for (const bindingId of nestedBindingIds) {
           subscriptionDisposers.get(bindingId)?.()

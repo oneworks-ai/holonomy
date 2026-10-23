@@ -74,8 +74,8 @@ export const watchV86Child = (label, start, budget = v86TestBudget) =>
         emitter.on(event, listener)
         const release = () => {
           active = false
-          // The v1 resource facade has on/once only. Deactivate logically;
-          // physical Host subscriptions are released by the resource's close.
+          // Full and minimal facades both support logical deactivation here;
+          // local removal does not release the physical Host resource.
           const remove = typeof emitter.removeListener === 'function' ? emitter.removeListener : emitter.off
           if (typeof remove === 'function') Reflect.apply(remove, emitter, [event, listener])
         }
