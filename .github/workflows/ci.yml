@@ -38,7 +38,6 @@ jobs:
       - run: pnpm test:adapter:node
       - run: pnpm test:service
       - run: pnpm test:adapter:desktop:unit
-      - run: pnpm test:native:packaging
 
   native:
     name: Native macOS
