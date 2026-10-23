@@ -9,13 +9,29 @@ export type HolonomyRuntimeErrorCode =
   | 'ERR_HOLONOMY_TURN_REENTRANT'
   | 'ERR_HOLONOMY_WAKEUP_FAILED'
 
+const errorBrands = new WeakSet<object>()
+const ADD = WeakSet.prototype.add
+const HAS = WeakSet.prototype.has
+const APPLY = Reflect.apply
+const DEFINE = Object.defineProperty
+
+/** Recognizes only errors constructed by this module without inspecting thrown values. */
+export const isHolonomyRuntimeError = (value: unknown): value is HolonomyRuntimeError =>
+  value !== null && (typeof value === 'object' || typeof value === 'function') &&
+  APPLY(HAS, errorBrands, [value])
+
 export class HolonomyRuntimeError extends Error {
   readonly code: HolonomyRuntimeErrorCode
 
   constructor(code: HolonomyRuntimeErrorCode, message: string) {
     super(message)
+    APPLY(ADD, errorBrands, [this])
     this.code = code
-    this.name = 'HolonomyRuntimeError'
+    DEFINE(this, 'name', {
+      configurable: true,
+      value: 'HolonomyRuntimeError',
+      writable: true
+    })
   }
 }
 

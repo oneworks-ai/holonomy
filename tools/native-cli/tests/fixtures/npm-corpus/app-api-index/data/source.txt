@@ -1,0 +1,6 @@
+// export const fake = 'a comment is not an API';
+const internal = 7;
+export const answer = 42;
+export function greet(name = 'world') { return `hello ${name}`; }
+export { internal as count };
+export default class Service { value = answer; }

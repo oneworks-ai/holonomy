@@ -3700,6 +3700,450 @@
     "schema": {
       "additionalProperties": false,
       "properties": {
+        "path": {
+          "maxLength": 4096,
+          "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+          "type": "string"
+        },
+        "mode": {
+          "maximum": 7,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "mode"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsAccessArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "maxLength": 4096,
+          "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+          "type": "string"
+        },
+        "mode": {
+          "maximum": 511,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "mode"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsChmodArgsV1"
+  },
+  {
+    "owner": "OperationResultSchemasV1",
+    "roles": [
+      "result"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "atimeMs": {
+              "maximum": 1000000000000000,
+              "minimum": -1000000000000000,
+              "type": "number"
+            },
+            "atimeNs": {
+              "maxLength": 22,
+              "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+              "type": "string"
+            },
+            "birthtimeMs": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "ctimeMs": {
+              "maximum": 1000000000000000,
+              "minimum": -1000000000000000,
+              "type": "number"
+            },
+            "ctimeNs": {
+              "maxLength": 22,
+              "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+              "type": "string"
+            },
+            "kind": {
+              "const": "file"
+            },
+            "mtimeMs": {
+              "maximum": 1000000000000000,
+              "minimum": -1000000000000000,
+              "type": "number"
+            },
+            "mtimeNs": {
+              "maxLength": 22,
+              "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+              "type": "string"
+            },
+            "size": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "mode": {
+              "maximum": 33279,
+              "minimum": 32768,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "atimeMs",
+            "atimeNs",
+            "birthtimeMs",
+            "ctimeMs",
+            "ctimeNs",
+            "kind",
+            "mtimeMs",
+            "mtimeNs",
+            "size",
+            "mode"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "atimeMs": {
+              "maximum": 1000000000000000,
+              "minimum": -1000000000000000,
+              "type": "number"
+            },
+            "atimeNs": {
+              "maxLength": 22,
+              "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+              "type": "string"
+            },
+            "birthtimeMs": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "ctimeMs": {
+              "maximum": 1000000000000000,
+              "minimum": -1000000000000000,
+              "type": "number"
+            },
+            "ctimeNs": {
+              "maxLength": 22,
+              "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+              "type": "string"
+            },
+            "kind": {
+              "const": "directory"
+            },
+            "mtimeMs": {
+              "maximum": 1000000000000000,
+              "minimum": -1000000000000000,
+              "type": "number"
+            },
+            "mtimeNs": {
+              "maxLength": 22,
+              "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+              "type": "string"
+            },
+            "size": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "mode": {
+              "maximum": 16895,
+              "minimum": 16384,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "atimeMs",
+            "atimeNs",
+            "birthtimeMs",
+            "ctimeMs",
+            "ctimeNs",
+            "kind",
+            "mtimeMs",
+            "mtimeNs",
+            "size",
+            "mode"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "FsChmodMetadataResultV1"
+  },
+  {
+    "owner": "OperationResultSchemasV1",
+    "roles": [
+      "result"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "atimeMs": {
+                  "maximum": 1000000000000000,
+                  "minimum": -1000000000000000,
+                  "type": "number"
+                },
+                "atimeNs": {
+                  "maxLength": 22,
+                  "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+                  "type": "string"
+                },
+                "birthtimeMs": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "ctimeMs": {
+                  "maximum": 1000000000000000,
+                  "minimum": -1000000000000000,
+                  "type": "number"
+                },
+                "ctimeNs": {
+                  "maxLength": 22,
+                  "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "file"
+                },
+                "mtimeMs": {
+                  "maximum": 1000000000000000,
+                  "minimum": -1000000000000000,
+                  "type": "number"
+                },
+                "mtimeNs": {
+                  "maxLength": 22,
+                  "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+                  "type": "string"
+                },
+                "size": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "mode": {
+                  "maximum": 33279,
+                  "minimum": 32768,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "atimeMs",
+                "atimeNs",
+                "birthtimeMs",
+                "ctimeMs",
+                "ctimeNs",
+                "kind",
+                "mtimeMs",
+                "mtimeNs",
+                "size",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "atimeMs": {
+                  "maximum": 1000000000000000,
+                  "minimum": -1000000000000000,
+                  "type": "number"
+                },
+                "atimeNs": {
+                  "maxLength": 22,
+                  "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+                  "type": "string"
+                },
+                "birthtimeMs": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "ctimeMs": {
+                  "maximum": 1000000000000000,
+                  "minimum": -1000000000000000,
+                  "type": "number"
+                },
+                "ctimeNs": {
+                  "maxLength": 22,
+                  "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "directory"
+                },
+                "mtimeMs": {
+                  "maximum": 1000000000000000,
+                  "minimum": -1000000000000000,
+                  "type": "number"
+                },
+                "mtimeNs": {
+                  "maxLength": 22,
+                  "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+                  "type": "string"
+                },
+                "size": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "mode": {
+                  "maximum": 16895,
+                  "minimum": 16384,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "atimeMs",
+                "atimeNs",
+                "birthtimeMs",
+                "ctimeMs",
+                "ctimeNs",
+                "kind",
+                "mtimeMs",
+                "mtimeNs",
+                "size",
+                "mode"
+              ],
+              "type": "object"
+            }
+          ]
+        }
+      ]
+    },
+    "schemaId": "FsChmodMutationResultV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "maxLength": 4096,
+              "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+              "type": "string"
+            },
+            "mode": {
+              "maximum": 511,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "path",
+            "mode"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "maxLength": 4096,
+              "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+              "type": "string"
+            },
+            "mode": {
+              "maximum": 511,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "readback": {
+              "const": true
+            },
+            "expectedKind": {
+              "enum": [
+                "file",
+                "directory"
+              ]
+            }
+          },
+          "required": [
+            "path",
+            "mode",
+            "readback"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "FsChmodPromiseArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "maxLength": 4096,
+          "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+          "type": "string"
+        },
+        "mode": {
+          "maximum": 511,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "readback": {
+          "const": true
+        },
+        "expectedKind": {
+          "enum": [
+            "file",
+            "directory"
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "mode",
+        "readback"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsChmodReadbackArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
         "fd": {
           "maximum": 9007199254740991,
           "minimum": 0,
@@ -3751,6 +4195,216 @@
       ]
     },
     "schemaId": "FsDataV1"
+  },
+  {
+    "owner": "OperationResultSchemasV1",
+    "roles": [
+      "result"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "binding": {
+          "additionalProperties": false,
+          "properties": {
+            "bindingId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "bindingId",
+            "generation"
+          ],
+          "type": "object"
+        },
+        "entries": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "directory",
+                  "file",
+                  "symlink"
+                ]
+              },
+              "name": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "name"
+            ],
+            "type": "object"
+          },
+          "maxItems": 100000,
+          "type": "array"
+        },
+        "resourceType": {
+          "const": "filesystem.directory-handle"
+        }
+      },
+      "required": [
+        "binding",
+        "entries",
+        "resourceType"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsDirectoryHandleV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "maxLength": 4096,
+          "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsDirectoryOpenArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "dataOnly": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "dataOnly"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsDirectorySyncArgsV1"
+  },
+  {
+    "owner": "OperationResultSchemasV1",
+    "roles": [
+      "result"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "atimeMs": {
+          "maximum": 1000000000000000,
+          "minimum": -1000000000000000,
+          "type": "number"
+        },
+        "atimeNs": {
+          "maxLength": 22,
+          "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+          "type": "string"
+        },
+        "birthtimeMs": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "ctimeMs": {
+          "maximum": 1000000000000000,
+          "minimum": -1000000000000000,
+          "type": "number"
+        },
+        "ctimeNs": {
+          "maxLength": 22,
+          "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "directory",
+            "file",
+            "symlink"
+          ]
+        },
+        "mtimeMs": {
+          "maximum": 1000000000000000,
+          "minimum": -1000000000000000,
+          "type": "number"
+        },
+        "mtimeNs": {
+          "maxLength": 22,
+          "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+          "type": "string"
+        },
+        "size": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mode": {
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "atimeMs",
+        "atimeNs",
+        "birthtimeMs",
+        "ctimeMs",
+        "ctimeNs",
+        "kind",
+        "mtimeMs",
+        "mtimeNs",
+        "size"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsExactMetadataResultV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "fd": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mode": {
+          "maximum": 511,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fd",
+        "mode"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsFchmodArgsV1"
   },
   {
     "owner": "OperationArgumentSchemasV1",
@@ -4098,6 +4752,705 @@
       "args"
     ],
     "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "maximum": 511,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsHandleChmodArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "maximum": 511,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "maximum": 511,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "readback": {
+              "const": true
+            },
+            "expectedKind": {
+              "enum": [
+                "file",
+                "directory"
+              ]
+            }
+          },
+          "required": [
+            "mode",
+            "readback"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "FsHandleChmodPromiseArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "maximum": 511,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "readback": {
+          "const": true
+        },
+        "expectedKind": {
+          "enum": [
+            "file",
+            "directory"
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "readback"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsHandleChmodReadbackArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "atime": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "set"
+                },
+                "seconds": {
+                  "maximum": 253402300799,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "nanoseconds": {
+                  "maximum": 999999999,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "seconds",
+                "nanoseconds"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "now"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "omit"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "mtime": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "set"
+                },
+                "seconds": {
+                  "maximum": 253402300799,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "nanoseconds": {
+                  "maximum": 999999999,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "seconds",
+                "nanoseconds"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "now"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "omit"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "fd": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "atime",
+        "mtime"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsHandleTimesArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "atime": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "set"
+                    },
+                    "seconds": {
+                      "maximum": 253402300799,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "nanoseconds": {
+                      "maximum": 999999999,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "seconds",
+                    "nanoseconds"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "now"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "omit"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "mtime": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "set"
+                    },
+                    "seconds": {
+                      "maximum": 253402300799,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "nanoseconds": {
+                      "maximum": 999999999,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "seconds",
+                    "nanoseconds"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "now"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "omit"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "fd": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "atime",
+            "mtime"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "atime": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "set"
+                    },
+                    "seconds": {
+                      "maximum": 253402300799,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "nanoseconds": {
+                      "maximum": 999999999,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "seconds",
+                    "nanoseconds"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "now"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "omit"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "mtime": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "set"
+                    },
+                    "seconds": {
+                      "maximum": 253402300799,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "nanoseconds": {
+                      "maximum": 999999999,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "seconds",
+                    "nanoseconds"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "now"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "omit"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "readback": {
+              "const": true
+            }
+          },
+          "required": [
+            "atime",
+            "mtime",
+            "readback"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "FsHandleTimesPromiseArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "atime": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "set"
+                },
+                "seconds": {
+                  "maximum": 253402300799,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "nanoseconds": {
+                  "maximum": 999999999,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "seconds",
+                "nanoseconds"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "now"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "omit"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "mtime": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "set"
+                },
+                "seconds": {
+                  "maximum": 253402300799,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "nanoseconds": {
+                  "maximum": 999999999,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "seconds",
+                "nanoseconds"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "now"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "omit"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "readback": {
+          "const": true
+        }
+      },
+      "required": [
+        "atime",
+        "mtime",
+        "readback"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsHandleTimesReadbackArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "fd": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "len": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "len"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsHandleTruncateArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "fd": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "len": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "len"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "len": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "readback": {
+              "const": true
+            }
+          },
+          "required": [
+            "len",
+            "readback"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "FsHandleTruncatePromiseArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "len": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "readback": {
+          "const": true
+        }
+      },
+      "required": [
+        "len",
+        "readback"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsHandleTruncateReadbackArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
       "oneOf": [
         {
           "oneOf": [
@@ -4389,6 +5742,91 @@
     "schemaId": "FsMkdirResultV1"
   },
   {
+    "owner": "OperationResultSchemasV1",
+    "roles": [
+      "result"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "atimeMs": {
+              "maximum": 1000000000000000,
+              "minimum": -1000000000000000,
+              "type": "number"
+            },
+            "atimeNs": {
+              "maxLength": 22,
+              "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+              "type": "string"
+            },
+            "birthtimeMs": {
+              "minimum": 0,
+              "type": "number"
+            },
+            "ctimeMs": {
+              "maximum": 1000000000000000,
+              "minimum": -1000000000000000,
+              "type": "number"
+            },
+            "ctimeNs": {
+              "maxLength": 22,
+              "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "directory",
+                "file",
+                "symlink"
+              ]
+            },
+            "mtimeMs": {
+              "maximum": 1000000000000000,
+              "minimum": -1000000000000000,
+              "type": "number"
+            },
+            "mtimeNs": {
+              "maxLength": 22,
+              "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+              "type": "string"
+            },
+            "size": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "mode": {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "atimeMs",
+            "atimeNs",
+            "birthtimeMs",
+            "ctimeMs",
+            "ctimeNs",
+            "kind",
+            "mtimeMs",
+            "mtimeNs",
+            "size"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "FsMutationResultV1"
+  },
+  {
     "owner": "OperationArgumentSchemasV1",
     "roles": [
       "args"
@@ -4402,17 +5840,100 @@
           "type": "string"
         },
         "flag": {
-          "enum": [
-            "a",
-            "a+",
-            "ax",
-            "ax+",
-            "r",
-            "r+",
-            "w",
-            "w+",
-            "wx",
-            "wx+"
+          "oneOf": [
+            {
+              "enum": [
+                "a",
+                "a+",
+                "ax",
+                "ax+",
+                "r",
+                "r+",
+                "w",
+                "w+",
+                "wx",
+                "wx+"
+              ]
+            },
+            {
+              "allOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "portable-open-v1"
+                    },
+                    "access": {
+                      "enum": [
+                        "read",
+                        "write",
+                        "readWrite"
+                      ]
+                    },
+                    "create": {
+                      "type": "boolean"
+                    },
+                    "exclusive": {
+                      "type": "boolean"
+                    },
+                    "truncate": {
+                      "type": "boolean"
+                    },
+                    "append": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "access",
+                    "create",
+                    "exclusive",
+                    "truncate",
+                    "append"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "if": {
+                    "type": "object",
+                    "properties": {
+                      "exclusive": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "then": {
+                    "type": "object",
+                    "properties": {
+                      "create": {
+                        "const": true
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "type": "object",
+                    "properties": {
+                      "access": {
+                        "const": "read"
+                      }
+                    }
+                  },
+                  "then": {
+                    "type": "object",
+                    "properties": {
+                      "truncate": {
+                        "const": false
+                      },
+                      "append": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              ]
+            }
           ]
         }
       },
@@ -5610,6 +7131,140 @@
     "schema": {
       "additionalProperties": false,
       "properties": {
+        "fd": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fd"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsSyncArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "maxLength": 4096,
+          "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+          "type": "string"
+        },
+        "len": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "len"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsTruncateArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "maxLength": 4096,
+              "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+              "type": "string"
+            },
+            "len": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "path",
+            "len"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "maxLength": 4096,
+              "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+              "type": "string"
+            },
+            "len": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "readback": {
+              "const": true
+            }
+          },
+          "required": [
+            "path",
+            "len",
+            "readback"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "FsTruncatePromiseArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "maxLength": 4096,
+          "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+          "type": "string"
+        },
+        "len": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "readback": {
+          "const": true
+        }
+      },
+      "required": [
+        "path",
+        "len",
+        "readback"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsTruncateReadbackArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
         "path": {
           "maxLength": 4096,
           "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
@@ -5622,6 +7277,519 @@
       "type": "object"
     },
     "schemaId": "FsUnlinkArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "maxLength": 4096,
+          "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+          "type": "string"
+        },
+        "atime": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "set"
+                },
+                "seconds": {
+                  "maximum": 253402300799,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "nanoseconds": {
+                  "maximum": 999999999,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "seconds",
+                "nanoseconds"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "now"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "omit"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "mtime": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "set"
+                },
+                "seconds": {
+                  "maximum": 253402300799,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "nanoseconds": {
+                  "maximum": 999999999,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "seconds",
+                "nanoseconds"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "now"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "omit"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "atime",
+        "mtime"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsUtimesArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "maxLength": 4096,
+              "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+              "type": "string"
+            },
+            "atime": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "set"
+                    },
+                    "seconds": {
+                      "maximum": 253402300799,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "nanoseconds": {
+                      "maximum": 999999999,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "seconds",
+                    "nanoseconds"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "now"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "omit"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "mtime": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "set"
+                    },
+                    "seconds": {
+                      "maximum": 253402300799,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "nanoseconds": {
+                      "maximum": 999999999,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "seconds",
+                    "nanoseconds"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "now"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "omit"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "required": [
+            "path",
+            "atime",
+            "mtime"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "maxLength": 4096,
+              "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+              "type": "string"
+            },
+            "atime": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "set"
+                    },
+                    "seconds": {
+                      "maximum": 253402300799,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "nanoseconds": {
+                      "maximum": 999999999,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "seconds",
+                    "nanoseconds"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "now"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "omit"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "mtime": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "set"
+                    },
+                    "seconds": {
+                      "maximum": 253402300799,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "nanoseconds": {
+                      "maximum": 999999999,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "seconds",
+                    "nanoseconds"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "now"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "omit"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "readback": {
+              "const": true
+            }
+          },
+          "required": [
+            "path",
+            "atime",
+            "mtime",
+            "readback"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "FsUtimesPromiseArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "maxLength": 4096,
+          "pattern": "^holo-fs://[A-Za-z0-9][A-Za-z0-9._-]*/",
+          "type": "string"
+        },
+        "atime": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "set"
+                },
+                "seconds": {
+                  "maximum": 253402300799,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "nanoseconds": {
+                  "maximum": 999999999,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "seconds",
+                "nanoseconds"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "now"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "omit"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "mtime": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "set"
+                },
+                "seconds": {
+                  "maximum": 253402300799,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "nanoseconds": {
+                  "maximum": 999999999,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "seconds",
+                "nanoseconds"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "now"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "omit"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "readback": {
+          "const": true
+        }
+      },
+      "required": [
+        "path",
+        "atime",
+        "mtime",
+        "readback"
+      ],
+      "type": "object"
+    },
+    "schemaId": "FsUtimesReadbackArgsV1"
   },
   {
     "owner": "OperationArgumentSchemasV1",
@@ -9659,6 +11827,48 @@
       ],
       "type": "object"
     },
+    "schemaId": "OpaqueDirectoryHandleResourceV1"
+  },
+  {
+    "owner": "CanonicalResourceSchemasV1",
+    "roles": [
+      "resource"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "binding": {
+          "additionalProperties": false,
+          "properties": {
+            "bindingId": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "type": "string"
+            },
+            "generation": {
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "bindingId",
+            "generation"
+          ],
+          "type": "object"
+        },
+        "rightsDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "binding",
+        "rightsDigest"
+      ],
+      "type": "object"
+    },
     "schemaId": "OpaqueFileHandleResourceV1"
   },
   {
@@ -11410,6 +13620,768 @@
       "result"
     ],
     "schema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "changes": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "changes"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "error": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "enum": [
+                    "storage.authorization_denied",
+                    "storage.cancelled",
+                    "storage.conflict",
+                    "storage.credential_closed",
+                    "storage.disposed",
+                    "storage.internal",
+                    "storage.invalid_argument",
+                    "storage.limit_exceeded",
+                    "storage.not_found",
+                    "storage.not_supported",
+                    "storage.protocol_error",
+                    "storage.sqlite_failed",
+                    "storage.timeout"
+                  ]
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "StorageExecuteResultV1"
+  },
+  {
+    "owner": "OperationResultSchemasV1",
+    "roles": [
+      "result"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "found": {
+                  "const": false
+                }
+              },
+              "required": [
+                "found"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "found": {
+                  "const": true
+                },
+                "valueBase64": {
+                  "maxLength": 1398104,
+                  "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "found",
+                "valueBase64"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "error": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "enum": [
+                    "storage.authorization_denied",
+                    "storage.cancelled",
+                    "storage.conflict",
+                    "storage.credential_closed",
+                    "storage.disposed",
+                    "storage.internal",
+                    "storage.invalid_argument",
+                    "storage.limit_exceeded",
+                    "storage.not_found",
+                    "storage.not_supported",
+                    "storage.protocol_error",
+                    "storage.sqlite_failed",
+                    "storage.timeout"
+                  ]
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "StorageKvGetResultV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+          "type": "string",
+          "maxLength": 1024,
+          "minLength": 1
+        },
+        "namespaceId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "namespaceId"
+      ],
+      "type": "object"
+    },
+    "schemaId": "StorageKvKeyArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "namespaceId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        "prefix": {
+          "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+          "type": "string",
+          "maxLength": 1024,
+          "minLength": 0
+        }
+      },
+      "required": [
+        "namespaceId",
+        "prefix"
+      ],
+      "type": "object"
+    },
+    "schemaId": "StorageKvListArgsV1"
+  },
+  {
+    "owner": "OperationResultSchemasV1",
+    "roles": [
+      "result"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "items": {
+            "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1
+          },
+          "maxItems": 1024,
+          "type": "array",
+          "uniqueItems": true
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "error": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "enum": [
+                    "storage.authorization_denied",
+                    "storage.cancelled",
+                    "storage.conflict",
+                    "storage.credential_closed",
+                    "storage.disposed",
+                    "storage.internal",
+                    "storage.invalid_argument",
+                    "storage.limit_exceeded",
+                    "storage.not_found",
+                    "storage.not_supported",
+                    "storage.protocol_error",
+                    "storage.sqlite_failed",
+                    "storage.timeout"
+                  ]
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "StorageKvListResultV1"
+  },
+  {
+    "owner": "CanonicalResourceSchemasV1",
+    "roles": [
+      "resource"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "display": {
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "label"
+          ],
+          "type": "object"
+        },
+        "namespaceId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "semanticId": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "semanticResourceDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "kind": {
+          "const": "storageKv"
+        },
+        "selector": {
+          "enum": [
+            "key",
+            "prefix"
+          ]
+        },
+        "selectorDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "display",
+        "namespaceId",
+        "schemaVersion",
+        "semanticId",
+        "semanticResourceDigest",
+        "kind",
+        "selector",
+        "selectorDigest"
+      ],
+      "type": "object"
+    },
+    "schemaId": "StorageKvResourceV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+          "type": "string",
+          "maxLength": 1024,
+          "minLength": 1
+        },
+        "namespaceId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        "valueByteLength": {
+          "maximum": 1048576,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "valueSha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "namespaceId",
+        "valueByteLength",
+        "valueSha256"
+      ],
+      "type": "object"
+    },
+    "schemaId": "StorageKvSetArgsV1"
+  },
+  {
+    "owner": "OperationResultSchemasV1",
+    "roles": [
+      "result"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "items": {
+            "items": {
+              "items": false,
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+                  "type": "string",
+                  "maxLength": 1024,
+                  "minLength": 1
+                },
+                {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+                      "type": "string"
+                    }
+                  ]
+                }
+              ],
+              "type": "array"
+            },
+            "maxItems": 1024,
+            "type": "array"
+          },
+          "maxItems": 1024,
+          "type": "array"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "error": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "enum": [
+                    "storage.authorization_denied",
+                    "storage.cancelled",
+                    "storage.conflict",
+                    "storage.credential_closed",
+                    "storage.disposed",
+                    "storage.internal",
+                    "storage.invalid_argument",
+                    "storage.limit_exceeded",
+                    "storage.not_found",
+                    "storage.not_supported",
+                    "storage.protocol_error",
+                    "storage.sqlite_failed",
+                    "storage.timeout"
+                  ]
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "StorageQueryResultV1"
+  },
+  {
+    "owner": "CanonicalResourceSchemasV1",
+    "roles": [
+      "resource"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "display": {
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "label"
+          ],
+          "type": "object"
+        },
+        "namespaceId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "semanticId": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "semanticResourceDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "database": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+          "type": "string"
+        },
+        "kind": {
+          "const": "storageSql"
+        }
+      },
+      "required": [
+        "display",
+        "namespaceId",
+        "schemaVersion",
+        "semanticId",
+        "semanticResourceDigest",
+        "database",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "schemaId": "StorageSqlResourceV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "database": {
+          "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "namespaceId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        "statement": {
+          "additionalProperties": false,
+          "properties": {
+            "params": {
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+                    "type": "string"
+                  }
+                ]
+              },
+              "maxItems": 256,
+              "type": "array"
+            },
+            "sql": {
+              "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+              "type": "string",
+              "maxLength": 65536,
+              "minLength": 1
+            }
+          },
+          "required": [
+            "sql"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "database",
+        "namespaceId",
+        "statement"
+      ],
+      "type": "object"
+    },
+    "schemaId": "StorageSqlStatementArgsV1"
+  },
+  {
+    "owner": "OperationArgumentSchemasV1",
+    "roles": [
+      "args"
+    ],
+    "schema": {
+      "additionalProperties": false,
+      "properties": {
+        "database": {
+          "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "namespaceId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        "statements": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "params": {
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "maxItems": 256,
+                "type": "array"
+              },
+              "sql": {
+                "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+                "type": "string",
+                "maxLength": 65536,
+                "minLength": 1
+              }
+            },
+            "required": [
+              "sql"
+            ],
+            "type": "object"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "database",
+        "namespaceId",
+        "statements"
+      ],
+      "type": "object"
+    },
+    "schemaId": "StorageSqlTransactionArgsV1"
+  },
+  {
+    "owner": "OperationResultSchemasV1",
+    "roles": [
+      "result"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "changes": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "changes"
+            ],
+            "type": "object"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "type": "array"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "error": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "enum": [
+                    "storage.authorization_denied",
+                    "storage.cancelled",
+                    "storage.conflict",
+                    "storage.credential_closed",
+                    "storage.disposed",
+                    "storage.internal",
+                    "storage.invalid_argument",
+                    "storage.limit_exceeded",
+                    "storage.not_found",
+                    "storage.not_supported",
+                    "storage.protocol_error",
+                    "storage.sqlite_failed",
+                    "storage.timeout"
+                  ]
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "StorageTransactionResultV1"
+  },
+  {
+    "owner": "OperationResultSchemasV1",
+    "roles": [
+      "result"
+    ],
+    "schema": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "error": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "enum": [
+                    "storage.authorization_denied",
+                    "storage.cancelled",
+                    "storage.conflict",
+                    "storage.credential_closed",
+                    "storage.disposed",
+                    "storage.internal",
+                    "storage.invalid_argument",
+                    "storage.limit_exceeded",
+                    "storage.not_found",
+                    "storage.not_supported",
+                    "storage.protocol_error",
+                    "storage.sqlite_failed",
+                    "storage.timeout"
+                  ]
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schemaId": "StorageVoidResultV1"
+  },
+  {
+    "owner": "OperationResultSchemasV1",
+    "roles": [
+      "result"
+    ],
+    "schema": {
       "type": "string"
     },
     "schemaId": "string"
@@ -12224,13 +15196,29 @@
     "schema": {
       "additionalProperties": false,
       "properties": {
+        "atimeMs": {
+          "maximum": 1000000000000000,
+          "minimum": -1000000000000000,
+          "type": "number"
+        },
+        "atimeNs": {
+          "maxLength": 22,
+          "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+          "type": "string"
+        },
         "birthtimeMs": {
           "minimum": 0,
           "type": "number"
         },
         "ctimeMs": {
-          "minimum": 0,
+          "maximum": 1000000000000000,
+          "minimum": -1000000000000000,
           "type": "number"
+        },
+        "ctimeNs": {
+          "maxLength": 22,
+          "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+          "type": "string"
         },
         "kind": {
           "enum": [
@@ -12240,11 +15228,22 @@
           ]
         },
         "mtimeMs": {
-          "minimum": 0,
+          "maximum": 1000000000000000,
+          "minimum": -1000000000000000,
           "type": "number"
+        },
+        "mtimeNs": {
+          "maxLength": 22,
+          "pattern": "^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$",
+          "type": "string"
         },
         "size": {
           "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mode": {
+          "maximum": 65535,
           "minimum": 0,
           "type": "integer"
         }

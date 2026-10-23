@@ -83,7 +83,12 @@ const withService = async callback => {
         targetSession: 1,
         transport: {
           close() {},
-          send: async message => ({ id: message.id, result: { upstream: true } })
+          send: async message => ({
+            id: message.id,
+            result: message.method === 'Runtime.getIsolateId'
+              ? { id: 'x'.repeat(70_000) }
+              : { upstream: true }
+          })
         }
       }),
       listEmulators: async () => [{ id: 'pixel', managed: false, state: 'stopped' }],
@@ -327,7 +332,22 @@ describe('holonomy loopback service', () => {
       )
       socket.send(JSON.stringify({ id: 9, method: 'Runtime.enable' }))
       assert.deepEqual(await response, { id: 9, result: { upstream: true } })
-      socket.close()
+      const large = new Promise(resolve =>
+        socket.addEventListener('message', event => {
+          resolve(JSON.parse(String(event.data)))
+        }, { once: true })
+      )
+      socket.send(JSON.stringify({ id: 10, method: 'Runtime.getIsolateId' }))
+      assert.equal((await large).result.id.length, 70_000)
+      const closed = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Revoked Inspector WebSocket stayed open')), 2_000)
+        socket.addEventListener('close', event => {
+          clearTimeout(timeout)
+          resolve(event.code)
+        }, { once: true })
+      })
+      service.core.inspectorProxy().closeLease(inspector.id)
+      assert.equal(await closed, 1_001)
     })
   }, 15_000)
 })

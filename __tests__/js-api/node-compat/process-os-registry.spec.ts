@@ -295,6 +295,25 @@ describe('node:process, node:os and registry', () => {
     }
   })
 
+  it('rejects an invalid next-tick callback before touching it or scheduling work', () => {
+    let scheduled = 0
+    const runtimeProcess = createNodeCoreSyntheticModules({
+      ...createNodeCoreOptions(),
+      nextTick: () => {
+        scheduled += 1
+      }
+    })['node:process'].default
+    const invalid = new Proxy({}, {
+      get() {
+        throw new Error('The callback object was read')
+      }
+    })
+    expect(() => runtimeProcess.nextTick(invalid as never)).toThrowError(
+      expect.objectContaining({ code: 'ERR_INVALID_ARG_TYPE', name: 'TypeError' })
+    )
+    expect(scheduled).toBe(0)
+  })
+
   it('returns immutable synthetic OS values and rejects unsafe snapshots', () => {
     const options = createNodeCoreOptions()
     const os = createNodeCoreSyntheticModules(options)['node:os']

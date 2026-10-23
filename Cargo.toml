@@ -1,0 +1,19 @@
+[workspace]
+members = ["adapters/desktop/host-core", "adapters/desktop/v8-host", "tools/native-cli"]
+resolver = "2"
+
+[workspace.package]
+version = "1.0.0-rc.3"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+v8 = "=152.2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+url = "2.5"
+
+[profile.release]
+lto = "thin"
+strip = "debuginfo"

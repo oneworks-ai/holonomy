@@ -2,7 +2,7 @@
 
 [简体中文](./README.zh-Hans.md)
 
-The `holonomy` command runs JavaScript and `node:test` files on Android or the isolated local Node host. A machine-level Holonomy Service owns devices, managed Runtime processes, logs, network rules and Inspector leases, so callers do not assemble ADB or CDP commands.
+The `holonomy` command runs JavaScript and `node:test` files on Android, the isolated local Node host, or an owner-installed standalone Native `holo`. A machine-level Holonomy Service owns devices, managed Runtime processes, logs, network rules and Inspector leases, so callers do not assemble ADB or CDP commands.
 
 ## Discover the CLI
 
@@ -37,7 +37,11 @@ Every process defaults to a deny-all SandboxPolicy. Pass a bounded regular JSON 
 
 The CLI freezes `--root-url` as the module graph root. The Service and target Adapter revalidate that the entry and every supplied module remain under that canonical root; generated `.holonomy/` entries therefore cannot accidentally narrow the developer's graph.
 
+Launch preflight finishes before the CLI creates or starts Service. Native preparation requires the owner-installed local `holo` in `HOLONOMY_HOME/native-runtime.json`; it uses the Rust descriptor-relative source reader, not Node byte reads, to collect package graphs and selected private inputs. Relative package-directory links inside `node_modules` may resolve within the selected source root, including pnpm transitive layouts; outside-root stores, absolute links and ordinary file links remain rejected. Canonical source files plus a bounded flat alias map are submitted without native paths. Same-file/hardlink Host-to-Guest publication and watch-time Guest-to-Host promotion reject before publication. The shared source closure is non-executable; actual Native linking still validates builtin exports and permissions. Self-contained Host plugin packages use a separate pinned-package reader for within-root pnpm installation; config/token and package leaves remain nofollow. Package-directory/manifest paths are supported, bare package names reject subpaths, and external dependencies must be built into the self-contained ESM artifact. Native directory/glob discovery skips node_modules and is bounded. Node/Android preparation keeps its existing path.
+
 An explicit remote Service must use HTTPS outside loopback. Pass its Token with `--openapi-token-file` or `HOLONOMY_OPENAPI_TOKEN_FILE`, never as a command-line value.
+
+`run` and `test` accept static `--config holo.config.json` startup plugins and explicit `--plugin-root` selections. Tests keep one admitted graph; `--watch` is run-only. Native controlled Wasm/dynamic import requires the corresponding Capability Runtime Policy and explicit approval from its Host plugin, not a Node callback in Service. See [Managed Native Engine Gates](../adapters/desktop/managed-engine-gates.md) for a complete test example and the remaining diagnostic boundaries.
 
 ## Manage the Service and Runtime processes
 

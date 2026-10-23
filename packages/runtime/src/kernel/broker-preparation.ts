@@ -1,7 +1,10 @@
+/* eslint-disable max-lines -- one Broker admission boundary keeps Policy and result validation before Middleware/Provider delivery. */
 import { createProviderAuthorityV1 } from './broker-authority.js'
+import { prepareInvocationHostBindingsV1 } from './broker-host-bindings.js'
 import { matchesHoloInvocationV1 } from './broker-matcher.js'
 import { authorizeCapabilityInvocationV1 } from './broker-policy.js'
 import { createProviderResolutionAdmitterV1 } from './broker-resolution.js'
+import { createBrokerResultValidatorV1 } from './broker-storage-result.js'
 import { createLinkedCapabilitySignalV1, resolveCapabilityProviderV1 } from './broker-support.js'
 import type {
   CapabilityBrokerInvocationV1,
@@ -11,9 +14,8 @@ import type {
   HoloMiddlewareRegistrationV1,
   InitialMiddlewareSetV1
 } from './broker-types.js'
-import { validateBrokerArgumentsV1, validateBrokerResultV1 } from './broker-validation.js'
+import { validateBrokerArgumentsV1 } from './broker-validation.js'
 import { isTrustedInvocationValueV1 } from './broker-values.js'
-import type { TrustedInvocationValueV1 } from './broker-values.js'
 import { validateCanonicalResourceV1 } from './canonical-resource-validation.js'
 import type { AdmittedRuntimeCreationV1 } from './context-types.js'
 import { CapabilityInvocationError, capabilityFailure } from './errors.js'
@@ -61,6 +63,40 @@ export const prepareCapabilityBrokerInvocationV1 = <THostContext>(
     invocation.arguments.value,
     resource.semanticResourceDigest
   )
+  const openFlag = descriptor.operation === 'filesystem.file.open'
+    ? (invocation.arguments.value as { flag?: unknown }).flag
+    : undefined
+  if (
+    openFlag != null && typeof openFlag === 'object' && !Array.isArray(openFlag) &&
+    (source?.kind !== 'linuxProcess' || descriptor.module !== 'node:fs/promises' ||
+      descriptor.member !== 'open' || invocation.invocationMode !== 'promise')
+  ) capabilityFailure('capability.denied', descriptor.operation, resource.semanticResourceDigest)
+  if (
+    descriptor.operation === 'filesystem.directory.open' ||
+    descriptor.operation === 'filesystem.directory.sync' ||
+    descriptor.operation === 'filesystem.directory.close'
+  ) {
+    if (source?.kind !== 'linuxProcess') {
+      capabilityFailure('capability.denied', descriptor.operation, resource.semanticResourceDigest)
+    }
+  }
+  if (
+    descriptor.operation === 'filesystem.metadata.utimes' ||
+    descriptor.operation === 'filesystem.metadata.chmod' ||
+    descriptor.operation === 'filesystem.file.truncate'
+  ) {
+    const args = invocation.arguments.value as {
+      atime?: { kind?: unknown }
+      mtime?: { kind?: unknown }
+      readback?: unknown
+    }
+    if (
+      (args.readback === true || descriptor.operation === 'filesystem.metadata.utimes' &&
+          [args.atime?.kind, args.mtime?.kind].some(kind => kind !== 'set')) && source?.kind !== 'linuxProcess'
+    ) {
+      capabilityFailure('capability.denied', descriptor.operation, resource.semanticResourceDigest)
+    }
+  }
   const inherited = invocation.inheritedBindingId == null
     ? undefined
     : options.resources.get(invocation.inheritedBindingId)
@@ -108,11 +144,19 @@ export const prepareCapabilityBrokerInvocationV1 = <THostContext>(
     selection,
     signal: linked.signal
   })
+  const hostBindings = prepareInvocationHostBindingsV1(
+    invocation,
+    descriptor,
+    options.admitted.generation,
+    linked.signal,
+    linked.cleanup
+  )
   const context: HoloInvocationContextV1<THostContext> = Object.freeze({
     arguments: invocation.arguments.value,
     authorityBindings: selection.authorityBindings,
     capabilities: selection.bindings,
     hostContext: options.admitted.configuration.context.host as Readonly<THostContext>,
+    ...(hostBindings.bindings.length === 0 ? {} : { hostBindings: hostBindings.bindings }),
     invocationMode: invocation.invocationMode,
     kind: descriptor.kind,
     member: descriptor.member,
@@ -158,6 +202,7 @@ export const prepareCapabilityBrokerInvocationV1 = <THostContext>(
     abort: linked.abort,
     authority: providerAuthority.authority,
     cleanup: () => {
+      hostBindings.close()
       linked.cleanup()
       interceptorSnapshot.release()
     },
@@ -181,12 +226,13 @@ export const prepareCapabilityBrokerInvocationV1 = <THostContext>(
     get terminal() {
       return terminal
     },
-    validate: (result: TrustedInvocationValueV1) =>
-      validateBrokerResultV1(
-        descriptor,
-        result.value,
-        resource.semanticResourceDigest,
-        resultSchemaId
-      )
+    validate: createBrokerResultValidatorV1(
+      descriptor,
+      providerModule,
+      invocation.arguments.value,
+      options.admitted.configuration.sandboxPolicy,
+      resource.semanticResourceDigest,
+      resultSchemaId
+    )
   }
 }

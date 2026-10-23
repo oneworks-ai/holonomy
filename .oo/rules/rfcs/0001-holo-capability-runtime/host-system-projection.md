@@ -92,6 +92,8 @@ precision 信息量偏序固定为 `redacted < coarse < exact`。Policy 的 `max
 - `redacted` 返回类型保持值，并在内部结果 metadata 标记 redacted；Guest 不依赖非标准 metadata。
 - Host restart 可以产生新 projection；同 generation 内不可变，旧 facade 由 generation fencing 失效。
 
+`process.env`、`pid`、`execPath` 的初始准入缓存值或拒绝状态，不重复进入 Middleware；默认对象的拒绝属性在读取时抛错。ECMAScript 模块命名导出是数据快照，被拒绝的 `pid`/`execPath` 为 `undefined`，`env` 为冻结 null-prototype 空 map。精确行为由 C.2 冻结；`cwd()` 保持调用级准入。
+
 Provider 只消费冻结 snapshot，不保留 Host `os`/`process` 对象引用。Host/Guest/Inspector Context 不会自动获得 system projection；Inspector 只有在独立 inspector projection 明确复制时才能看到其 Guest-safe 子集。
 
 每个member的module/member、`SystemInformationOperationV1`、capability、unavailable行为和initial property准入由[附录 C.2](system-operation-registry.md)唯一冻结。本节字段分组不生成operation；System operation不得使用`device.*`命名。

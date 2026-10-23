@@ -80,6 +80,7 @@ const androidAcceptance = () => {
 const guestAcceptance = () => {
   const value = assetRoot('HOLO_V86_PRODUCTION_ASSET_ROOT')
   const zig = requiredFile('HOLO_V86_ZIG_PATH')
+  run(process.execPath, [resolve(root, 'backends/v86/supervisor/tests/run-fuse-bridge-response.mjs'), zig])
   run('pnpm', ['run', 'build'])
   const output = mkdtempSync(join(tmpdir(), 'holonomy-v86-guest-'))
   try {
@@ -114,7 +115,10 @@ const guestAcceptance = () => {
 const actions = {
   android: androidAcceptance,
   guest: guestAcceptance,
-  images: () => assetRoot('HOLO_V86_PRODUCTION_ASSET_ROOT'),
+  images: () => {
+    run(process.execPath, ['--test', resolve(root, 'backends/v86/images/source-fetch.test.mjs')])
+    assetRoot('HOLO_V86_PRODUCTION_ASSET_ROOT')
+  },
   node: nodeAcceptance
 }
 let phases

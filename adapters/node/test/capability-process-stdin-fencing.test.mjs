@@ -13,15 +13,16 @@ test('generation close synchronously fences pending stdin terminals', () => {
   const channel = new ProcessCallbackEventChannelV1()
   const delivered = []
   let destroys = 0
-  const stdin = {
+  const handle = {
     destroyed: false,
-    destroy() {
+    destroyStdio(index) {
+      assert.equal(index, 0)
       destroys += 1
       this.destroyed = true
     }
   }
   const state = {
-    child: { stdin },
+    handle,
     pendingStdinCallbacks: new Set([7, 8]),
     stdinClosed: false,
     stdinEnded: false,

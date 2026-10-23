@@ -3,13 +3,30 @@ import { capabilityTextPathV1 } from '@holonomyjs/runtime/kernel/guest-facade-su
 import type { CapabilityFsFacadeCallsV1 } from './guest-fs-calls.js'
 import { createCapabilityFileHandleV1 } from './guest-fs-file-handle.js'
 import { createCapabilityFsWatchIteratorV1 } from './guest-fs-resources.js'
-import { fsDirentsV1, fsMkdirResultV1, fsStatsV1, fsTargetV1 } from './guest-fs-support.js'
+import {
+  fsAccessModeV1,
+  fsChmodModeV1,
+  fsDirentsV1,
+  fsLengthV1,
+  fsMkdirResultV1,
+  fsStatsV1,
+  fsTargetV1,
+  fsTimesV1
+} from './guest-fs-support.js'
 
 export const createCapabilityFsPromisesModuleV1 = (
   bridge: CapabilityGuestBridgeV1,
   calls: CapabilityFsFacadeCallsV1
 ) =>
   Object.freeze({
+    access: async (path: unknown, mode?: unknown) => {
+      const value = capabilityTextPathV1(path)
+      await calls.promise('node:fs/promises', 'access', { path: value, mode: fsAccessModeV1(mode) }, { path: value })
+    },
+    chmod: async (path: unknown, mode: unknown) => {
+      const value = capabilityTextPathV1(path)
+      await calls.promise('node:fs/promises', 'chmod', { path: value, mode: fsChmodModeV1(mode) }, { path: value })
+    },
     lstat: async (path: unknown, options?: unknown) =>
       fsStatsV1(await calls.pathCall('node:fs/promises', 'lstat', path, options, 'promise')),
     mkdir: async (path: unknown, options?: unknown) =>
@@ -32,9 +49,17 @@ export const createCapabilityFsPromisesModuleV1 = (
     },
     stat: async (path: unknown, options?: unknown) =>
       fsStatsV1(await calls.pathCall('node:fs/promises', 'stat', path, options, 'promise')),
+    truncate: async (path: unknown, len?: unknown) => {
+      const value = capabilityTextPathV1(path)
+      await calls.promise('node:fs/promises', 'truncate', { path: value, len: fsLengthV1(len) }, { path: value })
+    },
     unlink: (path: unknown) => {
       const resolved = fsTargetV1(path)
       return calls.promise('node:fs/promises', 'unlink', { path: resolved.value }, resolved.fields)
+    },
+    utimes: async (path: unknown, atime: unknown, mtime: unknown) => {
+      const value = capabilityTextPathV1(path)
+      await calls.promise('node:fs/promises', 'utimes', { path: value, ...fsTimesV1(atime, mtime) }, { path: value })
     },
     watch: (path: unknown, options?: unknown) =>
       createCapabilityFsWatchIteratorV1(bridge, { sync: calls.sync.bind(calls) }, path, options),

@@ -34,6 +34,7 @@ internal class AndroidV86ProcessState(
     val stdin: AndroidV86StdinQueue,
 ) {
     val linuxProcessesByPid = ConcurrentHashMap<Int, AndroidV86LinuxProcessIdentity>()
+    @Volatile var spawnSubmitted = false
     @Volatile var backendProcessId: Int? = null
     @Volatile var closed = false
     @Volatile var linuxPid: Int? = null

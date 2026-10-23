@@ -6,6 +6,7 @@ import { TextDecoder } from 'node:util'
 
 import { runWrapperSource, testRunnerSource } from './holonomy-entry-source.mjs'
 import { collectHolonomyGraph, expandHolonomyEntries } from './holonomy-module-graph.mjs'
+import { prepareHolonomyNativeLaunchSnapshot } from './holonomy-native-launch-snapshot.mjs'
 import { requiresHolonomyNetworkFixture } from './holonomy-network-fixture.mjs'
 import { readHolonomyNetworkRules } from './holonomy-network-rules-file.mjs'
 import { prepareHolonomyRuntimePlugins } from './holonomy-plugin-bundle.mjs'
@@ -118,18 +119,31 @@ export const readHolonomyCapabilityRuntime = (input, options = {}) => {
   }
 }
 
-export const prepareHolonomyLaunchSnapshot = (command, options, dependencies = {}) => {
+export const prepareHolonomyLaunchSnapshot = async (command, options, dependencies = {}) => {
+  if (options.target === 'native') {
+    return prepareHolonomyNativeLaunchSnapshot(command, options, dependencies)
+  }
   const entries = expandHolonomyEntries(options.entries)
   if (command === 'run' && entries.length !== 1) {
     throw new Error('holonomy run requires exactly one entry module')
   }
-  const rootUrl = new URL(options.rootUrl)
+  if (options.target === 'native' && !['app+local://workspace/', 'app://workspace/'].includes(options.rootUrl)) {
+    throw new Error('Native source graph requires app://workspace/ as its logical root')
+  }
+  const rootUrl = new URL(options.target === 'native' ? 'app://workspace/' : options.rootUrl)
   const { entryUrls, modules } = collectHolonomyGraph(entries, rootUrl)
   const uuid = dependencies.randomUUID?.() ?? randomUUID()
-  const virtualEntry = new URL(`.holonomy/${command}-${uuid}.mjs`, rootUrl).toString()
+  const virtualEntry = new URL(
+    options.target === 'native' ? `${command}-${uuid}.mjs` : `.holonomy/${command}-${uuid}.mjs`,
+    rootUrl
+  ).toString()
   modules.set(virtualEntry, {
     source: command === 'test'
-      ? testRunnerSource(entryUrls, options.reporter)
+      ? options.target === 'native'
+        ? `${entryUrls.map(url => `import ${JSON.stringify(url)}`).join('\n')}\n`
+        : testRunnerSource(entryUrls, options.reporter)
+      : options.target === 'native'
+      ? `import ${JSON.stringify(entryUrls[0])}\n`
       : runWrapperSource(entryUrls[0], options.watch),
     url: virtualEntry
   })

@@ -3,6 +3,7 @@ const HOLO_WORKSPACE_PACKAGES = Object.freeze({
   '@holonomyjs/capability-fs': 'packages/capabilities/fs',
   '@holonomyjs/capability-network': 'packages/capabilities/network',
   '@holonomyjs/capability-process': 'packages/capabilities/process',
+  '@holonomyjs/capability-storage': 'packages/capabilities/storage',
   '@holonomyjs/capability-system': 'packages/capabilities/system',
   '@holonomyjs/plugin-audit': 'packages/plugins/audit',
   '@holonomyjs/plugin-permission': 'packages/plugins/permission',

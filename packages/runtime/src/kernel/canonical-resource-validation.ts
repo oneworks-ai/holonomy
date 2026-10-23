@@ -4,6 +4,10 @@ import {
   canonicalizeProgramExecutableResource,
   canonicalizeShellExecutableResource
 } from '@holonomyjs/capability-process/kernel/canonical-process-resources'
+import {
+  canonicalizeStorageKvResourceFromDigestV1,
+  canonicalizeStorageSqlResourceV1
+} from '@holonomyjs/capability-storage/kernel/storage-resources'
 import { canonicalJson } from './canonical-json.js'
 import {
   canonicalizeDeviceFieldResource,
@@ -63,6 +67,10 @@ export const validateCanonicalResourceV1 = (value: unknown): CanonicalResourceV1
     'schemaVersion',
     'semanticId',
     'semanticResourceDigest',
+    'namespaceId',
+    'database',
+    'selector',
+    'selectorDigest',
     'shellExecutableId',
     'stdioDigest',
     'transport',
@@ -130,6 +138,25 @@ export const validateCanonicalResourceV1 = (value: unknown): CanonicalResourceV1
       return matches(
         value,
         canonicalizeSystemInformationFieldResource(required(base, 'field'), label)
+      )
+    case 'storageKv':
+      return matches(
+        value,
+        canonicalizeStorageKvResourceFromDigestV1(
+          required(base, 'namespaceId'),
+          required(base, 'selector') as 'key' | 'prefix',
+          required(base, 'selectorDigest'),
+          label
+        )
+      )
+    case 'storageSql':
+      return matches(
+        value,
+        canonicalizeStorageSqlResourceV1(
+          required(base, 'namespaceId'),
+          required(base, 'database'),
+          label
+        )
       )
     default:
       return invalidPolicy()

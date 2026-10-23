@@ -6,7 +6,7 @@ Holonomy is a platform-neutral, Node-like JavaScript Runtime for native hosts. T
 
 ## Start here
 
-- First execution: [Run on Node](./getting-started/run-on-node.md) or [Run on Android](./getting-started/run-on-android.md)
+- First execution: [Standalone Native holo](./platforms/native/index.md), [Run on Node](./getting-started/run-on-node.md), or [Run on Android](./getting-started/run-on-android.md)
 - Check feasibility first: [Support matrix](./capabilities/support-matrix.md)
 - Manage background work: [Managed processes](./guides/manage-processes.md)
 - Start and clean up AVDs: [Manage Android emulators](./guides/manage-emulators.md)

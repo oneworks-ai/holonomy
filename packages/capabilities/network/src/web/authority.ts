@@ -181,8 +181,8 @@ const resolveOrigin = (input: string) => {
   }
 }
 
-const resolvePositiveLimit = (value: unknown) => (
-  Number.isSafeInteger(value) && (value as number) > 0
+const resolveLimit = (name: keyof NetworkLimits, value: unknown) => (
+  Number.isSafeInteger(value) && ((name === 'maxRedirects' && value === 0) || (value as number) > 0)
     ? value as number
     : undefined
 )
@@ -210,7 +210,7 @@ export const resolveNetworkAuthority = (
       new Set(schemes).size !== schemes.length
     ) throw createWebNetworkError('network.invalid_url')
     const limits = { ...DEFAULT_NETWORK_LIMITS, ...input.limits }
-    if (Object.values(limits).some(value => resolvePositiveLimit(value) == null)) {
+    if (Object.entries(limits).some(([name, value]) => resolveLimit(name as keyof NetworkLimits, value) == null)) {
       throw createWebNetworkError('network.internal')
     }
     if (limits.maxChunkBytes > limits.maxRequestBodyBytes || limits.maxChunkBytes > limits.maxResponseBodyBytes) {

@@ -5,13 +5,15 @@ import { CdpResponseBodyCache } from './cdp-body-cache.mjs'
 import { CdpNetworkProjector } from './cdp-network.mjs'
 import {
   CdpRequestIds,
-  cdpError,
   createInspectorEndpoint,
+  createInspectorSessionV1,
   emitInspectorUpstream,
   processKey,
   safeSessionSink
 } from './cdp-session-support.mjs'
 import { serviceError } from './errors.mjs'
+import { inspectorEngineGateContextV1 } from './inspector-engine-gate.mjs'
+import { receiveInspectorCdpMessageV1 } from './inspector-proxy-receive.mjs'
 import { InspectorResumeCoordinator } from './inspector-resume-coordinator.mjs'
 import { requireIdentifier, requireRecord, tokensEqual } from './validation.mjs'
 
@@ -20,14 +22,19 @@ export class InspectorCdpProxy {
   #bodyAccumulator
   #baseUrl
   #diagnosticSubscriptions = new Map()
+  #engineGate
+  #engineGateContexts = new Map()
   #leases = new Map()
   #network
   #requestIds
   #resumes = new InspectorResumeCoordinator()
   #sessions = new Map()
+  #sourceReaderHostCaps
   constructor(options = {}) {
     this.#bodyCache = options.bodyCache ?? new CdpResponseBodyCache(options)
     this.#bodyAccumulator = new CdpBodyAccumulator(this.#bodyCache, options)
+    this.#engineGate = options.engineGate
+    this.#sourceReaderHostCaps = options.sourceReaderHostCaps
     this.#network = new CdpNetworkProjector(options)
     this.#requestIds = new CdpRequestIds(options)
   }
@@ -50,12 +57,18 @@ export class InspectorCdpProxy {
     this.closeLease(inspector.id)
     const lease = {
       generation: process.generation,
+      engineGateContext: this.#engineGateContexts.get(processKey(process.id, process.generation)) ??
+        inspectorEngineGateContextV1(process),
       inspectorId: inspector.id,
+      nativeUpstreamGate: process.target === 'native',
       processId: process.id,
       token: randomBytes(32).toString('base64url'),
       transport: input.transport,
       unsubscribe: undefined,
       unsubscribeDiagnostics: undefined
+    }
+    if (lease.engineGateContext != null) {
+      this.#engineGateContexts.set(processKey(process.id, process.generation), lease.engineGateContext)
     }
     if (typeof input.transport.subscribe === 'function') {
       lease.unsubscribe = input.transport.subscribe(message => emitInspectorUpstream(this.#sessions, lease, message))
@@ -86,26 +99,26 @@ export class InspectorCdpProxy {
     this.#diagnosticSubscriptions.set(key, unsubscribe)
     return true
   }
-  connect(inspectorId, sink) {
+  connect(inspectorId, sink, onClose) {
     requireIdentifier(inspectorId, 'Inspector lease id')
     const lease = this.#leases.get(inspectorId)
     if (lease == null) throw serviceError('service.not_found', 'Inspector transport is unavailable')
     if (typeof sink !== 'function') throw serviceError('service.invalid_request', 'Inspector sink is invalid')
     const id = `${inspectorId}:${randomUUID()}`
-    const session = { enabled: false, id, lease, sink }
+    const session = createInspectorSessionV1(this.#sessions, { enabled: false, id, lease, sink }, onClose)
     this.#sessions.set(id, session)
     return Object.freeze({
-      close: () => this.#sessions.delete(id),
+      close: session.close,
       id,
       receive: async message => await this.#receive(session, message)
     })
   }
-  connectAuthorized(inspectorId, token, sink) {
+  connectAuthorized(inspectorId, token, sink, onClose) {
     const lease = this.#leases.get(inspectorId)
     if (lease == null || !tokensEqual(token, lease.token)) {
       throw serviceError('service.unauthorized', 'Inspector access token is invalid')
     }
-    return this.connect(inspectorId, sink)
+    return this.connect(inspectorId, sink, onClose)
   }
   emitDiagnostic(processId, generation, event) {
     try {
@@ -142,8 +155,8 @@ export class InspectorCdpProxy {
     lease.unsubscribe?.()
     lease.unsubscribeDiagnostics?.()
     lease.transport.close?.()
-    for (const [id, session] of this.#sessions) {
-      if (session.lease === lease) this.#sessions.delete(id)
+    for (const session of this.#sessions.values()) {
+      if (session.lease === lease) session.close()
     }
     return true
   }
@@ -154,6 +167,7 @@ export class InspectorCdpProxy {
     const key = processKey(processId, generation)
     this.#diagnosticSubscriptions.get(key)?.()
     this.#diagnosticSubscriptions.delete(key)
+    this.#engineGateContexts.delete(key)
     this.#bodyCache.clearProcess(key)
     this.#bodyAccumulator.clear(key)
     this.#network.clear(key)
@@ -164,36 +178,20 @@ export class InspectorCdpProxy {
     for (const id of [...this.#leases.keys()]) this.closeLease(id)
     for (const unsubscribe of this.#diagnosticSubscriptions.values()) unsubscribe()
     this.#diagnosticSubscriptions.clear()
+    this.#engineGateContexts.clear()
   }
 
   async #receive(session, input) {
-    const message = requireRecord(input, 'CDP message')
-    if (!Number.isSafeInteger(message.id) || typeof message.method !== 'string') return cdpError(message.id)
-    if (this.#sessions.get(session.id) !== session) return cdpError(message.id)
-    if (this.#leases.get(session.lease.inspectorId) !== session.lease) return cdpError(message.id)
-    try {
-      if (message.method === 'Network.enable') {
-        session.enabled = true
-        return { id: message.id, result: {} }
-      }
-      if (message.method === 'Network.disable') {
-        session.enabled = false
-        return { id: message.id, result: {} }
-      }
-      if (message.method === 'Network.getResponseBody') {
-        const requestId = requireIdentifier(message.params?.requestId, 'Request id')
-        return {
-          id: message.id,
-          result: this.#bodyCache.get(processKey(session.lease.processId, session.lease.generation), requestId)
-        }
-      }
-      if (message.method.startsWith('Network.')) return cdpError(message.id)
-      const response = await session.lease.transport.send(message)
-      if (this.#sessions.get(session.id) !== session) return cdpError(message.id)
-      if (this.#leases.get(session.lease.inspectorId) !== session.lease) return cdpError(message.id)
-      return await this.#resumes.afterResponse(session.lease, message, response)
-    } catch {
-      return cdpError(message.id)
-    }
+    return await receiveInspectorCdpMessageV1({
+      bodyCache: this.#bodyCache,
+      engineGate: this.#engineGate,
+      input,
+      isCurrent: () =>
+        this.#sessions.get(session.id) === session &&
+        this.#leases.get(session.lease.inspectorId) === session.lease,
+      resumes: this.#resumes,
+      session,
+      sourceReaderHostCaps: this.#sourceReaderHostCaps
+    })
   }
 }

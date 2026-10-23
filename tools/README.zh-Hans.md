@@ -2,7 +2,7 @@
 
 [English](./README.md)
 
-`holonomy` 命令负责在 Android 或隔离的本机 Node 宿主上运行 JavaScript 与 `node:test` 文件。机器级 Holonomy Service 统一拥有设备、受管 Runtime 进程、日志、Network Rules 和 Inspector Lease，调用方不需要自行拼装 ADB 或 CDP 命令。
+`holonomy` 命令负责在 Android、隔离的本机 Node 宿主或 owner 安装的独立 Native `holo` 上运行 JavaScript 与 `node:test` 文件。机器级 Holonomy Service 统一拥有设备、受管 Runtime 进程、日志、Network Rules 和 Inspector Lease，调用方不需要自行拼装 ADB 或 CDP 命令。
 
 ## 发现 CLI 能力
 
@@ -37,7 +37,11 @@ holonomy test conformance/specs/fetch.test.mjs --target android --sandbox confor
 
 CLI 会把 `--root-url` 冻结为模块图根。Service 与目标 Adapter 会再次校验入口和所有随附模块都位于这个规范根之下，因此生成的 `.holonomy/` 入口不会意外缩小开发者的模块图。
 
+CLI 会先完成启动预检，再创建或启动 Service。Native 准备需在 `HOLONOMY_HOME/native-runtime.json` 安装本地 owner 选择的 `holo`；原工作目录源码与选中私有输入由 Rust 描述符相对读取器收集，不用 Node 字节读取替代。`node_modules` 内的相对包目录链接可解析到选定源码根内，支持 pnpm 的间接依赖布局；根外 store、绝对链接与普通文件链接仍拒绝。提交内容为规范源码文件和有界非链式别名表，不带原生路径。同文件/硬链接的 Host→Guest 发布、watch 时 Guest→Host 提升都会在发布前拒绝。共享源码闭包不是执行计划，真正的 Native 链接仍校验内建导出及权限。自包含 Host 插件包另用固定包根读取器接入根内 pnpm 安装；配置/token 及包内叶文件仍不跟随链接。支持包目录/manifest 路径；裸包名拒绝子路径，外部依赖需构建进自包含 ESM 产物。Native 目录/glob 发现跳过 node_modules 并设有数量限制。Node/Android 准备路径保留现状。
+
 显式远程 Service 在非 loopback 场景必须使用 HTTPS。Token 通过 `--openapi-token-file` 或 `HOLONOMY_OPENAPI_TOKEN_FILE` 提供，不应直接出现在命令行参数中。
+
+`run` 与 `test` 都支持用 `--config holo.config.json` 静态安装启动插件，并显式选择 `--plugin-root`；测试保持同一个准入图，`--watch` 只限 `run`。Native 的受控 Wasm/动态 import 需要对应 Capability Runtime Policy 和自身 Host 插件明确批准，不使用 Service 内的 Node 回调代替。完整测试例子及尚未接入的诊断边界见[受管 Native Engine Gate](../adapters/desktop/managed-engine-gates.zh-Hans.md)。
 
 ## 管理 Service 与 Runtime 进程
 

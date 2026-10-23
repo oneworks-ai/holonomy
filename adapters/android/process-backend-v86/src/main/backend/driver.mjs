@@ -139,7 +139,12 @@
       const processId = command.processId
       if (!processes.has(processId)) return false
       const requestId = nextRequestId++
-      pending.set(requestId, { callbackId: command.callbackId ?? null, kind: command.operation, processId })
+      pending.set(requestId, {
+        callbackId: command.callbackId ?? null,
+        kind: command.operation,
+        processId,
+        stdinSequence: command.stdinSequence ?? null
+      })
       if (command.operation === 'stdin') send(11, requestId, processId, Uint8Array.from(command.bytes))
       else if (command.operation === 'end') send(12, requestId, processId)
       else if (command.operation === 'signal') send(7, requestId, processId, signalPayload(command.signal))
@@ -200,7 +205,9 @@
             pending.set(configureRequestId, { capabilities, kind: 'configure' })
             const configurationPayload = environmentConfigurationPayload({
               execGateTimeoutMs: configuration.execGateTimeoutMs,
-              hosts: configuration.hosts
+              hosts: configuration.hosts,
+              maxProcessTreeDepth: configuration.policy.limits.maxProcessTreeDepth,
+              maxTotalProcesses: configuration.policy.limits.maxTotalProcesses
             })
             setTimeout(() => {
               send(18, configureRequestId, 0, configurationPayload)
@@ -241,7 +248,13 @@
           emit({ capabilities: request.capabilities, event: 'ready' })
         } else if (operation === 1 && request != null) {
           pending.delete(requestId)
-          emit({ callbackId: request.callbackId, event: 'ack', operation: request.kind, processId })
+          emit({
+            callbackId: request.callbackId,
+            event: 'ack',
+            operation: request.kind,
+            processId,
+            stdinSequence: request.stdinSequence
+          })
         } else if (operation === 3) {
           if (request != null) pending.delete(requestId)
           emit({
@@ -250,7 +263,8 @@
             event: 'error',
             operation: request?.kind ?? 'process',
             processId,
-            resourceId: request?.resourceId ?? processes.get(processId)?.resourceId ?? null
+            resourceId: request?.resourceId ?? processes.get(processId)?.resourceId ?? null,
+            stdinSequence: request?.stdinSequence ?? null
           })
         } else if (operation === 10 || operation === 13) {
           emit({ bytes: Array.from(payload), event: operation === 10 ? 'stderr' : 'stdout', processId, sequence })

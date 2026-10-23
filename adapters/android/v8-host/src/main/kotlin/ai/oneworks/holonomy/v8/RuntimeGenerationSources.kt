@@ -2,6 +2,8 @@ package ai.oneworks.holonomy.v8
 
 import ai.oneworks.holonomy.host.RuntimeCapabilityHost
 import ai.oneworks.holonomy.host.RuntimeCapabilityServices
+import ai.oneworks.holonomy.host.RuntimeCryptoHost
+import ai.oneworks.holonomy.host.RuntimeEngineGate
 import ai.oneworks.holonomy.host.RuntimeNativeHost
 import ai.oneworks.holonomy.host.RuntimeTrustedBackend
 import java.lang.ref.WeakReference
@@ -54,6 +56,34 @@ internal class RuntimeCapabilityServicesGenerationSource(
     private val delegate = GenerationSource(factory, true, "RuntimeCapabilityServices")
 
     fun create(): RuntimeCapabilityServices = delegate.create()
+}
+
+internal class RuntimeEngineGateGenerationSource private constructor(
+    factory: () -> RuntimeEngineGate,
+    restartable: Boolean,
+) {
+    private val delegate = GenerationSource(factory, restartable, "RuntimeEngineGate")
+
+    fun create(): RuntimeEngineGate = delegate.create()
+
+    companion object {
+        fun oneGeneration(gate: RuntimeEngineGate) = RuntimeEngineGateGenerationSource({ gate }, false)
+        fun restartable(factory: () -> RuntimeEngineGate) = RuntimeEngineGateGenerationSource(factory, true)
+    }
+}
+
+internal class RuntimeCryptoHostGenerationSource(factory: () -> RuntimeCryptoHost) {
+    private val delegate = GenerationSource(factory, true, "RuntimeCryptoHost")
+    fun create(): RuntimeCryptoHost = delegate.create()
+
+    fun <T> createOwned(construct: (RuntimeCryptoHost) -> T): T {
+        val host = create()
+        try { return construct(host) }
+        catch (error: Throwable) {
+            runCatching { host.close() }
+            throw error
+        }
+    }
 }
 
 private class GenerationSource<T : Any>(

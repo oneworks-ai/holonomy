@@ -13,6 +13,7 @@
           "network",
           "numericReader",
           "process",
+          "storage",
           "system"
         ]
       },
@@ -36,6 +37,7 @@
           "host.process.network",
           "host.process.shell",
           "host.process.signal",
+          "host.storage",
           "host.storage.credential",
           "host.system.basic",
           "host.system.compute",
@@ -66,7 +68,7 @@
     ],
     "type": "object"
   },
-  "maxItems": 21,
-  "minItems": 21,
+  "maxItems": 22,
+  "minItems": 22,
   "type": "array"
 }

@@ -16,6 +16,20 @@ const request = (
 })
 
 describe('native bridge request lifecycle', () => {
+  it('uses fractional monotonic milliseconds for timeout deadlines without extending them', async () => {
+    const { bridge, loop, port, host } = setupNativeBridge()
+    host.advanceTo(0.5)
+    const pending = bridge.request(request('fractional-deadline'), { timeoutMs: 10 })
+    const rejected = expect(pending).rejects.toMatchObject({ code: 'timeout' })
+    expect(port.latest('fractional-deadline').request.deadlineMs).toBe(10.5)
+    host.advanceTo(10.49)
+    loop.runTurn()
+    expect(bridge.getSnapshot().pendingRequests).toBe(1)
+    host.advanceTo(10.5)
+    loop.runTurn()
+    await rejected
+    expect(port.cancellations).toHaveLength(1)
+  })
   it('selects exactly one terminal and ignores duplicate or late payloads before inspection', async () => {
     const { bridge, loop, port } = setupNativeBridge()
     const result = bridge.request(request('exactly-once'))

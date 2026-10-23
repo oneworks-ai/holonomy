@@ -90,15 +90,9 @@ internal class SessionSupervisorInstrumentationHarness(
         predicate: (SessionOutputSnapshot) -> Boolean,
     ): SessionOutputSnapshot = await(
         description = description,
-        read = {
-            execute(
-                StatusRuntimeCommand(
-                    runtimeId,
-                    commandId(),
-                    activeGenerations.getValue(runtimeId),
-                ),
-            ).output
-        },
+        // Observe the production event sink without submitting a durable command
+        // every 50ms. Status/control transport is exercised explicitly elsewhere.
+        read = { store.readOutput(runtimeId) },
         predicate = predicate,
         pollIntervalMs = OUTPUT_POLL_INTERVAL_MS,
         timeoutSeconds = timeoutSeconds,

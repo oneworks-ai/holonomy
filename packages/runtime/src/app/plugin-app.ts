@@ -13,6 +13,9 @@ interface RuntimePluginInstanceV1 {
   readonly key: string
 }
 
+const disposeAll = (disposers: Array<() => void | Promise<void>>) =>
+  Promise.allSettled(disposers.map(dispose => Promise.resolve().then(dispose)))
+
 export class HolonomyRuntimePluginAppV1 {
   readonly #context = new Context()
   readonly #createContextService
@@ -52,6 +55,7 @@ export class HolonomyRuntimePluginAppV1 {
         const current = this.#instances.get(definition.instanceId)
         if (current?.key === key) continue
         staged.set(definition.instanceId, await this.#install(definition, key))
+        if (this.#closed) throw new Error('Runtime plugin app is closed')
       }
     } catch (error) {
       await Promise.allSettled([...staged.values()].reverse().map(item => item.dispose()))
@@ -113,6 +117,7 @@ export class HolonomyRuntimePluginAppV1 {
     const namespace = await this.#importModule(
       `${definition.entryUrl}?holo-bundle=${definition.bundleSha256}`
     )
+    if (this.#closed) throw new Error('Runtime plugin app is closed')
     const plugin = namespace[definition.exportName]
     if (
       typeof plugin !== 'function' &&
@@ -126,23 +131,27 @@ export class HolonomyRuntimePluginAppV1 {
         disposers.push(dispose)
       }
     })
-    const service = this.#createContextService?.(definition, lifecycle) ?? Object.freeze({})
-    const context = this.#context.extend({
-      holo: Object.freeze({ instanceId: definition.instanceId, ...service })
-    })
-    let fiber
+    let fiber: ReturnType<Context['plugin']> | undefined
     try {
+      const service = this.#createContextService?.(definition, lifecycle) ?? Object.freeze({})
+      const context = this.#context.extend({
+        holo: Object.freeze({ instanceId: definition.instanceId, ...service })
+      })
       fiber = context.plugin(plugin as never, definition.config as never)
       await fiber
+      if (this.#closed) throw new Error('Runtime plugin app is closed')
     } catch (error) {
-      await Promise.allSettled(disposers.reverse().map(dispose => dispose()))
+      await disposeAll([() => fiber?.dispose(), ...disposers.reverse()])
       throw error
     }
     return Object.freeze({
       definition,
       dispose: async () => {
-        await fiber.dispose()
-        await Promise.allSettled(disposers.reverse().map(dispose => dispose()))
+        try {
+          await fiber.dispose()
+        } finally {
+          await disposeAll(disposers.reverse())
+        }
       },
       key
     })

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- one owner retains Service startup and shutdown lifecycle. */
 import process from 'node:process'
 
 import { readServiceProcessConfigurationV1 } from './capability-process-backends.mjs'
@@ -5,6 +6,8 @@ import { PROCESS_TERMINAL_STATES, SERVICE_API_VERSION } from './constants.mjs'
 import { serviceError } from './errors.mjs'
 import { createServiceToken } from './http-utils.mjs'
 import { activeOwnedResourceCount, drainOwnedResources } from './lifecycle-owned-resources.mjs'
+import { readServiceNativeObserverProfilesV1 } from './native-observer-profiles.mjs'
+import { readServiceNativeRuntimeInstallationDetails } from './native-runtime-installation.mjs'
 import { processIsRunning } from './process-identity.mjs'
 import { createHolonomyService } from './server.mjs'
 import { HolonomyServiceClient } from './service-client.mjs'
@@ -126,12 +129,21 @@ export class HolonomyServiceLifecycleManager {
       this.#paths,
       this.#options.service
     )
+    const nativeInstallation = await readServiceNativeRuntimeInstallationDetails(this.#paths.home)
+    const nativeObserverProfiles = await readServiceNativeObserverProfilesV1(this.#paths.home, {
+      binaryPath: nativeInstallation?.executablePath
+    })
     this.#service = this.#createService({
       ...this.#options.service,
       adapterDispatcher: this.#options.adapterDispatcher,
       capabilityProcessBackendInstallations: capabilityProcess.backends.installations,
       capabilityProcessBackendRegistry: capabilityProcess.backends.registry,
       capabilityProcessProfiles: capabilityProcess.profiles,
+      nativeExecutablePath: nativeInstallation?.executablePath,
+      nativeDeviceProvider: nativeInstallation?.deviceProvider,
+      nativeDiagnosticSourceReader: nativeInstallation?.diagnosticSourceReader,
+      nativeDiagnosticAudit: nativeInstallation?.diagnosticAudit,
+      nativeObserverProfiles,
       control: {
         rotateToken: () => this.rotateToken(),
         shutdown: input => this.requestShutdown(input),

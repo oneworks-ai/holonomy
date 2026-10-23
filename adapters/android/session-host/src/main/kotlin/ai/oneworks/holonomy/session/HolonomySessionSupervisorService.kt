@@ -98,7 +98,7 @@ class HolonomySessionSupervisorService : Service() {
             eventSink = StoredSessionSupervisorEventSink(store, dependencies.storedOutputLimits),
             limits = dependencies.supervisorLimits,
         )
-        handler = StoredSessionCommandHandler(supervisor, store)
+        handler = StoredSessionCommandHandler.withEventOwnedSnapshots(supervisor, store)
         endpoint = LocalAbstractSessionControlEndpoint(randomSocketName(packageName))
         transport = AndroidLocalAbstractSessionControlTransport(endpoint, codec)
         try {

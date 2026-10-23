@@ -5,6 +5,7 @@ const RESUME_METHOD = 'Runtime.runIfWaitingForDebugger'
 export class InspectorResumeCoordinator {
   #handler
   #pending = new WeakMap()
+  #nativePending = new Map()
 
   configure(handler) {
     if (typeof handler !== 'function') {
@@ -29,5 +30,26 @@ export class InspectorResumeCoordinator {
     }
     await pending
     return response
+  }
+
+  async beforeNativeDispatch(lease, message) {
+    if (!lease.nativeUpstreamGate || message.method !== RESUME_METHOD || this.#handler == null) return undefined
+    const key = `${lease.processId}:${lease.generation}`
+    let pending = this.#nativePending.get(key)
+    if (pending == null) {
+      pending = Promise.resolve().then(() =>
+        this.#handler({
+          generation: lease.generation,
+          idempotencyKey: `inspector-native-resume:${key}`,
+          inspectorId: lease.inspectorId,
+          processId: lease.processId
+        })
+      ).finally(() => {
+        if (this.#nativePending.get(key) === pending) this.#nativePending.delete(key)
+      })
+      this.#nativePending.set(key, pending)
+    }
+    await pending
+    return { id: message.id, result: {} }
   }
 }

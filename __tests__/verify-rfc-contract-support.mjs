@@ -18,6 +18,8 @@ export const RFC_CONTRACT_FILES = [
     'engine-security.md',
     'error-contract-v1.md',
     'facades-and-invocation-modes.md',
+    'filesystem-metadata-and-durability.md',
+    'filesystem-mode.md',
     'filesystem-operation-registry.md',
     'filesystem-schema-v1.md',
     'host-system-projection.md',
@@ -39,6 +41,7 @@ export const RFC_CONTRACT_FILES = [
     'resources-and-snapshots.md',
     'runtime-plugins-and-watch.md',
     'system-operation-registry.md',
+    'storage-policy-and-registry.md',
     'verification-and-rollout.md'
   ].map(name => `${chapter}/${name}`)
 ]

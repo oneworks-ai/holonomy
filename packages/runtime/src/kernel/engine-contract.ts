@@ -164,10 +164,13 @@ export const normalizeEngineHookCapabilityProbeV1 = (
     },
     provenance: {
       generationLevel: literal(required(provenanceInput, 'generationLevel'), ['behavioralProbe'] as const),
-      metadata: literal(required(provenanceInput, 'metadata'), ['profileStaticUnsupported'] as const),
+      metadata: literal(
+        required(provenanceInput, 'metadata'),
+        ['behavioralProbe', 'profileStaticUnsupported'] as const
+      ),
       perCompilationCallback: literal(
         required(provenanceInput, 'perCompilationCallback'),
-        ['profileStaticUnsupported'] as const
+        ['behavioralProbe', 'profileStaticUnsupported'] as const
       )
     },
     schemaVersion: 1,

@@ -1,13 +1,15 @@
-import { readFileSync } from 'node:fs'
+import { closeSync, constants, fstatSync, lstatSync, openSync, readSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
+import { TextDecoder } from 'node:util'
 
-import Ajv2020 from 'ajv/dist/2020.js'
+import { validateRuntimePluginConfig } from './runtime-plugin-config-validator.mjs'
 
 const MAX_CONFIG_BYTES = 1024 * 1024
 const ID = /^[A-Za-z0-9][\w.-]{0,127}$/u
 const EXPORT = /^[$A-Z_a-z][$\w]*$/u
 const SHA256 = /^[a-f\d]{64}$/u
+const decoder = new TextDecoder('utf-8', { fatal: true })
 
 const exact = (value, keys, label) => {
   if (value == null || typeof value !== 'object' || Array.isArray(value)) {
@@ -20,10 +22,73 @@ const exact = (value, keys, label) => {
 }
 
 const readJson = (file, label) => {
-  const source = readFileSync(file)
-  if (source.byteLength > MAX_CONFIG_BYTES) throw new Error(`${label} exceeds the size limit`)
+  let descriptor
   try {
-    return JSON.parse(source.toString('utf8'))
+    const before = lstatSync(file)
+    if (before.isSymbolicLink()) throw new Error(`${label} must not be a symbolic link`)
+    if (!before.isFile()) throw new Error(`${label} is not a regular file`)
+    if (before.size > MAX_CONFIG_BYTES) throw new Error(`${label} exceeds the size limit`)
+    descriptor = openSync(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0))
+    const opened = fstatSync(descriptor)
+    if (!opened.isFile()) throw new Error(`${label} is not a regular file`)
+    if (opened.dev !== before.dev || opened.ino !== before.ino) {
+      throw new Error(`${label} is unavailable`)
+    }
+    if (opened.size > MAX_CONFIG_BYTES) throw new Error(`${label} exceeds the size limit`)
+    const bytes = new Uint8Array(MAX_CONFIG_BYTES + 1)
+    let offset = 0
+    while (offset < bytes.byteLength) {
+      const count = readSync(descriptor, bytes, offset, bytes.byteLength - offset)
+      if (count === 0) break
+      offset += count
+    }
+    if (offset > MAX_CONFIG_BYTES) throw new Error(`${label} exceeds the size limit`)
+    const after = fstatSync(descriptor)
+    if (
+      after.dev !== opened.dev || after.ino !== opened.ino || after.size !== opened.size ||
+      after.mtimeMs !== opened.mtimeMs || offset !== opened.size
+    ) {
+      throw new Error(`${label} is unavailable`)
+    }
+    let source
+    try {
+      source = decoder.decode(bytes.subarray(0, offset))
+    } catch {
+      throw new Error(`${label} is not valid UTF-8 JSON`)
+    }
+    try {
+      return JSON.parse(source)
+    } catch {
+      throw new Error(`${label} is not valid JSON`)
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith(`${label} `)) throw error
+    throw new Error(`${label} is unavailable`)
+  } finally {
+    if (descriptor != null) {
+      try {
+        closeSync(descriptor)
+      } catch {
+        // Keep the selected read or admission error authoritative.
+      }
+    }
+  }
+}
+
+// The Native reader supplies the bytes for managed launches. Keep JSON and
+// plugin-shape validation here so the legacy synchronous path has one owner.
+export const parseHoloPluginJson = (bytes, label, maximumBytes = MAX_CONFIG_BYTES) => {
+  if (!(bytes instanceof Uint8Array) || bytes.byteLength > maximumBytes) {
+    throw new Error(`${label} exceeds the size limit`)
+  }
+  let source
+  try {
+    source = decoder.decode(bytes)
+  } catch {
+    throw new Error(`${label} is not valid UTF-8 JSON`)
+  }
+  try {
+    return JSON.parse(source)
   } catch {
     throw new Error(`${label} is not valid JSON`)
   }
@@ -35,9 +100,8 @@ export const resolveHoloConfigPath = (input, options = {}) =>
     input ?? 'holo.config.json'
   )
 
-export const readHoloPluginConfig = (input, options = {}) => {
-  const configPath = resolveHoloConfigPath(input, options)
-  const value = exact(readJson(configPath, 'Holo config'), ['plugins'], 'Holo config')
+export const normalizeHoloPluginConfig = (source, configPath) => {
+  const value = exact(source, ['plugins'], 'Holo config')
   const plugins = value.plugins ?? []
   if (!Array.isArray(plugins) || plugins.length > 128) {
     throw new Error('Holo config plugins must be a bounded array')
@@ -80,9 +144,18 @@ export const readHoloPluginConfig = (input, options = {}) => {
   return Object.freeze({ configPath, plugins: Object.freeze(normalized) })
 }
 
+export const readHoloPluginConfig = (input, options = {}) => {
+  const configPath = resolveHoloConfigPath(input, options)
+  return normalizeHoloPluginConfig(readJson(configPath, 'Holo config'), configPath)
+}
+
+export const validateHoloPluginOptionsValue = (schema, value) => {
+  validateRuntimePluginConfig(schema, value)
+  return schema
+}
+
 export const validateHoloPluginOptions = (schemaFile, value) => {
   if (schemaFile == null) return
   const schema = readJson(schemaFile, 'Holo plugin config Schema')
-  const validator = new Ajv2020({ allErrors: false, strict: true, validateFormats: false }).compile(schema)
-  if (!validator(value)) throw new Error('Holo plugin config does not match its Schema')
+  return validateHoloPluginOptionsValue(schema, value)
 }

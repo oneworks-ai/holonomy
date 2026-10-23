@@ -51,7 +51,7 @@ describe('Host System projection', () => {
       },
       process: {
         cwd: process.cwd(),
-        env: process.env,
+        env: { ...process.env },
         execPath: process.execPath,
         pid: process.pid
       }
@@ -119,6 +119,8 @@ describe('Host System projection', () => {
       execPath: 'holo-fs://workspace/bin/holonomy',
       pid: 4242
     })
+    assert.equal(Object.getPrototypeOf(process.env), null)
+    assert.equal(Object.isFrozen(process.env), true)
     const serialized = JSON.stringify(result)
     assert.equal(serialized.includes('do-not-leak'), false)
     assert.equal(serialized.includes('private-hostname'), false)

@@ -1,4 +1,4 @@
-import type { RuntimePluginBundleV1 } from '@holonomyjs/runtime/app/plugin-types'
+import type { RuntimePluginBundle } from '@holonomyjs/runtime/app/plugin-types'
 
 export interface HolonomyPluginWatchController {
   close(): Promise<void>
@@ -8,7 +8,7 @@ export function startHolonomyPluginWatch(options: {
   readonly client: {
     replaceRuntimePlugins(
       processId: string,
-      input: { expectedGeneration: number; runtimePlugins: readonly RuntimePluginBundleV1[] },
+      input: { expectedGeneration: number; runtimePlugins: readonly RuntimePluginBundle[] },
       expectedRevision: number,
       idempotencyKey: string
     ): Promise<{ value: { operation: { id: string } } }>
@@ -16,10 +16,11 @@ export function startHolonomyPluginWatch(options: {
   readonly configPath: string
   readonly dependencies: {
     readonly cancelWatch?: (timer: unknown) => void
+    readonly observeConfigFile?: (filename: string, callback: () => void) => () => void
     readonly prepareRuntimePlugins?: (
       path: string,
       options: { allowedAbsoluteRoots: readonly string[] }
-    ) => { bundles: readonly RuntimePluginBundleV1[] }
+    ) => Promise<{ bundles: readonly RuntimePluginBundle[] }> | { bundles: readonly RuntimePluginBundle[] }
     readonly scheduleWatch?: (callback: () => void, delay: number) => unknown
     readonly waitForOperation: (
       client: unknown,
@@ -34,5 +35,5 @@ export function startHolonomyPluginWatch(options: {
   readonly io: { stderr: { write(value: string): unknown } }
   readonly pluginRoots: readonly string[]
   readonly process: { generation: number; id: string; pluginGraphRevision: number }
-  readonly runtimePlugins: readonly RuntimePluginBundleV1[]
+  readonly runtimePlugins: readonly RuntimePluginBundle[]
 }): HolonomyPluginWatchController

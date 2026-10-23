@@ -1,5 +1,7 @@
 /* eslint-disable max-lines -- child IPC lifecycle and generation fencing share one state machine. */
 
+import { Buffer } from 'node:buffer'
+import { createHash } from 'node:crypto'
 import inspector from 'node:inspector'
 import process from 'node:process'
 
@@ -11,6 +13,8 @@ import { NodeRuntimeHostController } from './runtime-host-controller.mjs'
 import { normalizeNetworkRules, normalizeNodeRuntimeSession } from './session-validation.mjs'
 
 let generation = 0
+let dynamicImportOperations = 0
+const engineGatePending = new Map()
 let graph
 let hostController
 let networkRules = Object.freeze({ mode: 'passthrough', rules: Object.freeze([]) })
@@ -43,7 +47,70 @@ const acknowledge = async (requestId, value = undefined) => {
 
 const reject = async (requestId, code) => emit('ack', { error: { code }, ok: false, requestId })
 
+const observe = (event, payload, correlationId = undefined) => {
+  void emit('observer', {
+    ...(correlationId == null ? {} : { correlationId }),
+    event,
+    payload
+  }).catch(() => undefined)
+}
+
+const observeScriptCompiled = ({ source, url }) => {
+  const sourceSha256 = createHash('sha256').update(source).digest('hex')
+  observe('script.compiled', {
+    origin: url,
+    scriptId: `node-script-${sourceSha256.slice(0, 24)}`,
+    sourceBytes: Buffer.byteLength(source),
+    sourceSha256
+  })
+}
+
+const gateDynamicImport = async (input, session) => {
+  const policy = session.capabilityRuntime?.runtimeCreation.configuration.sandboxPolicy.codeGeneration.dynamicImport
+  if (policy?.access !== 'controlled') throw new TypeError('Node Runtime dynamic import is denied')
+  dynamicImportOperations += 1
+  if (dynamicImportOperations > policy.maxOperations || typeof input.source !== 'string') {
+    throw new TypeError('Node Runtime dynamic import limit exceeded')
+  }
+  const sourceBytes = Buffer.byteLength(input.source)
+  if (sourceBytes > policy.maxSourceBytes) throw new TypeError('Node Runtime dynamic import source limit exceeded')
+  const requestId = `module-${generation}-${dynamicImportOperations}`
+  const decision = new Promise(resolve => engineGatePending.set(requestId, resolve))
+  await emit('engineGate', {
+    request: {
+      codeKind: 'module',
+      entryDetail: { kind: 'dynamicImport', source: 'loader' },
+      metadataSupport: {
+        callsite: 'unavailable',
+        entryDetail: 'exact',
+        origin: 'exact',
+        source: 'available'
+      },
+      operation: 'runtime.module.import',
+      origin: input.targetUrl,
+      requestId,
+      schemaVersion: 1,
+      source: input.source,
+      sourceBytes,
+      sourceSha256: createHash('sha256').update(input.source).digest('hex')
+    }
+  })
+  if ((await decision).action !== 'allow') throw new TypeError('Node Runtime dynamic import was denied')
+}
+
+const settleEngineGate = command => {
+  const requestId = command.value?.requestId
+  const action = command.value?.action
+  const resolve = engineGatePending.get(requestId)
+  if (resolve == null || !['allow', 'deny'].includes(action)) return
+  engineGatePending.delete(requestId)
+  resolve(Object.freeze({ action }))
+}
+
 const status = () => ({
+  engineGate: runtimeContext == null
+    ? null
+    : Object.freeze({ mode: runtimeContext.engineGate.mode, ...runtimeContext.engineGate.snapshot() }),
   generation,
   inspectorUrl: inspector.url() ?? null,
   pid: process.pid,
@@ -61,6 +128,7 @@ const runEntry = async (requestId, acknowledged) => {
     if (state !== 'running') await transition('running')
     if (!acknowledged) await acknowledge(requestId, status())
   } catch {
+    observe('runtime.exception', { code: 'runtime.entry_evaluation_failed' })
     await emit('log', { level: 'error', text: `Node Runtime start failed: ${stage}` }).catch(() => undefined)
     await flushLogs()
     await hostController?.dispose().catch(() => undefined)
@@ -77,14 +145,26 @@ const start = async command => {
   let stage = 'session_validation'
   try {
     const session = normalizeNodeRuntimeSession(command.value)
+    dynamicImportOperations = 0
     networkRules = session.networkRules
     pluginGraphRevision = session.pluginGraphRevision
     stage = 'runtime_context'
-    runtimeContext = createRuntimeContext(`holonomy-runtime-${generation}`)
+    runtimeContext = createRuntimeContext(
+      `holonomy-runtime-${generation}`,
+      session.capabilityRuntime?.runtimeCreation.configuration.sandboxPolicy.codeGeneration
+    )
     stage = 'module_graph'
-    graph = new SessionModuleGraph(runtimeContext, session)
+    graph = new SessionModuleGraph(runtimeContext, session, {
+      gateDynamicImport: input => gateDynamicImport(input, session),
+      observeScriptCompiled
+    })
     stage = 'host_bridge'
     hostController = new NodeRuntimeHostController({
+      onTerminate: code => {
+        // This OS process is the Runtime generation's terminal boundary. A
+        // synchronous exit must preempt already queued Guest Promise jobs.
+        process.exit(code)
+      },
       emitLog: record => {
         void emit('log', record).catch(() => undefined)
       },
@@ -157,7 +237,10 @@ const updatePlugins = async command => {
 
 const stop = async command => {
   if (state !== 'stopped') await transition('stopping')
+  observe('runtime.terminated', { reason: 'stopped' })
   await hostController?.dispose().catch(() => undefined)
+  for (const resolve of engineGatePending.values()) resolve(Object.freeze({ action: 'deny' }))
+  engineGatePending.clear()
   graph = undefined
   hostController = undefined
   runtimeContext = undefined
@@ -171,13 +254,14 @@ const validCommand = command =>
   command != null && typeof command === 'object' && !Array.isArray(command) &&
   command.protocolVersion === NODE_ADAPTER_PROTOCOL_VERSION && Number.isSafeInteger(command.requestId) &&
   Number.isSafeInteger(command.generation) &&
-  ['plugins', 'resume', 'rules', 'start', 'status', 'stop'].includes(command.type)
+  ['engineGateDecision', 'plugins', 'resume', 'rules', 'start', 'status', 'stop'].includes(command.type)
 
 process.on('message', command => {
   void (async () => {
     if (!validCommand(command)) return
     if (command.type !== 'start' && command.generation !== generation) return
     if (command.type === 'start') return start(command)
+    if (command.type === 'engineGateDecision') return settleEngineGate(command)
     if (command.type === 'resume') return resume(command)
     if (command.type === 'plugins') return updatePlugins(command)
     if (command.type === 'rules') return updateRules(command)
@@ -196,6 +280,7 @@ process.on('message', command => {
 process.once('disconnect', () => {
   if (state === 'stopped' || state === 'stopping') return
   void (async () => {
+    observe('runtime.terminated', { reason: 'lost' })
     state = 'stopping'
     await hostController?.dispose().catch(() => undefined)
     graph = undefined
@@ -206,9 +291,11 @@ process.once('disconnect', () => {
 })
 
 process.on('uncaughtException', () => {
+  observe('runtime.exception', { code: 'runtime.uncaught_exception' })
   void emit('fatal', { code: 'uncaught_exception' }).finally(() => process.exit(1))
 })
 
 process.on('unhandledRejection', () => {
+  observe('runtime.exception', { code: 'runtime.unhandled_rejection' })
   void emit('fatal', { code: 'unhandled_rejection' }).finally(() => process.exit(1))
 })

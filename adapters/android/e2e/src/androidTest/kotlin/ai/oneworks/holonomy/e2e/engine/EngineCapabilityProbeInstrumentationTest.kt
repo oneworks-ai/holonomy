@@ -95,17 +95,18 @@ class EngineCapabilityProbeInstrumentationTest {
 
         val strings = descriptor.getJSONObject("strings")
         assertTrue(strings.getBoolean("generationLevelDeny"))
-        assertFalse(strings.getBoolean("perCompilationCallback"))
+        assertTrue(strings.getBoolean("perCompilationCallback"))
         val wasm = descriptor.getJSONObject("wasm")
-        assertFalse(wasm.getBoolean("generationLevelDeny"))
-        assertFalse(wasm.getBoolean("perCompilationCallback"))
+        assertTrue(wasm.getBoolean("generationLevelDeny"))
+        assertTrue(wasm.getBoolean("perCompilationCallback"))
         val metadata = descriptor.getJSONObject("metadata")
-        for (name in listOf("callsite", "entryDetail", "origin", "source")) {
+        for (name in listOf("callsite", "entryDetail", "origin")) {
             assertEquals("unavailable", metadata.getString(name))
         }
+        assertEquals("available", metadata.getString("source"))
         val provenance = descriptor.getJSONObject("provenance")
         assertEquals("behavioralProbe", provenance.getString("generationLevel"))
-        assertEquals("profileStaticUnsupported", provenance.getString("metadata"))
-        assertEquals("profileStaticUnsupported", provenance.getString("perCompilationCallback"))
+        assertEquals("behavioralProbe", provenance.getString("metadata"))
+        assertEquals("behavioralProbe", provenance.getString("perCompilationCallback"))
     }
 }

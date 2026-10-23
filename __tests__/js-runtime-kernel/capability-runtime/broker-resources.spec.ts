@@ -36,6 +36,100 @@ const responseFacade = (bindingId: string) => ({
 })
 
 describe('capability invocation broker resource lifecycle', () => {
+  it('keeps a cloned Promise open handle until Guest release and closes only undelivered publications', async () => {
+    const closed: string[] = []
+    const fs = provider('host.fs', 'async', 'unused', (_context, authority) =>
+      authority.complete(
+        snapshot({
+          binding: { bindingId: 'fd-clone', generation: 1 },
+          resourceType: 'filesystem.file-handle'
+        }, 'result'),
+        [{
+          bindingId: 'fd-clone',
+          close: () => {
+            closed.push('fd-clone')
+          },
+          resourceType: 'filesystem.file-handle'
+        }, {
+          bindingId: 'not-delivered',
+          close: () => {
+            closed.push('not-delivered')
+          },
+          resourceType: 'filesystem.file-handle'
+        }]
+      ))
+    const broker = new CapabilityInvocationBrokerV1({
+      admitted: creation({ 'host.fs': fs }, {
+        registrations: [middleware('clone-open', async (_context, next) => {
+          const inner = await next()
+          return snapshot({ ...(inner.value as Record<string, unknown>) }, 'result')
+        })],
+        schemaVersion: 1
+      }),
+      engine: 'node-vm',
+      target: 'node'
+    })
+    const tracked = broker.invokeTracked({
+      arguments: snapshot({ flag: 'r', path: 'holo-fs://workspace/demo.txt' }, 'argument'),
+      invocationMode: 'promise',
+      member: 'open',
+      module: 'node:fs/promises',
+      requestId: 'clone-promise-open',
+      resource: fsResource()
+    })
+    expect((await tracked.result).value).toMatchObject({
+      binding: { bindingId: 'fd-clone', generation: 1 }
+    })
+    await tracked.settled
+    expect(broker.resource('fd-clone')).toBeDefined()
+    expect(closed).toEqual(['not-delivered'])
+    broker.releaseResource('fd-clone')
+    await Promise.resolve()
+    expect(closed).toEqual(['not-delivered', 'fd-clone'])
+  })
+
+  it('keeps a cloned synchronous fd result until Guest release', () => {
+    let closes = 0
+    const fs = provider(
+      'host.fs',
+      'sync',
+      'unused',
+      (_context, authority) =>
+        authority.complete(snapshot({ binding: 'opaque', fd: 7 }, 'result'), [{
+          bindingId: 'fd-sync-clone',
+          close: () => {
+            closes += 1
+          },
+          resourceType: 'filesystem.file-handle'
+        }])
+    )
+    const broker = new CapabilityInvocationBrokerV1({
+      admitted: creation({ 'host.fs': fs }, {
+        registrations: [middleware('clone-sync-open', (_context, next) => {
+          const inner = next() as ReturnType<typeof snapshot>
+          return snapshot({ ...(inner.value as Record<string, unknown>) }, 'result')
+        }, 'sync')],
+        schemaVersion: 1
+      }),
+      engine: 'node-vm',
+      target: 'node'
+    })
+    expect(
+      broker.invokeSync({
+        arguments: snapshot({ flag: 'r', path: 'holo-fs://workspace/demo.txt' }, 'argument'),
+        invocationMode: 'sync',
+        member: 'openSync',
+        module: 'node:fs',
+        requestId: 'clone-sync-open',
+        resource: fsResource()
+      }).value
+    ).toEqual({ binding: 'opaque', fd: 7 })
+    expect(broker.resource('fd-sync-clone')).toBeDefined()
+    expect(closes).toBe(0)
+    broker.releaseResource('fd-sync-clone')
+    expect(closes).toBe(1)
+  })
+
   it('publishes generation-bound resources and reuses inherited authority without Host middleware', () => {
     let hostCalls = 0
     let resourceClosed = 0

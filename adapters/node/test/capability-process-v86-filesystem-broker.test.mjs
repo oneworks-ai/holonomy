@@ -13,7 +13,7 @@ const binary = value => ({
 })
 
 const input = values => ({
-  environmentId: '3:runtime',
+  environmentId: '3:processTree:process-9',
   executableId: 'selftest',
   generation: 3,
   linuxPid: 44,
@@ -25,7 +25,7 @@ const input = values => ({
   processId: 9,
   processResourceId: 'process-9',
   requestId: 12,
-  scope: 'runtime',
+  scope: 'processTree',
   signal: new AbortController().signal,
   ...values
 })
@@ -68,8 +68,8 @@ test('routes attributed v86 FUSE operations through trusted Broker invocations',
 
   assert.equal(calls[0].path, 'holo-fs://workspace/input%20file.txt')
   assert.deepEqual(calls[0].source, {
-    environmentId: '3:runtime',
-    environmentScope: 'runtime',
+    environmentId: '3:processTree:process-9',
+    environmentScope: 'processTree',
     executableId: 'selftest',
     kind: 'linuxProcess',
     linuxPid: 44,

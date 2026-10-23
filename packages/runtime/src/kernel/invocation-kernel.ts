@@ -1,31 +1,23 @@
-import { normalizeNetworkRedirectInvocationV1 } from '@holonomyjs/capability-network/kernel/network-invocation'
 import type { CapabilityBrokerInvocationV1 } from './broker-types.js'
 import { CapabilityInvocationBrokerV1 } from './broker.js'
-import type { AdmittedRuntimeCreationV1 } from './context-types.js'
 import { CapabilityInvocationError } from './errors.js'
+import type { CapabilityInvocationHostInputV1 } from './guest-facade-support.js'
 import type { RuntimePluginInterceptorScopeV1 } from './interceptor-registry.js'
-import { bindInvocationAbortSignalV1 } from './invocation-abort.js'
 import { guestErrorFamilyFromInvocationJsonV1 } from './invocation-family.js'
 import { guestInvocationErrorV1 } from './invocation-guest-error.js'
-import { exactInvocationInputV1 } from './invocation-input.js'
-import { routeCapabilityInvocationV1 } from './invocation-routing.js'
+import { createInvocationBodyReadersV1, invokeWithHostInputV1 } from './invocation-host-input.js'
+import type { CapabilityRuntimeInvocationKernelOptionsV1 } from './invocation-kernel-types.js'
+import { createCapabilityInvocationRequestV1 } from './invocation-request.js'
 import { invokeFromCapabilitySourceSyncV1, invokeFromCapabilitySourceV1 } from './invocation-source-dispatch.js'
-import { trustedInvocationValueFromJsonV1 } from './json-invocation-value.js'
 import type { JsonValueV1 } from './json-types.js'
 
-export interface CapabilityRuntimeInvocationKernelOptionsV1 {
-  readonly admitted: AdmittedRuntimeCreationV1
-  readonly engine: string
-  readonly networkProvider: 'host.network' | 'host.network.mock'
-  readonly requestPrefix: string
-  readonly target: 'android' | 'desktop' | 'node'
-}
-
+export type { CapabilityRuntimeInvocationKernelOptionsV1 } from './invocation-kernel-types.js'
 export class CapabilityRuntimeInvocationKernelV1 {
   readonly #broker: CapabilityInvocationBrokerV1
   readonly #networkProvider: 'host.network' | 'host.network.mock'
   readonly #prefix: string
   readonly #generation: number
+  readonly #requestBodyReaders: ReturnType<typeof createInvocationBodyReadersV1>
   #nextRequestId = 0
   constructor(options: CapabilityRuntimeInvocationKernelOptionsV1) {
     this.#broker = new CapabilityInvocationBrokerV1({
@@ -36,13 +28,14 @@ export class CapabilityRuntimeInvocationKernelV1 {
     this.#generation = options.admitted.generation
     this.#networkProvider = options.networkProvider
     this.#prefix = options.requestPrefix
+    this.#requestBodyReaders = createInvocationBodyReadersV1(options)
   }
 
   get admissionDigest(): string {
     return this.#broker.admissionDigest
   }
-
   close(stale = false): void {
+    this.#requestBodyReaders?.close()
     this.#broker.close(stale ? 'generation-stale' : 'cancelled')
   }
   cancel(json: string): string {
@@ -65,7 +58,6 @@ export class CapabilityRuntimeInvocationKernelV1 {
       })
     }
   }
-
   invokeImmediate(json: string): string {
     try {
       return JSON.stringify({ ok: true, value: this.#broker.invokeSync(this.#request(json)).value })
@@ -77,22 +69,50 @@ export class CapabilityRuntimeInvocationKernelV1 {
     }
   }
 
-  async invoke(json: string, signal?: AbortSignal): Promise<string> {
+  async invoke(json: string, signal?: AbortSignal, hostInput?: CapabilityInvocationHostInputV1): Promise<string> {
+    return invokeWithHostInputV1(
+      json,
+      () => this.#request(json, undefined, signal),
+      request => this.#broker.invoke(request),
+      this.#requestBodyReaders,
+      hostInput
+    )
+  }
+
+  /** Host-only settlement handle for transport quotas and plugin graph retirement. */
+  invokeTracked(json: string, signal?: AbortSignal): Readonly<{
+    result: Promise<string>
+    settled: Promise<void>
+  }> {
     try {
-      const result = await this.#broker.invoke(this.#request(json, undefined, signal))
-      return JSON.stringify({ ok: true, value: result.value })
+      const tracked = this.#broker.invokeTracked(this.#request(json, undefined, signal))
+      const result = tracked.result.then(
+        value => JSON.stringify({ ok: true, value: value.value }),
+        error =>
+          JSON.stringify({
+            error: guestInvocationErrorV1(error, guestErrorFamilyFromInvocationJsonV1(json)),
+            ok: false
+          })
+      )
+      return Object.freeze({ result, settled: tracked.settled })
     } catch (error) {
-      return JSON.stringify({
-        error: guestInvocationErrorV1(error, guestErrorFamilyFromInvocationJsonV1(json)),
-        ok: false
+      return Object.freeze({
+        result: Promise.resolve(JSON.stringify({
+          error: guestInvocationErrorV1(error, guestErrorFamilyFromInvocationJsonV1(json)),
+          ok: false
+        })),
+        settled: Promise.resolve()
       })
     }
   }
 
-  async invokeFromSource(input: unknown): Promise<JsonValueV1> {
+  async invokeFromSource(input: unknown, signal?: AbortSignal): Promise<JsonValueV1> {
     return invokeFromCapabilitySourceV1(
       input,
-      async (json, source) => (await this.#broker.invoke(Object.freeze({ ...this.#request(json), source }))).value
+      async (json, source) =>
+        (await this.#broker.invoke(
+          Object.freeze({ ...this.#request(json), source, ...(signal == null ? {} : { signal }) })
+        )).value
     )
   }
 
@@ -123,78 +143,22 @@ export class CapabilityRuntimeInvocationKernelV1 {
     return this.#broker.subscribeResource(bindingId, listener)
   }
 
+  resourceEventDescriptor(bindingId: string) {
+    return this.#broker.resourceEventDescriptor(bindingId)
+  }
+
   #request(json: string, forcedMode?: 'sync', signal?: AbortSignal): CapabilityBrokerInvocationV1 {
-    if (typeof json !== 'string' || json.length > 1024 * 1024) {
-      throw new CapabilityInvocationError('argument.invalid', 'runtime.invoke')
-    }
-    const input = exactInvocationInputV1(JSON.parse(json), [
-      'arguments',
-      'bindingId',
-      'member',
-      'method',
-      'mode',
-      'module',
-      'path',
-      'providerData',
-      'resourceType',
-      'url'
-    ])
-    const mode = forcedMode ?? input.mode
-    if (mode !== 'callback' && mode !== 'promise' && mode !== 'sync') {
-      throw new CapabilityInvocationError('argument.invalid', 'runtime.invoke')
-    }
-    const module = input.module
-    const member = input.member
-    if (typeof module !== 'string' || typeof member !== 'string') {
-      throw new CapabilityInvocationError('argument.invalid', 'runtime.invoke')
-    }
-    const requestId = `${this.#prefix}-${this.#generation}-${++this.#nextRequestId}`
-    const argumentsValue = bindInvocationAbortSignalV1(
-      input.arguments as JsonValueV1,
-      signal == null ? undefined : `abort-${this.#generation}-${this.#nextRequestId}`,
-      this.#generation
-    )
-    const inheritedBindingId = typeof input.bindingId === 'string' ? input.bindingId : undefined
-    const routed = inheritedBindingId == null
-      ? routeCapabilityInvocationV1({
-        arguments: argumentsValue,
+    return createCapabilityInvocationRequestV1(
+      json,
+      {
         generation: this.#generation,
-        member,
-        method: input.method,
-        module,
         networkProvider: this.#networkProvider,
-        path: input.path,
-        requestOrdinal: this.#nextRequestId,
-        url: input.url
-      })
-      : module === 'web:fetch' && member === 'followRedirect'
-      ? (() => {
-        const redirect = normalizeNetworkRedirectInvocationV1(input.arguments)
-        return { preferredProviderModule: undefined, resource: redirect.toRequest.resource }
-      })()
-      : {
-        preferredProviderModule: undefined,
-        resource: this.#broker.resource(
-          inheritedBindingId,
-          typeof input.resourceType === 'string' ? input.resourceType : undefined
-        )
-      }
-    return Object.freeze({
-      arguments: trustedInvocationValueFromJsonV1(
-        (('argumentsValue' in routed ? routed.argumentsValue : undefined) ?? argumentsValue) as JsonValueV1,
-        'argument'
-      ),
-      ...(inheritedBindingId == null ? {} : { inheritedBindingId }),
-      invocationMode: mode,
-      member,
-      module,
-      preferredProviderModule: routed.preferredProviderModule,
-      ...(input.providerData === undefined
-        ? {}
-        : { providerData: trustedInvocationValueFromJsonV1(input.providerData as JsonValueV1, 'argument') }),
-      requestId,
-      resource: routed.resource,
-      ...(signal == null ? {} : { signal })
-    })
+        requestPrefix: this.#prefix,
+        nextOrdinal: () => ++this.#nextRequestId,
+        resource: (bindingId, type) => this.#broker.resource(bindingId, type)
+      },
+      forcedMode,
+      signal
+    )
   }
 }

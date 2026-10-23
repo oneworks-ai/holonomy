@@ -6,7 +6,7 @@ import {
 } from '../../../dist/capability-runtime/index.js'
 
 import { createInstalledV86ProcessBackendRuntimeV1 } from './capability-process-v86-installation.mjs'
-import { createNodeCapabilityProvidersV1 } from './capability-providers.mjs'
+import { closeNodeCapabilityProvidersV1, createNodeCapabilityProvidersV1 } from './capability-providers.mjs'
 
 const initialMiddleware = configuration => {
   const behavior = configuration.behavior
@@ -45,6 +45,9 @@ const resolveBindings = (session, providers) => {
     [bindings.initialMiddlewareSet.bindingId, initialMiddleware(session.initialMiddleware)],
     [bindings.moduleResolver.bindingId, Object.freeze({ kind: 'node.module-resolver' })]
   ])
+  for (const observer of bindings.initialObservers) {
+    resolved.set(observer.bindingId, Object.freeze({ kind: 'node.parent-runtime-observer' }))
+  }
   for (const registration of bindings.providerBindings) {
     const provider = providers.get(registration.module)
     if (provider != null) resolved.set(registration.providerId, provider)
@@ -89,16 +92,20 @@ export class NodeCapabilityRuntimeHostV1 {
       requestPrefix: 'node',
       target: 'node'
     })
-    processBackendRuntime?.bind(input => this.#kernel.invokeFromSource(input))
+    processBackendRuntime?.bind(
+      (input, signal) => this.#kernel.invokeFromSource(input, signal),
+      bindingId => this.#kernel.releaseResource(bindingId)
+    )
   }
 
   async close(stale = false) {
     for (const controller of this.#abortControllers.values()) controller.abort()
     this.#abortControllers.clear()
-    this.#kernel.close(stale)
-    await Promise.allSettled(
-      [...this.#providers.values()].map(provider => provider.close?.())
-    )
+    try {
+      this.#kernel.close(stale)
+    } finally {
+      await closeNodeCapabilityProvidersV1(this.#providers)
+    }
   }
 
   configuration() {

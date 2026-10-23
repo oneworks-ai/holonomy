@@ -55,6 +55,8 @@ type SystemInformationOperationV1 =
 
 `throw`/`throwOnRead`/`throwOnInvoke` 都生成 E.1 的 `ERR_ACCESS_DENIED`；`emptyObject` 返回冻结 null-prototype空结构，只用于上表两项。`cwd` 保持 Node 函数形态；pid/execPath/env 是 read-only projection，Guest 写入、delete和defineProperty拒绝。
 
+`env`、`pid`、`execPath` 在 initial installation 各准入一次，并缓存冻结值或拒绝状态；一个字段拒绝不能使另一个已获准字段不可用。`throwOnRead` 指默认导出和全局 `process` 的属性读取；对应 ECMAScript 模块命名导出保持固定的 data-only snapshot，获准时为安装值，被拒绝的 `pid`/`execPath` 为 `undefined`。`env` 拒绝时默认对象与命名导出共享冻结 null-prototype 空 map。`cwd()` 每次调用单独准入。Host transport/protocol 错误不降级为字段 unavailable。
+
 参数 Schema：除 `userInfo` 仅允许省略或 `{encoding:'utf8'}` 外，所有 os function 必须零参数；未知 overload稳定 `ERR_INVALID_ARG_VALUE`。Result Schema精确使用 `SystemFieldValueMapV1` 对应 field，field→operation 映射是：row member转换到 C.1同名 key，`availableParallelism`、memory字段和process字段使用表中显式 operation。
 
 machine vectors必须逐row校验member、field、operation、capability、mode、unavailable behavior、result schema、无callback tuple；任何System member使用`device.*` operation都稳定拒绝。

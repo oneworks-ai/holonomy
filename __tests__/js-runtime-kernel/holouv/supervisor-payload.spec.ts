@@ -10,6 +10,7 @@ import {
   encodeHoloUvCapabilityResponseV1,
   encodeHoloUvCompletionPayloadV1,
   encodeHoloUvEnvironmentConfigurationV1,
+  encodeHoloUvEnvironmentConfigurationV2,
   encodeHoloUvSignalPayloadV1,
   encodeHoloUvSpawnPayloadV1,
   encodeHoloUvSpawnedPayloadV1,
@@ -89,6 +90,25 @@ describe('holouv supervisor payload codec', () => {
           { address: '192.168.87.2', hostname: 'same.example' }
         ],
         version: 1
+      })
+    ).toThrow(TypeError)
+  })
+
+  it('carries Host Process tree quotas in private configuration v2', () => {
+    expect(encodeHoloUvEnvironmentConfigurationV2({
+      execGateTimeoutMs: 30_000,
+      hosts: [],
+      maxProcessTreeDepth: 1,
+      maxTotalProcesses: 1,
+      version: 2
+    })).toEqual(bytes('02000000000075300000000100000001'))
+    expect(() =>
+      encodeHoloUvEnvironmentConfigurationV2({
+        execGateTimeoutMs: 30_000,
+        hosts: [],
+        maxProcessTreeDepth: 0,
+        maxTotalProcesses: 1,
+        version: 2
       })
     ).toThrow(TypeError)
   })

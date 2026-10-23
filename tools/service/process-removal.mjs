@@ -1,5 +1,6 @@
 import { PROCESS_TERMINAL_STATES } from './constants.mjs'
 import { serviceError } from './errors.mjs'
+import { queueProcessRemovalCleanup } from './process-removal-cleanup.mjs'
 import { getResource, requireExpectedGeneration } from './registry-helpers.mjs'
 import { cloneJson } from './validation.mjs'
 
@@ -16,6 +17,7 @@ export const removeProcess = async (context, id, expectedGeneration) => {
       if (process.cleanupPending === true) {
         throw serviceError('service.conflict', 'Runtime process cleanup is still pending')
       }
+      queueProcessRemovalCleanup(draft, process)
       const removed = { idempotency: 0, inspectors: 0, networkRules: 0, operations: 0, process: 1 }
       const inspectorIds = new Set()
       for (const [inspectorId, inspector] of Object.entries(draft.resources.inspectors)) {

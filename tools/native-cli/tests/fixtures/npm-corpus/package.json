@@ -1,0 +1,9 @@
+{
+  "name": "holonomy-native-npm-corpus",
+  "version": "0.0.0",
+  "private": true,
+  "imports": {
+    "#parser": "acorn",
+    "#match": "minimatch"
+  }
+}

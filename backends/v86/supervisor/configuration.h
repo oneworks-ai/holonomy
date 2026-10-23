@@ -3,6 +3,12 @@
 
 #include "protocol.h"
 
-int holo_configuration_apply(int control_fd, const struct holo_frame *frame, uint32_t *exec_gate_timeout_ms);
+int holo_configuration_apply(
+    int control_fd,
+    const struct holo_frame *frame,
+    uint32_t *exec_gate_timeout_ms,
+    uint32_t *max_total_processes,
+    uint32_t *max_process_tree_depth
+);
 
 #endif

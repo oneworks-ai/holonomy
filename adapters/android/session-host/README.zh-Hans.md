@@ -44,3 +44,12 @@ supervisor 会冻结 logical runtime 的 policy，restart 时复用同一策略�
 `control` 只携带 operation 名和有界 JSON value。Android 不解释 network matcher 规则。initial controls 在 engine start 之后、用户 entry module 之前经可信 runtime-thread seam 下发；后续 control 必须绑定当前 expected generation。
 
 输出事件使用 runtime 内单调递增的 sequence。status reply 会返回当前保留窗口，controller 因而可以识别游标过期，并从 `firstAvailableSequence` 继续消费。
+
+持久化集成时，内置 Service 将同一 store 的 `StoredSessionSupervisorEventSink` 与
+`StoredSessionCommandHandler.withEventOwnedSnapshots(supervisor, store)` 配对。handler 只保存 command/reply，
+event sink 独占生命周期 state、result 和输出 journal 的写入。自行组装控制宿主时也应采用这组配对；旧两参
+handler 仍为无 event sink 的接入方镜像 reply 快照，不能再与同一 store 的实时快照写入者混用。
+
+持久 state 的输出游标表示最近一次生命周期快照；实时游标应读取新 Status reply 或输出 journal。首个输出前
+output 文件可不存在，Status 的空输出仍有效。result 文件保留最近一次终态 generation，重启后要比较 generation。
+输出持久化与序号分配有序串行，慢磁盘可能延迟控制回复；这不是性能或磁盘故障恢复保证。

@@ -71,6 +71,9 @@
               "access": "none"
             },
             "schemaVersion": 2,
+            "storage": {
+              "access": "none"
+            },
             "systemInformation": {
               "defaultMode": "unavailable",
               "fields": {}
@@ -120,7 +123,7 @@
   "schemaVersion": 1,
   "valid": [
     {
-      "configurationDigest": "6d2d06a3f6796333e32400bcb2998eb9cff6c097f1905e5287ff5d7f8e178568",
+      "configurationDigest": "0cefb3977ee20a09a98423ad327177ea8167374dfac28e6ee22e69ce5ebb5ddd",
       "generation": 1,
       "hostBindingsDigest": "470ccb6f42be6c5f7ea2c6a655b8120ad824838d98178ff286d0caf26e84a2f1",
       "name": "initial-admission",
@@ -193,6 +196,9 @@
               "access": "none"
             },
             "schemaVersion": 2,
+            "storage": {
+              "access": "none"
+            },
             "systemInformation": {
               "defaultMode": "unavailable",
               "fields": {}
@@ -239,7 +245,7 @@
       }
     },
     {
-      "configurationDigest": "6d2d06a3f6796333e32400bcb2998eb9cff6c097f1905e5287ff5d7f8e178568",
+      "configurationDigest": "0cefb3977ee20a09a98423ad327177ea8167374dfac28e6ee22e69ce5ebb5ddd",
       "generation": 2,
       "hostBindingsDigest": "470ccb6f42be6c5f7ea2c6a655b8120ad824838d98178ff286d0caf26e84a2f1",
       "name": "restart-generation",
@@ -312,6 +318,9 @@
               "access": "none"
             },
             "schemaVersion": 2,
+            "storage": {
+              "access": "none"
+            },
             "systemInformation": {
               "defaultMode": "unavailable",
               "fields": {}

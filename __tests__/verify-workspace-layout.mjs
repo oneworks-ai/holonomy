@@ -12,6 +12,7 @@ const packages = [
   ['packages/capabilities/fs', '@holonomyjs/capability-fs'],
   ['packages/capabilities/network', '@holonomyjs/capability-network'],
   ['packages/capabilities/process', '@holonomyjs/capability-process'],
+  ['packages/capabilities/storage', '@holonomyjs/capability-storage'],
   ['packages/capabilities/system', '@holonomyjs/capability-system'],
   ['packages/plugins/audit', '@holonomyjs/plugin-audit'],
   ['packages/plugins/permission', '@holonomyjs/plugin-permission']

@@ -30,5 +30,6 @@ export const DEFAULT_SANDBOX_POLICY_V2: SandboxPolicyV2 = Object.freeze({
   network: none,
   process: none,
   schemaVersion: 2,
+  storage: none,
   systemInformation: Object.freeze({ defaultMode: 'unavailable', fields: Object.freeze({}) })
 })

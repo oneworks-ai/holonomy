@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "sandboxPolicy": {
+    "schemaVersion": 2,
+    "filesystem": {
+      "access": "sandboxed",
+      "roots": [{
+        "rootId": "workspace",
+        "virtualUrl": "holo-fs://workspace/",
+        "rights": ["read", "write", "create"],
+        "symlinks": "deny"
+      }],
+      "limits": {
+        "maxReadBytes": 4096,
+        "maxWriteBytes": 4096,
+        "maxOpenHandles": 8,
+        "maxWatchers": 0,
+        "maxDirectoryEntries": 32,
+        "maxQueuedEvents": 0
+      }
+    }
+  },
+  "filesystemRoots": [{ "rootId": "workspace", "hostPath": "data" }]
+}

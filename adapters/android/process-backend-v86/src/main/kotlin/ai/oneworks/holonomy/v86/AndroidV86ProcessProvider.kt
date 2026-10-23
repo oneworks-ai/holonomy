@@ -7,6 +7,7 @@ import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import org.json.JSONArray
@@ -32,6 +33,9 @@ class AndroidV86ProcessProvider internal constructor(
     private val processesByBackendId = ConcurrentHashMap<String, AndroidV86ProcessState>()
     private val timeoutExecutor = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "holonomy-v86-process-timeout").apply { isDaemon = true }
+    }
+    private val readinessExecutor = Executors.newSingleThreadExecutor { task ->
+        Thread(task, "holonomy-v86-process-readiness").apply { isDaemon = true }
     }
     private var totalProcessStarts = 0
 
@@ -94,6 +98,7 @@ class AndroidV86ProcessProvider internal constructor(
         }
         networkPreflights.clear()
         timeoutExecutor.shutdownNow()
+        readinessExecutor.shutdownNow()
     }
 
     private fun spawn(request: JSONObject, resource: JSONObject): String {
@@ -139,67 +144,87 @@ class AndroidV86ProcessProvider internal constructor(
         if (stdio.size != 3 || stdio.any { value -> value !in setOf("pipe", "ignore") }) {
             return failure("argument.invalid")
         }
-        synchronized(processLimitLock) {
-            if (
-                processes.size >= limits.getInt("maxConcurrentProcesses") ||
-                totalProcessStarts >= limits.getInt("maxTotalProcesses")
-            ) {
-                diagnostic(
-                    "rejected spawn executable=$executableId by process limits " +
-                        "concurrent=${processes.size} total=$totalProcessStarts",
-                )
-                return failure("resource.handle_limit")
+        val command = JSONObject()
+            .put("args", JSONArray(args))
+            .put("cwd", "/workspace")
+            .put("env", environmentVariables)
+            .put("executable", executable.path)
+            .put("executableId", executableId)
+            .put("operation", "spawn")
+            .put("stdio", JSONArray(stdio))
+        return synchronized(lifecycleLock) {
+            if (closed.get()) return failure("provider.unavailable")
+            synchronized(processLimitLock) {
+                if (
+                    processes.size >= limits.getInt("maxConcurrentProcesses") ||
+                    totalProcessStarts >= limits.getInt("maxTotalProcesses")
+                ) return failure("resource.handle_limit")
+                totalProcessStarts += 1
             }
-            totalProcessStarts += 1
-        }
-        val resourceId = "android-v86-process-${nextId.getAndIncrement()}"
-        val environment = runCatching { backend.acquire(environmentScope, resourceId) }.getOrElse {
-            return failure("provider.unavailable")
-        }
-        val state = createState(
-            executableId,
-            resource.getString("semanticResourceDigest"),
-            environment,
-            resourceId,
-            stdio,
-            limits,
-        )
-        val committed = runCatching {
-            synchronized(lifecycleLock) {
-                check(!closed.get()) { "Android v86 Process Provider closed during spawn" }
-                processes[state.resourceId] = state
+            val resourceId = "android-v86-process-${nextId.getAndIncrement()}"
+            val environment = runCatching { backend.acquire(environmentScope, resourceId) }.getOrElse {
+                return failure("provider.unavailable")
+            }
+            val state = createState(
+                executableId, resource.getString("semanticResourceDigest"), environment,
+                resourceId, stdio, limits,
+            )
+            command.put("resourceId", resourceId)
+            val committed = runCatching {
+                processes[resourceId] = state
                 bind(state)
-                state.environment.backend.submit(
-                    JSONObject()
-                        .put("args", JSONArray(args))
-                        .put("cwd", "/workspace")
-                        .put("env", environmentVariables)
-                        .put("executable", executable.path)
-                        .put("executableId", executableId)
-                        .put("operation", "spawn")
-                        .put("resourceId", state.resourceId)
-                        .put("stdio", JSONArray(stdio)),
+                val executionTimeoutMs = effectiveAndroidV86ProcessTimeoutMs(
+                    options.optLong("timeoutMs").takeIf { options.has("timeoutMs") },
+                    limits.getLong("maxExecutionTimeMs"),
                 )
-                state.timeout = timeoutExecutor.schedule(
-                    { timeout(state) },
-                    effectiveAndroidV86ProcessTimeoutMs(
-                        options.optLong("timeoutMs").takeIf { options.has("timeoutMs") },
-                        limits.getLong("maxExecutionTimeMs"),
-                    ),
-                    TimeUnit.MILLISECONDS,
-                )
+                if (environment.readiness.isDone) {
+                    environment.readiness.getNow(Unit)
+                    submitSpawn(state, command, executionTimeoutMs)
+                } else {
+                    // Never run lifecycle work on the VM worker: cancellation can join that worker.
+                    environment.readiness.whenCompleteAsync({ _, error ->
+                        synchronized(state) {
+                            if (!closed.get() && !state.closed && processes[resourceId] === state) {
+                                if (error != null) {
+                                    failPending(state, if (error is TimeoutException) "ETIMEDOUT" else "EIO")
+                                } else {
+                                    runCatching { submitSpawn(state, command, executionTimeoutMs) }
+                                        .onFailure { failPending(state, "EIO") }
+                                }
+                            }
+                        }
+                    }, readinessExecutor)
+                }
+            }.isSuccess
+            if (!committed) {
+                closeState(state, "ERR_INVALID_STATE")
+                unbind(state)
+                return failure("provider.unavailable")
             }
-            true
-        }.getOrElse {
-            false
+            diagnostic("accepted spawn executable=$executableId resource=$resourceId")
+            success(state.facade, publications(state))
         }
-        if (!committed) {
-            backend.invalidate(state.environment.environmentId)
-            unbind(state)
-            return failure("provider.unavailable")
+    }
+
+    private fun submitSpawn(state: AndroidV86ProcessState, command: JSONObject, executionTimeoutMs: Long) {
+        synchronized(state) {
+            if (state.closed) return
+            state.spawnSubmitted = true
+            state.environment.submit(command)
+            // Execution starts after readiness; startup has its own bound and the Host hard deadline.
+            // Publish timer ownership under the same lock closeState uses to cancel it.
+            if (!state.closed) {
+                state.timeout = timeoutExecutor.schedule({ timeout(state) }, executionTimeoutMs, TimeUnit.MILLISECONDS)
+            }
         }
-        diagnostic("accepted spawn executable=$executableId resource=${state.resourceId}")
-        return success(state.facade, publications(state))
+    }
+
+    private fun failPending(state: AndroidV86ProcessState, code: String) = synchronized(state) {
+        if (state.closed) return@synchronized
+        state.childEvents.emit(processEvent("error", processError(code)))
+        if (closeState(state, "ERR_INVALID_STATE")) {
+            state.childEvents.emit(processEvent("close", null, null))
+        }
     }
 
     private fun invokeResource(request: JSONObject): String {
@@ -467,6 +492,12 @@ class AndroidV86ProcessProvider internal constructor(
     private fun signal(state: AndroidV86ProcessState, value: String) {
         val command = synchronized(state) {
             if (state.closed) return
+            if (!state.spawnSubmitted) {
+                if (closeState(state, "ERR_INVALID_STATE")) {
+                    state.childEvents.emit(processEvent("close", null, value))
+                }
+                return
+            }
             state.terminalSignal = strongerAndroidV86Signal(state.terminalSignal, value)
             signalCommand(state)
         }
@@ -476,8 +507,12 @@ class AndroidV86ProcessProvider internal constructor(
     private fun timeout(state: AndroidV86ProcessState) {
         synchronized(state) {
             if (state.closed) return
-            state.childEvents.emit(processEvent("error", processError("ETIMEDOUT")))
-            signal(state, "SIGKILL")
+            if (!state.spawnSubmitted) {
+                failPending(state, "ETIMEDOUT")
+            } else {
+                state.childEvents.emit(processEvent("error", processError("ETIMEDOUT")))
+                signal(state, "SIGKILL")
+            }
         }
     }
 
@@ -586,12 +621,7 @@ class AndroidV86ProcessProvider internal constructor(
             state.childEvents.emit(processEvent("spawn"))
             if (signalCommand != null) submitSignal(state, signalCommand)
             state.stdin.attachProcess(backendProcessId) { processId, command -> submitStdin(state, processId, command) }
-                ?.let {
-                    state.childEvents.emit(processEvent("error", processError("ERR_OPERATION_FAILED")))
-                    if (closeState(state, "ERR_INVALID_STATE")) {
-                        state.childEvents.emit(processEvent("close", null, null))
-                    }
-                }
+                ?.let { failStdinDispatch(state) }
         }
     }
 
@@ -627,7 +657,7 @@ class AndroidV86ProcessProvider internal constructor(
         state.backendProcessId?.let { processId ->
             processesByBackendId.remove(backendProcessKey(state.environment.environmentId, processId), state)
         }
-        processes.remove(state.resourceId)
+        processes.remove(state.resourceId, state)
         diagnostic("closed process executable=${state.executableId} active=${processes.size}")
         state.stdin.close().forEach { callbackId ->
             state.stdinEvents.emit(callbackEvent(callbackId, processError(stdinCode)))
@@ -658,27 +688,55 @@ class AndroidV86ProcessProvider internal constructor(
 
     private fun onAck(event: JSONObject) {
         val state = processFor(event) ?: return
-        val callbackId = event.optLong("callbackId", -1)
-        if (callbackId > 0 && state.stdin.acknowledge(callbackId)) {
-            state.stdinEvents.emit(callbackEvent(callbackId, null))
+        synchronized(state) {
+            if (state.closed) return
+            val completion = completeStdin(state, event) ?: return
+            completion.callbackId?.let { state.stdinEvents.emit(callbackEvent(it, null)) }
+            if (completion.dispatchFailed) failStdinDispatch(state)
         }
     }
 
     private fun onError(event: JSONObject) {
         if (event.optString("operation") == "filesystem") return
+        if (event.optString("operation") in setOf("stdin", "end")) {
+            val state = processFor(event) ?: return
+            synchronized(state) {
+                if (state.closed) return
+                val completion = completeStdin(state, event) ?: return
+                if (completion.callbackId != null) {
+                    state.stdinEvents.emit(callbackEvent(completion.callbackId, processError("EIO")))
+                } else {
+                    state.childEvents.emit(processEvent("error", processError("ERR_OPERATION_FAILED")))
+                }
+                if (completion.dispatchFailed) {
+                    failStdinDispatch(state, emitError = completion.callbackId != null)
+                }
+            }
+            return
+        }
         val state = event.optString("resourceId").takeIf(String::isNotEmpty)?.let(processes::get)
             ?: event.optInt("processId", -1).takeIf { it >= 0 }?.let { processFor(event) }
             ?: return
-        val callbackId = event.optLong("callbackId", -1)
-        if (callbackId > 0 && state.stdin.acknowledge(callbackId)) {
-            state.stdinEvents.emit(callbackEvent(callbackId, processError("EIO")))
-        } else {
-            state.childEvents.emit(processEvent("error", processError("ERR_OPERATION_FAILED")))
-            if (state.linuxPid == null) {
-                if (closeState(state, "ERR_INVALID_STATE")) {
-                    state.childEvents.emit(processEvent("close", null, null))
-                }
+        state.childEvents.emit(processEvent("error", processError("ERR_OPERATION_FAILED")))
+        if (state.linuxPid == null) {
+            if (closeState(state, "ERR_INVALID_STATE")) {
+                state.childEvents.emit(processEvent("close", null, null))
             }
+        }
+    }
+
+    private fun completeStdin(state: AndroidV86ProcessState, event: JSONObject): AndroidV86StdinCompletion? =
+        state.stdin.acknowledge(
+            event.optLong("stdinSequence", -1),
+            event.optString("operation"),
+            event.optLong("callbackId", -1).takeIf { it > 0 },
+        ) { processId, command -> submitStdin(state, processId, command) }
+
+    private fun failStdinDispatch(state: AndroidV86ProcessState, emitError: Boolean = true) {
+        if (state.closed) return
+        if (emitError) state.childEvents.emit(processEvent("error", processError("ERR_OPERATION_FAILED")))
+        if (closeState(state, "ERR_INVALID_STATE")) {
+            state.childEvents.emit(processEvent("close", null, null))
         }
     }
 
@@ -699,10 +757,7 @@ class AndroidV86ProcessProvider internal constructor(
     private fun failEnvironment(environmentId: String, code: String) {
         backend.invalidate(environmentId)
         processes.values.toSet().filter { state -> state.environment.environmentId == environmentId }.forEach { state ->
-            state.childEvents.emit(processEvent("error", processError(code)))
-            if (closeState(state, "ERR_INVALID_STATE")) {
-                state.childEvents.emit(processEvent("close", null, null))
-            }
+            failPending(state, code)
         }
     }
 
@@ -764,6 +819,7 @@ class AndroidV86ProcessProvider internal constructor(
                 .apply {
                     command.bytes?.let { bytes -> put("bytes", JSONArray(bytes.map(Byte::toInt))) }
                     command.callbackId?.let { callbackId -> put("callbackId", callbackId) }
+                    put("stdinSequence", command.sequence)
                 },
         )
     }

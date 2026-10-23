@@ -237,6 +237,7 @@ export class HoloUvSupervisorEnvironmentV1<
   readonly #ready = deferred<readonly ProcessSupervisorKernelCapabilityV1[]>()
   #readyReceived = false
   readonly #readyTimer: ReturnType<typeof setTimeout>
+  readonly #configurationTimeoutMs: number
   #transport?: HoloUvSupervisorTransportV1
   #transportClose?: Promise<void>
   #closed = false
@@ -255,6 +256,7 @@ export class HoloUvSupervisorEnvironmentV1<
       }
     ) => string | Promise<string>
   ) {
+    this.#configurationTimeoutMs = readyTimeoutMs
     this.#filesystem = filesystem
     this.#capability = capability
     this.#networkAttribution = networkAttribution
@@ -311,13 +313,30 @@ export class HoloUvSupervisorEnvironmentV1<
     return terminal.promise
   }
 
-  configure(payload: Uint8Array): Promise<void> {
+  configure(payload: Uint8Array, signal?: AbortSignal): Promise<void> {
     if (this.#closed || !this.#readyReceived || !(payload instanceof Uint8Array)) {
       return Promise.reject(failure('supervisor.closed'))
+    }
+    if (signal?.aborted) {
+      const error = failure('supervisor.cancelled')
+      this.fail(error)
+      return Promise.reject(error)
     }
     const requestId = this.#allocateRequestId()
     const terminal = deferred<void>()
     this.#pending.set(requestId, { kind: 'configuration', terminal })
+    const abort = () => this.fail(failure('supervisor.cancelled'))
+    signal?.addEventListener('abort', abort, { once: true })
+    const timer = setTimeout(
+      () => this.fail(failure('supervisor.configuration_timeout')),
+      this.#configurationTimeoutMs
+    )
+    const cleanup = () => {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', abort)
+    }
+    void terminal.promise.then(cleanup, cleanup)
+    if (signal?.aborted) abort()
     this.#write('configure', 0, requestId, Uint8Array.from(payload)).catch(error => {
       this.#pending.delete(requestId)
       terminal.reject(error)
@@ -873,7 +892,7 @@ export const createHoloUvSupervisorEnvironmentFactoryV1 = <
         if (options.createConfiguration != null) {
           const payload = await options.createConfiguration(request)
           if (!(payload instanceof Uint8Array)) return invalidPayload()
-          await ready.configure(payload)
+          await ready.configure(payload, request.signal)
         }
         return ready
       } catch (error) {

@@ -5,6 +5,12 @@
   "description": "Holonomy process capability",
   "license": "MIT",
   "exports": {
+    "./host/*": {
+      "default": "./src/host/*.mjs"
+    },
+    "./host/port": {
+      "types": "./src/host/port.d.mts"
+    },
     ".": {
       "__oneworks__": "./src/index.ts",
       "types": "./dist/index.d.ts",
@@ -16,7 +22,7 @@
       "default": "./dist/*.js"
     }
   },
-  "files": ["dist", "src/**/*.ts"],
+  "files": ["dist", "src/**/*.ts", "src/host/*.d.mts", "src/host/*.mjs"],
   "peerDependencies": {
     "@holonomyjs/runtime": "1.0.0-rc.3"
   }

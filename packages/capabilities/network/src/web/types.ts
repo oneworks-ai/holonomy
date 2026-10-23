@@ -99,9 +99,13 @@ export interface WebNetworkCapabilityHooksV1 {
     from: WebNetworkCapabilityRequestV1,
     to: WebNetworkCapabilityRequestV1,
     status: 301 | 302 | 303 | 307 | 308,
-    admission: WebNetworkCapabilityAdmissionV1
+    admission: WebNetworkCapabilityAdmissionV1,
+    signal?: AbortSignal
   ): Promise<void>
-  authorizeRequest(request: WebNetworkCapabilityRequestV1): Promise<WebNetworkCapabilityAdmissionV1>
+  authorizeRequest(
+    request: WebNetworkCapabilityRequestV1,
+    signal?: AbortSignal
+  ): Promise<WebNetworkCapabilityAdmissionV1>
   authorizeResponse(
     response: WebNetworkCapabilityResponseV1,
     member:

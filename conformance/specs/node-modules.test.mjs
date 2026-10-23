@@ -13,8 +13,12 @@ describe('Node modules', () => {
     assert.equal(Buffer.from('Holonomy').toString('base64'), 'SG9sb25vbXk=')
   })
 
-  it('preserves the external module URL', () => {
-    assert.equal(import.meta.url, 'app+local://workspace/conformance/specs/node-modules.test.mjs')
+  it('exposes a canonical external module URL', () => {
+    const url = new URL(import.meta.url)
+    assert.equal(url.href, import.meta.url)
+    assert.ok(url.pathname.endsWith('/node-modules.test.mjs'))
+    assert.notEqual(url.protocol, 'holonomy:')
+    assert.notEqual(url.protocol, 'holo-plugins:')
   })
 })
 

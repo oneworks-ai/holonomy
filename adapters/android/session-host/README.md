@@ -44,3 +44,15 @@ Completed command/reply artifacts form a bounded recent replay window; in-flight
 `control` carries only an operation name plus a bounded JSON value. Android never interprets network matching rules. Initial controls are delivered through the trusted runtime-thread seam after engine start and before the user entry module; later controls require the expected active generation.
 
 Output events use a monotonically increasing per-runtime sequence. Status replies include the retained sequence window so a controller can detect an expired cursor and resume from the first available event.
+
+The built-in Service uses `StoredSessionCommandHandler.withEventOwnedSnapshots(supervisor, store)` with
+`StoredSessionSupervisorEventSink` on the same store. The handler persists command/reply artifacts only; the event
+sink is the single writer of lifecycle state, results and the output journal. Use this pairing when assembling your own
+control host. The legacy two-argument handler still mirrors captured reply snapshots for integrations without an event
+sink; do not combine that mirroring mode with a writer of live snapshots on the same store.
+
+Durable state cursors reflect the last lifecycle snapshot. Use a fresh Status reply or the output journal for current
+output cursors; an output artifact may be absent until the first event, while an empty Status output is valid. Result
+artifacts retain the last terminal generation, so clients must compare `generation` after restart. Output persistence
+is serialized with sequence allocation; slow storage may delay control replies. This is an ordering guarantee, not a
+performance or disk-failure recovery guarantee.

@@ -102,6 +102,16 @@ describe('runtime event loop', () => {
     expect(events).toEqual(['tick:outer', 'tick:nested', 'promise', 'macro'])
   })
 
+  it('applies the existing callback budget at a next-tick checkpoint', () => {
+    const host = new VirtualHostEventLoopPort()
+    const loop = new RuntimeEventLoop(host, { maxCallbacksPerTurn: 2 })
+    const repeat = () => loop.enqueueNextTick(repeat)
+    loop.enqueueNextTick(repeat)
+    expect(() => loop.runNextTickCheckpoint()).toThrowError(EventLoopBudgetExceededError)
+    expect(host.terminations[0]).toMatchObject({ code: 'ERR_HOLONOMY_TASK_BUDGET_EXCEEDED' })
+    expect(loop.runNextTickCheckpoint()).toMatchObject({ status: 'shutdown', taskKind: null })
+  })
+
   it('uses virtual monotonic time and supports timeout and task cancellation', () => {
     const host = new VirtualHostEventLoopPort()
     const loop = new RuntimeEventLoop(host)

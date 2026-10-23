@@ -126,7 +126,7 @@ int holo_fuse_bridge_poll(struct holo_fuse_bridge *bridge, struct holo_process_t
     request_id = bridge->next_request_id++;
     if (request_id == 0) request_id = bridge->next_request_id++;
     process_id = holo_process_id_for_guest_pid(processes, (pid_t)input->pid);
-    *pending = (struct holo_fuse_pending){ 1, process_id, request_id, input->unique };
+    *pending = (struct holo_fuse_pending){ 1, process_id, request_id, input->unique, input->opcode };
     if (holo_write_frame(
         control_fd,
         HOLO_FILESYSTEM_REQUEST,
@@ -147,10 +147,16 @@ int holo_fuse_bridge_poll(struct holo_fuse_bridge *bridge, struct holo_process_t
 int holo_fuse_bridge_response(struct holo_fuse_bridge *bridge, const struct holo_frame *frame) {
     struct holo_fuse_pending *pending = find_pending(bridge, frame->request_id);
     const struct fuse_out_header *output;
+    uint32_t opcode;
+    ssize_t written;
     if (pending == NULL || pending->process_id != frame->process_id ||
         frame->payload_length < sizeof(*output)) return -1;
     output = (const struct fuse_out_header *)frame->payload;
     if (output->len != frame->payload_length || output->unique != pending->unique) return -1;
+    opcode = pending->opcode;
     memset(pending, 0, sizeof(*pending));
-    return write(bridge->fd, frame->payload, frame->payload_length) == (ssize_t)frame->payload_length ? 0 : -1;
+    written = write(bridge->fd, frame->payload, frame->payload_length);
+    if (written == (ssize_t)frame->payload_length) return 0;
+    /* A completed request may disappear before its INTERRUPT reply arrives. */
+    return opcode == FUSE_INTERRUPT && written < 0 && errno == ENOENT ? 0 : -1;
 }

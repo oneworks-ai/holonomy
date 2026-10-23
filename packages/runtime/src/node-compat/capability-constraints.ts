@@ -1,6 +1,8 @@
 export const BUFFER_CONSTRAINTS = [
   'Buffer is Uint8Array-based and does not depend on a Node global Buffer.',
   'allocUnsafe is intentionally zero-filled; no uninitialized memory is exposed.',
+  'alloc supports finite non-negative numeric sizes (fractional sizes truncate), numeric byte fill and repeating string/Uint8Array patterns; size validation precedes fill validation.',
+  'alloc string fill uses only utf8/utf-8, hex, base64 and base64url; empty string fills with zero, empty byte/decoded patterns reject for nonempty output. Other fill types reject without coercion; size zero ignores fill/encoding, and encoding is ignored for non-string fills.',
   'ArrayBuffer offset/length views, malformed UTF-8 replacement and numeric toString ranges match the tested Node subset.',
   'Base64 decoding ignores non-alphabet characters and stops at padding; its byteLength is Node raw-length estimation and may exceed decoded bytes.',
   'Hex decoding truncates at the first invalid pair or trailing nibble; its byteLength is floor(raw code units / 2).',
@@ -31,6 +33,7 @@ export const PROCESS_CONSTRAINTS = [
   'Uint8Array writes are copied at admission and provider failures expose only sanitized RuntimeNodeCoreError values.',
   'Each write is rejected before byte copying or provider invocation when its UTF-8 or binary size exceeds frozen maxStdioChunkBytes; the default is 1048576 bytes.',
   'Host adapters may inject a lower maxStdioChunkBytes transport limit.',
+  'process.nextTick uses the caller-owned Runtime Event Loop queue and retains callback and argument identity locally.',
   'Synchronous providers return boolean; asynchronous providers return Promise<boolean>, so Node stream backpressure compatibility is partial.',
   'Dangerous or meaningless process controls throw ERR_HOLONOMY_NOT_SUPPORTED.'
 ] as const

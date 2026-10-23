@@ -59,8 +59,13 @@ export class ControlDirectMutations {
         if (!PROCESS_TERMINAL_STATES.has(process.state)) {
           throw serviceError('service.conflict', 'Active Runtime process must be stopped before removal')
         }
+        if (process.cleanupPending === true) {
+          throw serviceError('service.conflict', 'Runtime process cleanup is still pending')
+        }
         await this.#runner.removeProcess(process)
-        return await this.#registry.removeProcess(id, expectedGeneration)
+        const removed = await this.#registry.removeProcess(id, expectedGeneration)
+        await this.#runner.finalizeRemovedProcess(process)
+        return removed
       }
     )
   }

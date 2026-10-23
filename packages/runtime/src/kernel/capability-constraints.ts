@@ -1,4 +1,6 @@
+import { canonicalFilesystemPrefixSegmentV1 } from '@holonomyjs/capability-fs/kernel/filesystem-path-segment'
 import { normalizeProcessCapabilityConstraintsV1 } from '@holonomyjs/capability-process/kernel/process-capability-constraints'
+import { normalizeStorageCapabilityConstraintsV1 } from '@holonomyjs/capability-storage/kernel/storage-capability-constraints'
 import { invalidPolicy } from './errors.js'
 import type { JsonValueV1 } from './json-types.js'
 import type { BuiltInCapabilityNameV1 } from './operation-types.js'
@@ -10,7 +12,7 @@ export type NormalizedCapabilityConstraintsV1 = Readonly<Record<string, JsonValu
 export const DEVICE_PRECISION_V1 = Object.freeze(['coarse', 'standard', 'exact'] as const)
 export const SYSTEM_PRECISION_V1 = Object.freeze(['redacted', 'coarse', 'exact'] as const)
 
-const FS_RIGHTS = ['create', 'delete', 'list', 'move', 'read', 'watch', 'write'] as const
+const FS_RIGHTS = ['chmod', 'create', 'delete', 'list', 'move', 'read', 'watch', 'write'] as const
 const NETWORK_LIMITS = [
   'maxChunkBytes',
   'maxConcurrentConnections',
@@ -36,7 +38,7 @@ const filesystem = (value: unknown): NormalizedCapabilityConstraintsV1 => {
   const roots = array(required(input, 'roots'), 1, 64).map(rootValue => {
     const root = exact(rootValue, ['pathPrefixSegments', 'rights', 'rootId', 'symlinks'])
     const pathPrefixSegments = array(required(root, 'pathPrefixSegments'), 0, 256)
-      .map(segment => identifier(segment, 255))
+      .map(canonicalFilesystemPrefixSegmentV1)
     return Object.freeze({
       pathPrefixSegments: Object.freeze(pathPrefixSegments),
       rights: stringSet(required(root, 'rights'), FS_RIGHTS, 1, FS_RIGHTS.length),
@@ -143,6 +145,9 @@ export const normalizeCapabilityConstraintsV1 = (
   if (name.startsWith('host.device.')) return device(value)
   if (name.startsWith('host.system.')) return system(value)
   if (name.startsWith('host.process.')) return normalizeProcessCapabilityConstraintsV1(name, value)
+  if (name === 'host.storage') {
+    return normalizeStorageCapabilityConstraintsV1(value) as unknown as NormalizedCapabilityConstraintsV1
+  }
   const input = exact(
     value,
     name === 'host.storage.credential'

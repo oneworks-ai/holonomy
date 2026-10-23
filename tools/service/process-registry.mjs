@@ -1,5 +1,8 @@
 /* eslint-disable max-lines -- Process transaction admissions stay colocated to preserve transition ownership. */
 
+// eslint-disable-next-line antfu/no-import-dist
+import { normalizeRuntimePluginBundles } from '../../dist/runtime/index.js'
+
 import { PROCESS_TERMINAL_STATES } from './constants.mjs'
 import { serviceError } from './errors.mjs'
 import { admitLaunchSnapshot } from './launch-admission.mjs'
@@ -23,9 +26,17 @@ export const admitProcessStart = async (context, input, idempotencyKey) => {
   const entryUrl = requireAbsoluteUrl(value.entryUrl, 'Runtime entry URL')
   const inspectorMode = requireEnum(value.inspectorMode ?? 'off', ['break', 'enabled', 'off'], 'Inspector mode')
   const isolation = requireEnum(value.isolation, ['isolatedProcess', 'runtime'], 'Runtime isolation')
-  const target = requireEnum(value.target, ['android', 'node'], 'Runtime target')
+  const target = requireEnum(value.target, ['android', 'node', 'native'], 'Runtime target')
   const launch = admitLaunchSnapshot(value.launch, { entryUrl, target })
-  const runtimePlugins = value.runtimePlugins == null ? undefined : cloneJson(value.runtimePlugins)
+  if (
+    target !== 'native' && Array.isArray(value.runtimePlugins) &&
+    value.runtimePlugins.some(bundle => bundle?.schemaVersion === 2)
+  ) {
+    throw serviceError('sandbox.capability_unsupported', 'Plugin source graphs require a Native target')
+  }
+  const runtimePlugins = value.runtimePlugins == null
+    ? undefined
+    : cloneJson(target === 'native' ? normalizeRuntimePluginBundles(value.runtimePlugins) : value.runtimePlugins)
   const sandbox = compileSandboxPolicy(value.sandboxPolicy)
   const fixture = value.fixture == null ? undefined : cloneJson(requireRecord(value.fixture, 'Fixture descriptor'))
   const capabilityRuntime = value.capabilityRuntime == null
@@ -50,6 +61,16 @@ export const admitProcessStart = async (context, input, idempotencyKey) => {
   const initialNetworkRuleSet = value.initialNetworkRuleSet == null
     ? undefined
     : assertSandboxNetworkRuleSet(sandbox.policy, admitNetworkRuleSet(value.initialNetworkRuleSet))
+  if (target === 'native') {
+    if (
+      isolation !== 'runtime' || fixture != null ||
+      initialNetworkRuleSet != null ||
+      Object.keys(launch.env ?? {}).length > 0 || !['run', 'test'].includes(launch.command) ||
+      sandbox.policy.network.access !== 'none' && capabilityRuntime == null
+    ) {
+      throw serviceError('sandbox.capability_unsupported', 'Native launch feature is not installed in this Service')
+    }
+  }
   const admittedInput = {
     ...(capabilityRuntime == null ? {} : { capabilityRuntime }),
     deviceId,

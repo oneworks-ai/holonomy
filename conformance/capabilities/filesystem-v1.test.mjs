@@ -29,13 +29,68 @@ const callbackError = start =>
     })
   })
 
+// The event is the readiness evidence; the deadline only bounds failure.
+// Repeated writes stimulate the watcher without assuming when the OS is ready.
+const watchDeadline = async (label, run, details = () => ({})) => {
+  let timer
+  try {
+    return await Promise.race([
+      Promise.resolve().then(run),
+      new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label}: ${JSON.stringify(details())}`)), 2000)
+      })
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+let watchSequence = 0
+const watchEvent = async (directory, subscribe) => {
+  const filename = `probe-${Date.now()}-${++watchSequence}.txt`
+  const target = `${directory}/${filename}`
+  let lastEvent
+  let writes = 0
+  let writer
+  let dispose
+  try {
+    return await watchDeadline(
+      'Filesystem watch did not deliver the target event',
+      () =>
+        new Promise((resolve, reject) => {
+          dispose = subscribe(
+            (type, observedName) => {
+              lastEvent = { filename: observedName, type }
+              // Node permits a missing watch filename. A directory-level
+              // polling fallback may only report that something changed.
+              if (observedName !== filename && (observedName !== null || !pathExists(target))) return false
+              resolve(lastEvent)
+              return true
+            },
+            reject,
+            filename
+          )
+          const write = () => {
+            try {
+              fs.writeFileSync(target, `watch-${writes++}`)
+            } catch (error) {
+              reject(error)
+            }
+          }
+          writer = setInterval(write, 250)
+          write()
+        }),
+      () => ({ expectedFilename: filename, lastEvent, writes })
+    )
+  } finally {
+    clearInterval(writer)
+    await dispose?.()
+    if (pathExists(target)) fs.unlinkSync(target)
+  }
+}
+
 const unsupportedFsExports = [
-  'access',
-  'accessSync',
   'appendFile',
   'appendFileSync',
-  'chmod',
-  'chmodSync',
   'chown',
   'chownSync',
   'copyFile',
@@ -44,20 +99,10 @@ const unsupportedFsExports = [
   'cpSync',
   'createReadStream',
   'createWriteStream',
-  'fchmod',
-  'fchmodSync',
   'fchown',
   'fchownSync',
-  'fdatasync',
-  'fdatasyncSync',
   'fstat',
   'fstatSync',
-  'fsync',
-  'fsyncSync',
-  'ftruncate',
-  'ftruncateSync',
-  'futimes',
-  'futimesSync',
   'lchmod',
   'lchmodSync',
   'lchown',
@@ -85,10 +130,6 @@ const unsupportedFsExports = [
   'rmdirSync',
   'symlink',
   'symlinkSync',
-  'truncate',
-  'truncateSync',
-  'utimes',
-  'utimesSync',
   'write',
   'writeSync',
   'writev',
@@ -96,9 +137,7 @@ const unsupportedFsExports = [
 ]
 
 const unsupportedPromiseFsExports = [
-  'access',
   'appendFile',
-  'chmod',
   'chown',
   'copyFile',
   'cp',
@@ -112,9 +151,7 @@ const unsupportedPromiseFsExports = [
   'realpath',
   'rm',
   'rmdir',
-  'symlink',
-  'truncate',
-  'utimes'
+  'symlink'
 ]
 
 describe('Filesystem Provider v1', () => {
@@ -221,15 +258,25 @@ describe('Filesystem Provider v1', () => {
     await fsp.rename(`${root}/promise/value.txt`, `${root}/promise/moved.txt`)
     assert.equal((await fsp.stat(`${root}/promise/moved.txt`)).isFile(), true)
     assert.equal(await fsp.readFile(`${root}/promise/moved.txt`, 'utf8'), 'after')
-    await new Promise(resolve => setTimeout(resolve, 50))
-    const iterator = fsp.watch(`${root}/promise`, { maxQueuedEvents: 1, persistent: false })
-    const next = iterator.next()
-    setTimeout(() => fs.writeFileSync(`${root}/promise/watched.txt`, 'watch'), 20)
-    assert.equal((await next).done, false)
-    assert.equal(iterator.maxQueuedEvents, 1)
-    assert.equal((await iterator.return()).done, true)
+    const event = await watchEvent(`${root}/promise`, (accept, reject) => {
+      const iterator = fsp.watch(`${root}/promise`, { maxQueuedEvents: 1, persistent: false })
+      const read = async () => {
+        try {
+          assert.equal(iterator.maxQueuedEvents, 1)
+          while (true) {
+            const next = await iterator.next()
+            assert.equal(next.done, false)
+            if (accept(next.value.eventType, next.value.filename)) return
+          }
+        } catch (error) {
+          reject(error)
+        }
+      }
+      void read()
+      return () => iterator.return()
+    })
+    assert.ok(['change', 'rename'].includes(event.type))
     await fsp.unlink(`${root}/promise/moved.txt`)
-    await fsp.unlink(`${root}/promise/watched.txt`)
   })
 
   it('enforces Abort, handle, byte, atomic and unsupported boundaries', async () => {
@@ -272,6 +319,13 @@ describe('Filesystem Provider v1', () => {
       error => error?.code === 'ABORT_ERR' && error?.name === 'AbortError'
     )
     assert.throws(() => fs.readFileSync(`${root}/aborted.txt`), error => error?.code === 'ENOENT')
+    for (
+      const member of ['access', 'utimes', 'futimes', 'truncate', 'ftruncate', 'fsync', 'fdatasync', 'chmod', 'fchmod']
+    ) {
+      assert.equal(typeof fs[member], 'function')
+      assert.equal(typeof fs[`${member}Sync`], 'function')
+    }
+    for (const member of ['access', 'utimes', 'truncate']) assert.equal(typeof fsp[member], 'function')
     assert.deepEqual(
       unsupportedFsExports.filter(name => typeof fs[name] !== 'undefined'),
       []
@@ -285,30 +339,63 @@ describe('Filesystem Provider v1', () => {
 
   it('delivers callback watcher events and exposes the admitted queue limit', async () => {
     fs.mkdirSync(`${root}/watch`, { recursive: true })
-    const event = await new Promise((resolve, reject) => {
+    const event = await watchEvent(`${root}/watch`, (accept, reject, expectedFilename) => {
       const watcher = fs.watch(`${root}/watch`, { maxQueuedEvents: 1, persistent: false }, (type, filename) => {
-        watcher.close()
-        resolve({ filename, maxQueuedEvents: watcher.maxQueuedEvents, type })
+        if (filename === expectedFilename || filename === null) {
+          try {
+            watcher.close()
+          } catch (error) {
+            reject(error)
+            return
+          }
+        }
+        accept(type, filename)
       })
       watcher.on('error', reject)
-      setTimeout(() => fs.writeFileSync(`${root}/watch/value.txt`, 'watch'), 20)
+      try {
+        assert.equal(watcher.maxQueuedEvents, 1)
+      } catch (error) {
+        watcher.close()
+        throw error
+      }
+      return () => watcher.close()
     })
-    assert.equal(event.filename, 'value.txt', JSON.stringify(event))
-    assert.equal(event.maxQueuedEvents, 1)
     assert.ok(['change', 'rename'].includes(event.type))
-    fs.unlinkSync(`${root}/watch/value.txt`)
   })
 
-  it('terminates a bounded Promise watcher on overflow and rejects subsequent reads', async () => {
-    fs.mkdirSync(`${root}/overflow`, { recursive: true })
-    const iterator = fsp.watch(`${root}/overflow`, { maxQueuedEvents: 1, persistent: false })
-    await new Promise(resolve => setTimeout(resolve, 50))
-    for (const name of ['one.txt', 'two.txt', 'three.txt']) {
-      fs.writeFileSync(`${root}/overflow/${name}`, name)
+  // Queue overflow is deterministic at the controlled Guest resource-event seam:
+  // __tests__/js-runtime-kernel/capability-runtime/guest-fs-watch.spec.ts.
+  // OS callback counts/timing cannot establish that a queue has overflowed.
+  it('settles pending and subsequent Promise watcher reads on return and abort', async () => {
+    fs.mkdirSync(`${root}/terminal`, { recursive: true })
+    const iterator = fsp.watch(`${root}/terminal`, { maxQueuedEvents: 1, persistent: false })
+    try {
+      await watchDeadline('Filesystem watch return did not settle', async () => {
+        const pending = iterator.next()
+        assert.equal((await iterator.return()).done, true)
+        assert.equal((await pending).done, true)
+        assert.equal((await iterator.next()).done, true)
+        assert.equal((await iterator.return()).done, true)
+      })
+    } finally {
+      await iterator.return()
     }
-    await new Promise(resolve => setTimeout(resolve, 100))
-    await assert.rejects(iterator.next(), error => error?.code === 'ENOSPC')
-    await assert.rejects(iterator.next(), error => error?.code === 'ENOSPC')
-    for (const name of ['one.txt', 'two.txt', 'three.txt']) fs.unlinkSync(`${root}/overflow/${name}`)
+    const controller = new AbortController()
+    const aborted = fsp.watch(`${root}/terminal`, {
+      maxQueuedEvents: 1,
+      persistent: false,
+      signal: controller.signal
+    })
+    try {
+      await watchDeadline('Filesystem watch abort did not settle', async () => {
+        const pending = aborted.next()
+        controller.abort()
+        const isAbort = error => error?.code === 'ABORT_ERR' && error?.name === 'AbortError'
+        await assert.rejects(pending, isAbort)
+        await assert.rejects(aborted.next(), isAbort)
+      })
+    } finally {
+      await aborted.return()
+    }
   })
 })

@@ -1,6 +1,7 @@
 /* eslint-disable antfu/no-top-level-await, max-lines -- This generated bootstrap is shipped as one module. */
 
 import {
+  createCapabilityCallbackDispatcherV1,
   createCapabilityModuleOverridesV1,
   createCapabilityNetworkHooksV1
 } from './modules/capability-runtime/guest-facades.js'
@@ -23,16 +24,23 @@ globalThis.TextDecoder = RuntimeTextDecoder
 const eventLoop = new RuntimeEventLoop({
   checkpointMicrotasks() {},
   now: () => host.now(),
-  requestWakeup: deadline => host.requestWakeup(deadline),
-  terminate: reason => host.terminate(JSON.stringify(reason))
+  requestWakeup: (deadline, phase) => host.requestWakeup(deadline, phase),
+  terminate: reason => host.terminate(reason.kind === 'error' ? 'runtime.callback_error' : 'runtime.terminated')
 })
 host.registerTurn(() => eventLoop.runTurn())
+host.registerNextTickCheckpoint(() => eventLoop.runNextTickCheckpoint().taskKind === 'next-tick')
 
 const timers = createRuntimeTimers({
-  cancel: timerId => host.cancelTimer(timerId),
-  schedule: (delay, interval) => host.scheduleTimer(delay, interval)
+  cancel: timerId => eventLoop.clearTimer(timerId),
+  schedule: (delay, interval) => {
+    const id = eventLoop.setTimer(
+      () => timers.fire(id),
+      delay,
+      interval === undefined ? {} : { intervalMs: Math.max(1, interval) }
+    )
+    return id
+  }
 })
-host.registerTimerFire(timerId => timers.fire(timerId))
 
 const runtimeConsole = createRuntimeConsole({
   write: (level, message) => host.writeOutput(level, message)
@@ -96,7 +104,12 @@ const readModule = canonicalUrl => {
 
 const nodeCore = {
   ...configuration.nodeCore,
-  processControl: { exit: code => host.terminate(`process.exit(${String(code)})`) },
+  processControl: {
+    exit: code => host.terminate(`process.exit(${String(code)})`),
+    nextTick: (callback, ...args) => {
+      eventLoop.enqueueNextTick(() => Reflect.apply(callback, undefined, args))
+    }
+  },
   stdio: { write: (stream, chunk) => host.writeOutput(stream, String(chunk)) },
   webStandards: { URL: RuntimeURL, URLSearchParams: RuntimeURLSearchParams }
 }
@@ -110,6 +123,7 @@ let nextCapabilityCancellationId = 0
 const capabilityBridge = capabilityConfiguration == null
   ? undefined
   : Object.freeze({
+    enqueueCallback: createCapabilityCallbackDispatcherV1(eventLoop),
     invoke: (requestJson, signal) =>
       new Promise((resolve, reject) => {
         const cancellationId = signal == null ? null : `capability-abort-${++nextCapabilityCancellationId}`
@@ -201,6 +215,7 @@ const runtime = await createHolonomyRuntime({
   nodeCore,
   ...(capabilityModules == null ? {} : { moduleOverrides: capabilityModules }),
   testPlatform: 'node',
+  testPromiseBrand: value => host.isPromise(value),
   timers
 })
 

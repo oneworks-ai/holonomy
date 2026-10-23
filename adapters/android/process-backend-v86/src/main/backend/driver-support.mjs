@@ -105,11 +105,18 @@
     return new TextDecoder().decode(payload.slice(4, 4 + length))
   }
   const environmentConfigurationPayload = input => {
+    if (
+      !Number.isInteger(input.maxTotalProcesses) || input.maxTotalProcesses < 1 ||
+      input.maxTotalProcesses > 100_000 || !Number.isInteger(input.maxProcessTreeDepth) ||
+      input.maxProcessTreeDepth < 1 || input.maxProcessTreeDepth > 32
+    ) throw new TypeError('Invalid v86 Process tree limits')
     const hosts = [...(input.hosts ?? [])].sort((left, right) => left.hostname.localeCompare(right.hostname))
     return join([
-      Uint8Array.of(1, 0),
+      Uint8Array.of(2, 0),
       u16(hosts.length),
       u32(input.execGateTimeoutMs),
+      u32(input.maxTotalProcesses),
+      u32(input.maxProcessTreeDepth),
       ...hosts.flatMap(host => [string(host.address), string(host.hostname)])
     ])
   }

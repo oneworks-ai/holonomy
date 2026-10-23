@@ -52,10 +52,16 @@
           "const": "behavioralProbe"
         },
         "metadata": {
-          "const": "profileStaticUnsupported"
+          "enum": [
+            "behavioralProbe",
+            "profileStaticUnsupported"
+          ]
         },
         "perCompilationCallback": {
-          "const": "profileStaticUnsupported"
+          "enum": [
+            "behavioralProbe",
+            "profileStaticUnsupported"
+          ]
         }
       },
       "required": [

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "sandboxPolicy": {
+    "schemaVersion": 2,
+    "codeGeneration": {
+      "strings": {
+        "access": "controlled",
+        "maxSourceBytes": 65536,
+        "maxOperations": 32,
+        "decisionTimeoutMs": 1000
+      },
+      "wasm": { "access": "none" },
+      "dynamicImport": { "access": "none" }
+    }
+  },
+  "plugins": [{ "id": "ajv-codegen-gate", "use": "./gate.mjs" }]
+}

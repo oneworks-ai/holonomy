@@ -14,6 +14,7 @@ export const composeRuntimeModuleLoader = (
   if (input === undefined) return undefined
   const item = snapshotRecord(input, [
     'allowJsonModules',
+    'captureDynamicImports',
     'integrity',
     'limits',
     'readModule',

@@ -91,12 +91,14 @@ The CLI configuration is:
 
 The CLI resolves, validates, and builds Bundles from the workspace that owns the configuration, then submits an immutable resource graph with no Host paths to the Service. An Android Host can prepare the same Bundle from APK assets or Host-managed storage. The Service and Runtime never read back into the caller's filesystem.
 
+Both `run` and `test` can statically install plugins before entry with `--config holo.config.json`; absolute sources require an explicit `--plugin-root`. Tests never replace their plugin graph mid-suite, and `--watch` remains run-only. See [Managed Native Engine Gates](../../../../adapters/desktop/managed-engine-gates.md) for controlled Wasm/dynamic-import tests on the standalone Rust/V8 target; each platform still requires the relevant installed capability.
+
 ## `watch` mode
 
 The Node/Desktop command is:
 
 ```bash
-holonomy run app.mjs --config holo.config.json --watch
+holonomy run app.mjs --target node --config holo.config.json --watch
 ```
 
 Whenever the configuration changes, the CLI watcher reads the complete file again. A candidate Bundle reaches the Runtime through the Service revision CAS only after JSON parsing, config Schema, plugin Schema, source, and integrity validation all succeed.

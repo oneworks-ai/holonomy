@@ -134,6 +134,8 @@ export class EventEmitter {
   }
 }
 
+Object.defineProperty(EventEmitter, 'EventEmitter', { value: EventEmitter })
+
 export interface EventsSyntheticModule {
   readonly default: typeof EventEmitter
   readonly EventEmitter: typeof EventEmitter

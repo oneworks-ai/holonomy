@@ -1,4 +1,6 @@
+import { capabilityProviderContextV1 } from './broker-host-bindings.js'
 import type {
+  AdmittedProviderResolutionV1,
   CapabilityProviderResolutionAdmitterV1,
   CapabilityProviderResolutionPlanV1
 } from './broker-resolution-types.js'
@@ -37,60 +39,89 @@ const requests = <T>(
   return plan.requests
 }
 
-const disposeSync = <T>(input: ProviderInvocationInputV1<T>, plan: CapabilityProviderResolutionPlanV1<T>) => {
+const disposeSync = <T>(
+  input: ProviderInvocationInputV1<T>,
+  plan: CapabilityProviderResolutionPlanV1<T>,
+  observeLate?: (task: Promise<unknown>, terminal: boolean) => void
+) => {
   const value = plan.dispose?.()
-  if (value instanceof Promise) return fail(input, 'runtime.async_required')
+  if (value instanceof Promise) {
+    observeLate?.(value, false)
+    return fail(input, 'runtime.async_required')
+  }
 }
 
 export const invokeCapabilityProviderSyncV1 = <THostContext>(
-  input: ProviderInvocationInputV1<THostContext>
+  input: ProviderInvocationInputV1<THostContext>,
+  observeLate?: (task: Promise<unknown>, terminal: boolean) => void
 ): CapabilityProviderTerminalV1 => {
-  const candidate = input.provider.preflight?.(input.context, input.authority)
-  if (candidate instanceof Promise) return fail(input, 'runtime.async_required')
+  const context = capabilityProviderContextV1(input.context)
+  const candidate = input.provider.preflight?.(context, input.authority)
+  if (candidate instanceof Promise) {
+    observeLate?.(candidate, false)
+    return fail(input, 'runtime.async_required')
+  }
   if (candidate == null) {
-    const terminal = input.provider.invoke(input.context, input.authority)
-    if (terminal instanceof Promise) return fail(input, 'runtime.async_required')
+    const terminal = input.provider.invoke(context, input.authority)
+    if (terminal instanceof Promise) {
+      observeLate?.(terminal, true)
+      return fail(input, 'runtime.async_required')
+    }
     return terminal
   }
   const plan = candidate
-  const admitted = requests(input, plan).map(request => input.resolution.admitSync(request))
+  const admitted: AdmittedProviderResolutionV1<THostContext>[] = []
   try {
+    for (const request of requests(input, plan)) admitted.push(input.resolution.admitSync(request))
     for (let index = 0; index < admitted.length; index += 1) {
       const evidence = plan.requests[index]!.verify()
-      if (evidence instanceof Promise) return fail(input, 'runtime.async_required')
+      if (evidence instanceof Promise) {
+        observeLate?.(evidence, false)
+        return fail(input, 'runtime.async_required')
+      }
       admitted[index]!.consume(evidence)
     }
     const terminal = plan.execute(
-      admitted[0]!.context,
+      capabilityProviderContextV1(admitted[0]!.context),
       admitted.map(item => item.authority),
       admitted.map(item => item.token)
     )
-    if (terminal instanceof Promise) return fail(input, 'runtime.async_required')
+    if (terminal instanceof Promise) {
+      observeLate?.(terminal, true)
+      return fail(input, 'runtime.async_required')
+    }
     return terminal
   } finally {
-    for (const item of admitted) item.dispose()
-    disposeSync(input, plan)
+    try {
+      for (const item of admitted) item.dispose()
+    } finally {
+      disposeSync(input, plan, observeLate)
+    }
   }
 }
 
 export const invokeCapabilityProviderAsyncV1 = async <THostContext>(
   input: ProviderInvocationInputV1<THostContext>
 ): Promise<CapabilityProviderTerminalV1> => {
-  const plan = await input.provider.preflight?.(input.context, input.authority)
-  if (plan == null) return await input.provider.invoke(input.context, input.authority)
-  const admitted = []
-  for (const request of requests(input, plan)) admitted.push(await input.resolution.admit(request))
+  const context = capabilityProviderContextV1(input.context)
+  const plan = await input.provider.preflight?.(context, input.authority)
+  if (plan == null) return await input.provider.invoke(context, input.authority)
+  const admitted: AdmittedProviderResolutionV1<THostContext>[] = []
   try {
+    for (const request of requests(input, plan)) admitted.push(await input.resolution.admit(request))
     for (let index = 0; index < admitted.length; index += 1) {
       admitted[index]!.consume(await plan.requests[index]!.verify())
     }
     return await plan.execute(
-      admitted[0]!.context,
+      capabilityProviderContextV1(admitted[0]!.context),
       admitted.map(item => item.authority),
       admitted.map(item => item.token)
     )
   } finally {
-    for (const item of admitted) item.dispose()
-    await plan.dispose?.()
+    try {
+      for (const item of admitted) item.dispose()
+    } finally {
+      await plan.dispose?.()
+    }
   }
 }

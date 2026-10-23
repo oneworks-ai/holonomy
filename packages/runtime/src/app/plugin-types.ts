@@ -1,4 +1,5 @@
 import type { JsonValueV1 } from '@holonomyjs/runtime/kernel/json-types'
+import type { ModuleSourceClosure } from '../module-loader/types.js'
 
 export interface RuntimePluginDefinitionV1 {
   readonly bundleSha256: string
@@ -15,10 +16,21 @@ export interface RuntimePluginFileV1 {
 }
 
 export interface RuntimePluginBundleV1 extends RuntimePluginDefinitionV1 {
+  readonly configSchema?: JsonValueV1
   readonly files: readonly RuntimePluginFileV1[]
   readonly rootUrl: `holo-plugins:///${string}/`
   readonly schemaVersion: 1
 }
+
+/** An immutable Native Host source closure, including package metadata and aliases. */
+export interface RuntimePluginBundleV2 extends RuntimePluginDefinitionV1 {
+  readonly configSchema?: JsonValueV1
+  readonly rootUrl: `holo-plugins:///${string}/`
+  readonly schemaVersion: 2
+  readonly sourceClosure: ModuleSourceClosure
+}
+
+export type RuntimePluginBundle = RuntimePluginBundleV1 | RuntimePluginBundleV2
 
 export interface RuntimePluginGraphSnapshotV1 {
   readonly closed: boolean

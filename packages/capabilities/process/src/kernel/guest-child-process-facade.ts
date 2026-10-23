@@ -1,13 +1,15 @@
-import type { CapabilityGuestBridgeV1 } from '@holonomyjs/runtime/kernel/guest-facade-support'
+import type {
+  CapabilityGuestBridgeV1,
+  CapabilityGuestConfigurationV1
+} from '@holonomyjs/runtime/kernel/guest-facade-support'
 import {
   createCapabilityRequestV1,
   createCapabilitySyntheticBindingV1,
   readCapabilityTerminalV1
 } from '@holonomyjs/runtime/kernel/guest-facade-support'
 import type { JsonValueV1 } from '@holonomyjs/runtime/kernel/json-types'
-import { attachChildProcessAbortV1, prepareChildProcessAbortSignalV1 } from './guest-child-process-abort.js'
+import { prepareChildProcessAbortSignalV1 } from './guest-child-process-abort.js'
 import { createChildProcessResourceFactoryV1 } from './guest-child-process-resources.js'
-import type { ChildProcessEnvironmentConfigurationV1 } from './guest-child-process-support.js'
 import {
   childProcessRecordV1,
   collectChildProcessOutputV1,
@@ -20,10 +22,10 @@ import {
 
 export const createCapabilityChildProcessOverrideV1 = (
   bridge: CapabilityGuestBridgeV1,
-  configuration: Readonly<{
-    processEnvironment?: ChildProcessEnvironmentConfigurationV1
-    processShellExecutableId?: string
-  }>
+  configuration: Pick<
+    CapabilityGuestConfigurationV1,
+    'processEnvironment' | 'processShellExecutableId' | 'processControl'
+  >
 ) => {
   if (bridge.invokeImmediate == null) return undefined
   const immediate = (member: string, args: JsonValueV1, mode: 'callback' | 'sync' = 'callback') =>
@@ -34,7 +36,11 @@ export const createCapabilityChildProcessOverrideV1 = (
     readCapabilityTerminalV1(
       bridge.invokeSync(createCapabilityRequestV1('node:child_process', member, 'sync', args))
     )
-  const child = createChildProcessResourceFactoryV1(bridge)
+  const processControl = configuration.processControl
+  const child = createChildProcessResourceFactoryV1(
+    bridge,
+    processControl?.nextTick == null ? undefined : callback => processControl.nextTick?.(callback)
+  )
   const spawn = (executableId: unknown, args?: unknown, options?: unknown) => {
     if (typeof executableId !== 'string') return invalidChildProcessValueV1('executableId must be a string')
     const actualArgs = Array.isArray(args) || args === undefined ? snapshotChildProcessArgsV1(args) : []
@@ -49,23 +55,25 @@ export const createCapabilityChildProcessOverrideV1 = (
       optionsSnapshot.shellExecutableId = configuration.processShellExecutableId
     }
     const signal = prepareChildProcessAbortSignalV1(childProcessRecordV1(actualOptions ?? {}).signal)
-    const resource = child(immediate(
-      shell ? 'spawnShell' : 'spawn',
-      shell
-        ? {
-          command: [executableId, ...actualArgs].map(shellQuoteV1).join(' '),
-          environmentScope: snapshot.environmentScope,
-          options: optionsSnapshot
-        }
-        : {
-          args: actualArgs,
-          environmentScope: snapshot.environmentScope,
-          executableId,
-          options: optionsSnapshot
-        },
-      'sync'
-    )) as Record<string, unknown>
-    attachChildProcessAbortV1(signal, resource)
+    const resource = child(
+      immediate(
+        shell ? 'spawnShell' : 'spawn',
+        shell
+          ? {
+            command: [executableId, ...actualArgs].map(shellQuoteV1).join(' '),
+            environmentScope: snapshot.environmentScope,
+            options: optionsSnapshot
+          }
+          : {
+            args: actualArgs,
+            environmentScope: snapshot.environmentScope,
+            executableId,
+            options: optionsSnapshot
+          },
+        'sync'
+      ),
+      signal
+    ) as Record<string, unknown>
     return resource
   }
   const execFile = (executableId: unknown, args?: unknown, options?: unknown, done?: unknown) => {
@@ -81,19 +89,20 @@ export const createCapabilityChildProcessOverrideV1 = (
     const accepted = optionalChildProcessCallbackV1(callbackValue)
     const snapshot = snapshotChildProcessOptionsV1(actualOptions, false, true, configuration.processEnvironment)
     const signal = prepareChildProcessAbortSignalV1(childProcessRecordV1(actualOptions ?? {}).signal)
-    const resource = child(immediate('execFile', {
-      args: snapshotChildProcessArgsV1(actualArgs),
-      environmentScope: snapshot.environmentScope,
-      executableId,
-      options: snapshot.options
-    })) as Record<string, unknown>
-    attachChildProcessAbortV1(signal, resource)
+    const resource = child(
+      immediate('execFile', {
+        args: snapshotChildProcessArgsV1(actualArgs),
+        environmentScope: snapshot.environmentScope,
+        executableId,
+        options: snapshot.options
+      }),
+      signal
+    ) as Record<string, unknown>
     if (accepted != null) {
       collectChildProcessOutputV1(
         resource,
         childProcessRecordV1(actualOptions ?? {}).encoding,
-        accepted,
-        signal
+        accepted
       )
     }
     return resource
@@ -111,18 +120,19 @@ export const createCapabilityChildProcessOverrideV1 = (
     const optionsSnapshot = snapshot.options as Record<string, JsonValueV1>
     optionsSnapshot.shellExecutableId ??= configuration.processShellExecutableId
     const signal = prepareChildProcessAbortSignalV1(childProcessRecordV1(actualOptions).signal)
-    const resource = child(immediate('exec', {
-      command,
-      environmentScope: snapshot.environmentScope,
-      options: optionsSnapshot
-    })) as Record<string, unknown>
-    attachChildProcessAbortV1(signal, resource)
+    const resource = child(
+      immediate('exec', {
+        command,
+        environmentScope: snapshot.environmentScope,
+        options: optionsSnapshot
+      }),
+      signal
+    ) as Record<string, unknown>
     if (accepted != null) {
       collectChildProcessOutputV1(
         resource,
         childProcessRecordV1(actualOptions).encoding,
-        accepted,
-        signal
+        accepted
       )
     }
     return resource

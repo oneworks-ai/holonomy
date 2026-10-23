@@ -4,20 +4,20 @@
     "callsite": "unavailable",
     "entryDetail": "unavailable",
     "origin": "unavailable",
-    "source": "unavailable"
+    "source": "available"
   },
   "provenance": {
     "generationLevel": "behavioralProbe",
-    "metadata": "profileStaticUnsupported",
-    "perCompilationCallback": "profileStaticUnsupported"
+    "metadata": "behavioralProbe",
+    "perCompilationCallback": "behavioralProbe"
   },
   "schemaVersion": 1,
   "strings": {
     "generationLevelDeny": true,
-    "perCompilationCallback": false
+    "perCompilationCallback": true
   },
   "wasm": {
-    "generationLevelDeny": false,
-    "perCompilationCallback": false
+    "generationLevelDeny": true,
+    "perCompilationCallback": true
   }
 }

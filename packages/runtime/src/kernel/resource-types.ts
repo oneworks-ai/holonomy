@@ -1,3 +1,4 @@
+import type { StorageKvResourceV1, StorageSqlResourceV1 } from '@holonomyjs/capability-storage/kernel/storage-resources'
 import type { DeviceOperationV1 } from './registry-types.js'
 
 export type CanonicalResourceKindV1 =
@@ -9,6 +10,8 @@ export type CanonicalResourceKindV1 =
   | 'processInstance'
   | 'processNetworkEndpoint'
   | 'systemField'
+  | 'storageKv'
+  | 'storageSql'
 
 export interface CanonicalResourceBaseV1 {
   readonly display: Readonly<{ label: string }>
@@ -102,6 +105,8 @@ export type CanonicalResourceV1 =
   | ProcessInstanceResourceV1
   | ProcessNetworkEndpointResourceV1
   | SystemInformationFieldResourceV1
+  | StorageKvResourceV1
+  | StorageSqlResourceV1
 
 export interface InvocationResourceBindingV1 {
   readonly generation: number

@@ -84,6 +84,13 @@
     "version": 1
   },
   {
+    "constraintKind": "storage",
+    "constraintSchemaId": "StorageCapabilityConstraintsV1",
+    "name": "host.storage",
+    "providerModule": "host.storage",
+    "version": 1
+  },
+  {
     "constraintKind": "credential",
     "constraintSchemaId": "CredentialCapabilityConstraintsV1",
     "name": "host.storage.credential",

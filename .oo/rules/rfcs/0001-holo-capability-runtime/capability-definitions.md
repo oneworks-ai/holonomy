@@ -21,6 +21,7 @@ type BuiltInCapabilityNameV1 =
   | 'host.system.process-identity'
   | 'host.diagnostics.source.read'
   | 'host.storage.credential'
+  | 'host.storage'
   | 'host.process.execute'
   | 'host.process.shell'
   | 'host.process.signal'
@@ -83,6 +84,8 @@ interface CredentialCapabilityConstraintsV1 {
 
 - 集合字段 canonical sort/dedupe；available 满足 required 当且仅当 available 是 required 的 superset。
 - path prefix 按 segment 比较；available prefix 必须等于或是 required 的祖先。相同 root 的 meet 取更窄 prefix、rights 交集。
+- FS `chmod`是独立集合成员；与其他rights一样做集合包含/交集，不能把write扩写为chmod。已有FD在metadata.chmod中只提供对象引用，操作仍选择新鲜的chmod capability；不从数据open权推导元数据修改权。
+- FS `pathPrefixSegments` 使用 canonical URI-encoded 文件名段而非 identifier：允许 `.git`、前导标点与规范 percent-encoded UTF-8；拒绝空段、`.`/`..`、NUL、分隔符、非规范 percent 与无效 UTF-8。每段 decoded UTF-8 最多255 bytes（encoded 最多765 ASCII bytes），序列最多256段；rootId仍遵守identifier。Schema与normalize必须同义，不能把缺失的隐藏文件误判为配置错误。
 - numeric limit 表示最大允许量；available 满足 required 当 `required <= available`，meet 取较小值。
 - origins 必须是 canonical origin exact set；schemes 是集合；private-network 用 `false < true`，meet 用 AND。
 - Network mode：`mockOnly` 与 `restricted` 是不同 capability definition，不相互满足。real Provider 永不消费 mock binding。

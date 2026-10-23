@@ -1,0 +1,20 @@
+[package]
+name = "holonomy-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "holo"
+path = "src/main.rs"
+
+[dependencies]
+holonomy-desktop-v8 = { path = "../../adapters/desktop/v8-host" }
+holonomy-desktop-host = { path = "../../adapters/desktop/host-core" }
+serde_json.workspace = true
+libc = "0.2"
+
+[dev-dependencies]
+sha2.workspace = true
+rcgen = "0.14"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }

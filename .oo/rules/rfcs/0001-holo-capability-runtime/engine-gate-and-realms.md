@@ -88,22 +88,26 @@ captured → policyChecked → waitingHost → allowed | denied | cancelled | ti
 
 ## F.3 完整入口矩阵
 
-| 入口                              | Gate operation                | 精确信息来源                                   | v1                     |
-| --------------------------------- | ----------------------------- | ---------------------------------------------- | ---------------------- |
-| direct/indirect eval              | runtime.code.generate.strings | V8 无法区分，detail unavailable                | controlled coarse Gate |
-| Function constructors 四类        | runtime.code.generate.strings | wrapper detail非权威/可无                      | controlled coarse Gate |
-| Wasm Module/compile/instantiate   | runtime.code.generate.wasm    | 独立 Wasm callback                             | controlled             |
-| Wasm streaming                    | runtime.code.generate.wasm    | Network bytes+Wasm callback                    | controlled             |
-| dynamic import                    | runtime.module.import→strings | Loader exact detail+最终coarse Gate            | controlled             |
-| CDP evaluate/compile/callFunction | runtime.code.generate.strings | Inspector Policy exact command+最终coarse Gate | controlled             |
-| Debugger.setScriptSource          | runtime.code.generate.strings | Inspector Policy                               | default deny           |
-| node:vm/worker_threads            | N/A                           | module/global不存在                            | unreachable            |
-| Worker/Worklet/ShadowRealm        | N/A                           | global不存在                                   | unreachable            |
-| module._compile/createRequire     | N/A                           | native loader不可达                            | unreachable            |
-| process.binding/dlopen/addon      | N/A                           | native入口不可达                               | unreachable            |
-| data/blob/file import             | N/A                           | Loader scheme/root固定拒绝                     | deny                   |
+| 入口                              | Gate operation                | 精确信息来源                            | v1                     |
+| --------------------------------- | ----------------------------- | --------------------------------------- | ---------------------- |
+| direct/indirect eval              | runtime.code.generate.strings | V8 无法区分，detail unavailable         | controlled coarse Gate |
+| Function constructors 四类        | runtime.code.generate.strings | wrapper detail非权威/可无               | controlled coarse Gate |
+| Wasm Module/compile/instantiate   | runtime.code.generate.wasm    | 独立 Wasm callback                      | controlled             |
+| Wasm streaming                    | runtime.code.generate.wasm    | Network bytes+Wasm callback             | controlled             |
+| dynamic import                    | runtime.module.import         | Loader解析目标与源码后的exact Gate      | controlled             |
+| CDP evaluate/compile/callFunction | runtime.code.generate.strings | 受信Inspector proxy的exact command Gate | controlled             |
+| Debugger.setScriptSource          | runtime.code.generate.strings | Inspector Policy                        | default deny           |
+| node:vm/worker_threads            | N/A                           | module/global不存在                     | unreachable            |
+| Worker/Worklet/ShadowRealm        | N/A                           | global不存在                            | unreachable            |
+| module._compile/createRequire     | N/A                           | native loader不可达                     | unreachable            |
+| process.binding/dlopen/addon      | N/A                           | native入口不可达                        | unreachable            |
+| data/blob/file import             | N/A                           | Loader scheme/root固定拒绝              | deny                   |
 
 未知代码生成或 Realm creator fail closed。v1 没有可显式开启 data/blob/file import 或子 Realm 的 Policy 字段；开放它们需要新 schemaVersion/RFC。Inspector lease authority 不能替代 Policy。
+
+Node 真实探针表明，`SourceTextModule` 动态 import 编译和 CDP `Runtime.evaluate` 不会再触发 `ModifyCodeGenerationFromStringsCallback2`。因此 Loader 与受信 Inspector proxy 各自是这些入口唯一、不可绕过且 exactly-once 的 Gate owner；不得虚构第二个 V8 callback，也不得让同一入口重复授权。Native strings callback 只作为 Realm 内 `eval` 与 Function constructors 的最终 Gate。
+
+Android/Javet 5.0.10 使用固定 ABI 的窄 JNI bridge，在受信常量调用进入 V8 后通过当前 Isolate 安装 strings 与 Wasm callback，不读取 Javet 私有对象布局。Host 必须为每个 generation 提供新 `RuntimeEngineGate`；旧 callback 在 V8 close 前卸载。Bridge 只同步搬运真实 hook 可观察的 code kind、source bytes/digest 与 `is_code_like`，Host 异常、重入、ABI 缺失或复制超限均拒绝，不暗示 Android Loader、Inspector 或 Observer 支持。
 
 ## F.4 受控子 Realm/Worker
 

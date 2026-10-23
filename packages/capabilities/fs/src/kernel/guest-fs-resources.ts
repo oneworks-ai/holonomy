@@ -6,7 +6,12 @@ import {
 import type { JsonValueV1 } from '@holonomyjs/runtime/kernel/json-types'
 import { fsAbortSignalV1, fsFunctionV1, fsObjectV1, fsTargetV1, invalidFsValueV1 } from './guest-fs-support.js'
 import type { FsCapabilityFieldsV1 } from './guest-fs-support.js'
-import { fsWatchErrorV1, fsWatchOptionsSnapshotV1, fsWatchQueueLimitV1 } from './guest-fs-watch-support.js'
+import {
+  fsWatchErrorV1,
+  fsWatchOptionsSnapshotV1,
+  fsWatchProviderErrorV1,
+  fsWatchQueueLimitV1
+} from './guest-fs-watch-support.js'
 
 export { createCapabilityFsWatchIteratorV1 } from './guest-fs-watch-iterator.js'
 
@@ -108,7 +113,7 @@ export const createCapabilityFsWatcherV1 = (
       return
     }
     if (event.event === 'error') {
-      events.emit('error', ...tuple)
+      events.emit('error', fsWatchProviderErrorV1(tuple[0]))
       return
     }
     if (queue.length >= maxQueuedEvents) return overflow()

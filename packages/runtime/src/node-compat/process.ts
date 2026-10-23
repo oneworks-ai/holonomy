@@ -4,10 +4,17 @@ import type { NodeEventListener } from './events.js'
 import { resolveMaxStdioChunkBytes } from './options.js'
 import { createRuntimeWritable } from './stdio.js'
 import type { RuntimeWritable } from './stdio.js'
-import type { RuntimeProcessControl, RuntimeProcessSnapshot, RuntimeStdioProvider } from './types.js'
+import type {
+  RuntimeNextTickScheduler,
+  RuntimeProcessControl,
+  RuntimeProcessSnapshot,
+  RuntimeStdioProvider
+} from './types.js'
 import { assertPathWithinVirtualRoot } from './virtual-path.js'
 
 export type { RuntimeWritable } from './stdio.js'
+
+const APPLY = Reflect.apply
 
 export interface RuntimeProcess {
   readonly arch: string
@@ -19,7 +26,7 @@ export interface RuntimeProcess {
   readonly platform: string
   readonly stderr: RuntimeWritable
   readonly stdout: RuntimeWritable
-  readonly versions: Readonly<{ node: string }>
+  readonly versions: Readonly<Record<string, string>>
   abort(): never
   addListener(eventName: string | symbol, listener: NodeEventListener): RuntimeProcess
   chdir(directory: string): never
@@ -27,7 +34,7 @@ export interface RuntimeProcess {
   emit(eventName: string | symbol, ...args: unknown[]): boolean
   exit(code?: number): never
   kill(pid: number, signal?: string | number): never
-  nextTick(callback: NodeEventListener, ...args: unknown[]): never
+  nextTick(callback: NodeEventListener, ...args: unknown[]): void
   off(eventName: string | symbol, listener: NodeEventListener): RuntimeProcess
   on(eventName: string | symbol, listener: NodeEventListener): RuntimeProcess
   once(eventName: string | symbol, listener: NodeEventListener): RuntimeProcess
@@ -44,8 +51,12 @@ const cloneSnapshot = (
   if (!Number.isSafeInteger(snapshot.pid) || snapshot.pid <= 0) {
     invalidArgument('process.pid', 'process.pid must be a positive safe integer')
   }
-  if (!snapshot.arch || !snapshot.platform || !snapshot.versions.node) {
-    invalidArgument('process', 'process arch, platform and versions.node are required')
+  if (
+    !snapshot.arch || !snapshot.platform || !snapshot.versions ||
+    Object.keys(snapshot.versions).length === 0 ||
+    Object.values(snapshot.versions).some(value => typeof value !== 'string' || value.length === 0)
+  ) {
+    invalidArgument('process', 'process arch, platform and engine versions are required')
   }
   const cwd = assertPathWithinVirtualRoot(snapshot.cwd, virtualRoot, 'process.cwd')
   const execPath = assertPathWithinVirtualRoot(
@@ -63,7 +74,7 @@ const cloneSnapshot = (
     cwd,
     env,
     execPath,
-    versions: Object.freeze({ node: snapshot.versions.node })
+    versions: Object.freeze({ ...snapshot.versions })
   })
 }
 
@@ -76,7 +87,8 @@ export const createProcessSyntheticModule = (
   virtualRoot: string,
   stdio: RuntimeStdioProvider,
   maxStdioChunkBytes?: number,
-  control?: RuntimeProcessControl
+  control?: RuntimeProcessControl,
+  scheduleNextTick?: RuntimeNextTickScheduler
 ): ProcessSyntheticModule => {
   const snapshot = cloneSnapshot(snapshotInput, virtualRoot)
   const stdioChunkLimit = resolveMaxStdioChunkBytes(maxStdioChunkBytes)
@@ -106,7 +118,15 @@ export const createProcessSyntheticModule = (
       throw new Error('Holonomy process exited')
     },
     kill: unsupported('kill'),
-    nextTick: unsupported('nextTick'),
+    nextTick(callback, ...args) {
+      if (typeof callback !== 'function') {
+        const error = new TypeError('The "callback" argument must be of type function')
+        Object.defineProperty(error, 'code', { enumerable: true, value: 'ERR_INVALID_ARG_TYPE' })
+        throw error
+      }
+      if (scheduleNextTick == null) notSupported('process.nextTick')
+      scheduleNextTick!(() => APPLY(callback, undefined, args))
+    },
     off(eventName, listener) {
       emitter.off(eventName, listener)
       return runtimeProcess

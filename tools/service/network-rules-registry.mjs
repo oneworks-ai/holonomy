@@ -31,6 +31,9 @@ export const admitNetworkRules = async (
     draft => {
       const process = getResource(draft, 'processes', processId, 'Runtime process')
       requireExpectedGeneration(process, expectedGeneration)
+      if (process.target === 'native') {
+        throw serviceError('sandbox.capability_unsupported', 'Native Network Rules are unavailable')
+      }
       if (PROCESS_TERMINAL_STATES.has(process.state)) {
         throw serviceError('service.conflict', 'Runtime process is terminal')
       }

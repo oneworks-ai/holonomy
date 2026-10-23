@@ -23,6 +23,7 @@ export type NetworkSandboxV2 =
   }>
 
 export type FilesystemRightV2 =
+  | 'chmod'
   | 'create'
   | 'delete'
   | 'list'

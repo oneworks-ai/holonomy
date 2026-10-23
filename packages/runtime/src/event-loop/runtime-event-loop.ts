@@ -10,8 +10,9 @@ import {
   EventLoopOptionError,
   EventLoopReentrantTurnError,
   EventLoopWakeupError,
-  HolonomyRuntimeError
+  isHolonomyRuntimeError
 } from './errors.js'
+import type { HolonomyRuntimeError } from './errors.js'
 import type {
   EventLoopCallback,
   EventLoopLifecycleObserver,
@@ -22,6 +23,7 @@ import type {
   EventLoopTaskOptions,
   EventLoopTimerId,
   EventLoopTimerOptions,
+  EventLoopWakeupPhase,
   HostEventLoopPort,
   HostEventLoopTermination,
   NativeRequestOptions,
@@ -36,10 +38,19 @@ const DEFAULT_MINIMUM_INTERVAL_MS = 1
 
 interface ReadyTask {
   callback: EventLoopCallback
+  ioCallback?: boolean
   id: EventLoopTaskId
   kind: 'macrotask' | 'native-completion'
   nativeRequestId?: string
   readyAt: number
+  ref: boolean
+  sequence: number
+}
+
+interface ImmediateTask {
+  callback: EventLoopCallback
+  id: EventLoopTaskId
+  kind: 'immediate'
   ref: boolean
   sequence: number
 }
@@ -93,12 +104,15 @@ const assertCallback = (callback: EventLoopCallback) => {
 }
 
 export class RuntimeEventLoop {
+  private activeImmediateBatchCutoff: number | null = null
+  private activeIoBatchCutoff: number | null = null
+  private readonly immediates: ImmediateTask[] = []
   private readonly lifecycleObservers = new Set<EventLoopLifecycleObserver>()
   private readonly nativeRequests = new Map<string, NativeRequestRecord>()
   private readonly nextTicks: NextTickTask[] = []
   private readonly options: ResolvedOptions
   private readonly readyTasks: ReadyTask[] = []
-  private readonly tasksById = new Map<EventLoopTaskId, ReadyTask | NextTickTask>()
+  private readonly tasksById = new Map<EventLoopTaskId, ReadyTask | ImmediateTask | NextTickTask>()
   private readonly timers = new Map<EventLoopTimerId, TimerRecord>()
   private disposed = false
   private lastNow: number | undefined
@@ -106,6 +120,7 @@ export class RuntimeEventLoop {
   private nextSequence = 1
   private runningTurn = false
   private scheduledWakeupAt: number | null | undefined
+  private scheduledWakeupPhase: EventLoopWakeupPhase | null | undefined
 
   constructor(
     private readonly port: HostEventLoopPort,
@@ -167,6 +182,39 @@ export class RuntimeEventLoop {
     return this.enqueueReadyTask('macrotask', callback, options.ref ?? true)
   }
 
+  /** Queues a local I/O callback; its bounded poll batch reaches check before new timers. */
+  enqueueIoCallback(
+    callback: EventLoopCallback,
+    options: EventLoopTaskOptions = {}
+  ): EventLoopTaskId {
+    return this.enqueueReadyTask('macrotask', callback, options.ref ?? true, undefined, true)
+  }
+
+  /** Queues a check-phase callback on this loop's scheduler. */
+  enqueueImmediate(
+    callback: EventLoopCallback,
+    options: EventLoopTaskOptions = {}
+  ): EventLoopTaskId {
+    this.assertAcceptingWork()
+    assertCallback(callback)
+    const now = this.readNow()
+    const task: ImmediateTask = {
+      callback,
+      id: this.allocateId(),
+      kind: 'immediate',
+      ref: options.ref ?? true,
+      sequence: this.allocateSequence()
+    }
+    this.immediates.push(task)
+    this.tasksById.set(task.id, task)
+    this.commitWakeupAdmission(now, () => {
+      this.tasksById.delete(task.id)
+      const index = this.immediates.indexOf(task)
+      if (index >= 0) this.immediates.splice(index, 1)
+    })
+    return task.id
+  }
+
   enqueueNextTick(
     callback: EventLoopCallback,
     options: EventLoopTaskOptions = {}
@@ -195,7 +243,10 @@ export class RuntimeEventLoop {
       return false
     }
     this.tasksById.delete(taskId)
-    if ('kind' in task) {
+    if ('kind' in task && task.kind === 'immediate') {
+      const index = this.immediates.indexOf(task)
+      if (index >= 0) this.immediates.splice(index, 1)
+    } else if ('kind' in task) {
       const index = this.readyTasks.indexOf(task)
       if (index >= 0) {
         this.readyTasks.splice(index, 1)
@@ -283,6 +334,19 @@ export class RuntimeEventLoop {
 
   hasRefTimer(timerId: EventLoopTimerId): boolean {
     return this.timers.get(timerId)?.ref ?? false
+  }
+
+  refImmediate(taskId: EventLoopTaskId): boolean {
+    return this.setImmediateRef(taskId, true)
+  }
+
+  unrefImmediate(taskId: EventLoopTaskId): boolean {
+    return this.setImmediateRef(taskId, false)
+  }
+
+  hasRefImmediate(taskId: EventLoopTaskId): boolean {
+    const task = this.tasksById.get(taskId)
+    return task != null && 'kind' in task && task.kind === 'immediate' && task.ref
   }
 
   registerNativeRequest(
@@ -384,6 +448,26 @@ export class RuntimeEventLoop {
     }
   }
 
+  /**
+   * Runs only the pending next-tick phase at a Host-owned callback boundary.
+   * Ready macrotasks and timers remain queued for ordinary runTurn() calls.
+   */
+  runNextTickCheckpoint(): RunTurnResult {
+    if (this.disposed) {
+      return this.createShutdownResult(0, null)
+    }
+    if (this.runningTurn) {
+      throw new EventLoopReentrantTurnError()
+    }
+
+    this.runningTurn = true
+    try {
+      return this.runActiveTurn(true)
+    } finally {
+      this.runningTurn = false
+    }
+  }
+
   shutdown(): void {
     if (this.disposed) {
       return
@@ -440,6 +524,9 @@ export class RuntimeEventLoop {
   }
 
   private clearPendingWork() {
+    this.activeImmediateBatchCutoff = null
+    this.activeIoBatchCutoff = null
+    this.immediates.length = 0
     this.nativeRequests.clear()
     this.nextTicks.length = 0
     this.readyTasks.length = 0
@@ -471,21 +558,24 @@ export class RuntimeEventLoop {
   }
 
   private createSnapshot(now: number): EventLoopSnapshot {
+    const immediates = this.activeImmediates()
     const readyTasks = this.activeReadyTasks()
     const nextTicks = this.activeNextTicks()
     const timers = Array.from(this.timers.values())
-    const isAlive = nextTicks.some((task) => task.ref) ||
+    const isAlive = immediates.some((task) => task.ref) ||
+      nextTicks.some((task) => task.ref) ||
       readyTasks.some((task) => task.ref) ||
       timers.some((timer) => timer.ref) ||
       Array.from(this.nativeRequests.values()).some((request) => request.ref)
-    const hasPendingWork = nextTicks.length > 0 ||
+    const hasPendingWork = immediates.length > 0 ||
+      nextTicks.length > 0 ||
       readyTasks.length > 0 ||
       timers.length > 0 ||
       this.nativeRequests.size > 0
 
     let nextWakeupAt: number | null = null
     if (isAlive) {
-      if (nextTicks.length > 0 || readyTasks.length > 0) {
+      if (immediates.length > 0 || nextTicks.length > 0 || readyTasks.length > 0) {
         nextWakeupAt = now
       }
       for (const timer of timers) {
@@ -512,12 +602,13 @@ export class RuntimeEventLoop {
     kind: ReadyTask['kind'],
     callback: EventLoopCallback,
     ref: boolean,
-    nativeRequestId?: string
+    nativeRequestId?: string,
+    ioCallback = false
   ) {
     this.assertAcceptingWork()
     assertCallback(callback)
     const now = this.readNow()
-    return this.enqueueReadyTaskAt(kind, callback, ref, now, nativeRequestId)
+    return this.enqueueReadyTaskAt(kind, callback, ref, now, nativeRequestId, ioCallback)
   }
 
   private enqueueReadyTaskAt(
@@ -525,10 +616,12 @@ export class RuntimeEventLoop {
     callback: EventLoopCallback,
     ref: boolean,
     readyAt: number,
-    nativeRequestId?: string
+    nativeRequestId?: string,
+    ioCallback = false
   ) {
     const task: ReadyTask = {
       callback,
+      ioCallback,
       id: this.allocateId(),
       kind,
       nativeRequestId,
@@ -559,11 +652,11 @@ export class RuntimeEventLoop {
       callback()
     } catch (error) {
       if (this.disposed) {
-        throw error instanceof HolonomyRuntimeError
+        throw isHolonomyRuntimeError(error)
           ? error
           : new EventLoopCallbackError(error)
       }
-      if (error instanceof HolonomyRuntimeError) {
+      if (isHolonomyRuntimeError(error)) {
         return this.fail(error)
       }
       return this.fail(new EventLoopCallbackError(error))
@@ -584,6 +677,7 @@ export class RuntimeEventLoop {
     } catch {
       // Termination and lifecycle cleanup must not depend on host wakeup order.
       this.scheduledWakeupAt = null
+      this.scheduledWakeupPhase = null
     }
     const observers = [...this.lifecycleObservers]
     this.lifecycleObservers.clear()
@@ -607,6 +701,10 @@ export class RuntimeEventLoop {
 
   private activeNextTicks() {
     return this.nextTicks.filter((task) => this.tasksById.has(task.id))
+  }
+
+  private activeImmediates() {
+    return this.immediates.filter((task) => this.tasksById.has(task.id))
   }
 
   private activeReadyTasks() {
@@ -652,37 +750,52 @@ export class RuntimeEventLoop {
   }
 
   private requestWakeup(deadlineMs: number | null) {
-    if (this.scheduledWakeupAt === deadlineMs) {
+    const phase: EventLoopWakeupPhase | null = deadlineMs === null
+      ? null
+      : this.hasRunnableNextTick()
+      ? 'next-tick'
+      : 'event-loop'
+    if (this.scheduledWakeupAt === deadlineMs && this.scheduledWakeupPhase === phase) {
       return
     }
     try {
-      this.port.requestWakeup(deadlineMs)
+      this.port.requestWakeup(deadlineMs, phase ?? undefined)
     } catch (error) {
       throw new EventLoopWakeupError(error)
     }
     this.scheduledWakeupAt = deadlineMs
+    this.scheduledWakeupPhase = phase
   }
 
   private normalizeWakeupError(error: unknown) {
-    return error instanceof HolonomyRuntimeError
+    return isHolonomyRuntimeError(error)
       ? error
       : new EventLoopWakeupError(error)
   }
 
-  private runActiveTurn(): RunTurnResult {
+  private runActiveTurn(onlyNextTicks = false): RunTurnResult {
     const now = this.readNow()
+    if (onlyNextTicks && !this.hasRunnableNextTick()) {
+      return {
+        ...this.createSnapshot(now),
+        callbacksProcessed: 0,
+        status: 'idle',
+        taskKind: null
+      }
+    }
     const counter: TurnCounter = { callbacks: 0 }
-    let selectedTask: ReadyTask | TimerRecord | undefined
+    let selectedTask: ReadyTask | ImmediateTask | TimerRecord | undefined
     let taskKind: EventLoopTaskKind | null = null
 
     // The host wakeup that entered this turn has been consumed. The loop will
     // arm another one after it observes the resulting state.
     this.scheduledWakeupAt = undefined
+    this.scheduledWakeupPhase = undefined
 
     if (this.hasRunnableNextTick()) {
       taskKind = 'next-tick'
       this.drainNextTicks(counter)
-    } else {
+    } else if (!onlyNextTicks) {
       selectedTask = this.takeReadyTask(now)
       if (selectedTask) {
         taskKind = selectedTask.kind
@@ -747,6 +860,15 @@ export class RuntimeEventLoop {
     return true
   }
 
+  private setImmediateRef(taskId: EventLoopTaskId, ref: boolean) {
+    const task = this.tasksById.get(taskId)
+    if (task == null || !('kind' in task) || task.kind !== 'immediate') return false
+    if (task.ref === ref) return true
+    task.ref = ref
+    this.reconcileWakeupIfActive()
+    return true
+  }
+
   private takeNextTick() {
     while (this.nextTicks.length > 0) {
       const task = this.nextTicks.shift()
@@ -757,7 +879,50 @@ export class RuntimeEventLoop {
     return undefined
   }
 
-  private takeReadyTask(now: number): ReadyTask | TimerRecord | undefined {
+  private takeReadyTask(now: number): ReadyTask | ImmediateTask | TimerRecord | undefined {
+    if (this.activeImmediateBatchCutoff !== null) {
+      const next = this.immediates.find(task => task.sequence <= this.activeImmediateBatchCutoff!)
+      if (next) return this.takeImmediate(next)
+      this.activeImmediateBatchCutoff = null
+    }
+    if (this.activeIoBatchCutoff !== null) {
+      const index = this.readyTasks.findIndex(task =>
+        task.ioCallback && task.sequence <= this.activeIoBatchCutoff! && this.tasksById.has(task.id)
+      )
+      if (index >= 0) {
+        const [task] = this.readyTasks.splice(index, 1)
+        this.tasksById.delete(task!.id)
+        return task
+      }
+      this.activeIoBatchCutoff = null
+      const first = this.immediates[0]
+      if (first) {
+        this.activeImmediateBatchCutoff = this.immediates[this.immediates.length - 1]!.sequence
+        return this.takeImmediate(first)
+      }
+    }
+    const oldest = this.immediates[0]
+    if (oldest) {
+      // Ordinary work already admitted before this batch gets a bounded
+      // opportunity. Work admitted afterwards cannot starve the check phase.
+      const earlier = this.takeOrdinaryReadyTask(now, oldest.sequence)
+      if (earlier) return earlier
+      this.activeImmediateBatchCutoff = this.immediates[this.immediates.length - 1]!.sequence
+      return this.takeImmediate(oldest)
+    }
+    return this.takeOrdinaryReadyTask(now)
+  }
+
+  private takeImmediate(task: ImmediateTask): ImmediateTask {
+    this.tasksById.delete(task.id)
+    this.immediates.splice(this.immediates.indexOf(task), 1)
+    return task
+  }
+
+  private takeOrdinaryReadyTask(
+    now: number,
+    beforeSequence = Number.POSITIVE_INFINITY
+  ): ReadyTask | TimerRecord | undefined {
     let readyTask: ReadyTask | undefined
     let readyTaskIndex = -1
     for (let index = 0; index < this.readyTasks.length; index += 1) {
@@ -765,7 +930,7 @@ export class RuntimeEventLoop {
       if (!task) {
         continue
       }
-      if (!this.tasksById.has(task.id)) {
+      if (!this.tasksById.has(task.id) || task.sequence >= beforeSequence) {
         continue
       }
       if (
@@ -783,7 +948,7 @@ export class RuntimeEventLoop {
 
     let dueTimer: TimerRecord | undefined
     for (const timer of this.timers.values()) {
-      if (timer.dueAt > now) {
+      if (timer.dueAt > now || timer.sequence >= beforeSequence) {
         continue
       }
       if (
@@ -811,6 +976,7 @@ export class RuntimeEventLoop {
     ) {
       this.tasksById.delete(readyTask.id)
       this.readyTasks.splice(readyTaskIndex, 1)
+      if (readyTask.ioCallback) this.activeIoBatchCutoff = this.nextSequence - 1
       return readyTask
     }
     if (!dueTimer) {

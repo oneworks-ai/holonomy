@@ -41,6 +41,10 @@ const configuration = {
   requiredKernelCapabilities: ['process'],
   supervisor: { execGateTimeoutMs: 30_000, protocolVersion: 1 }
 }
+const quotaPolicy = {
+  access: 'sandboxed',
+  limits: { maxProcessTreeDepth: 1, maxTotalProcesses: 4 }
+}
 
 class FakeV86 {
   configurationDecoder = new ProcessSupervisorFrameDecoderV1()
@@ -216,10 +220,10 @@ test('loads digest-bound v86 assets and uses the public secondary serial API', a
   })
   const environment = await factory.open({
     configuration,
-    environmentId: '7:runtime',
+    environmentId: '7:processTree',
     generation: 7,
-    policy: { access: 'sandboxed' },
-    scope: 'runtime',
+    policy: quotaPolicy,
+    scope: 'processTree',
     signal: new AbortController().signal
   })
   assert.equal(FakeV86.last.options.memory_size, 64 * 1024 * 1024)
@@ -239,6 +243,26 @@ test('loads digest-bound v86 assets and uses the public secondary serial API', a
   )
 })
 
+test('rejects runtime scope before configuring a shared v86 VM', async () => {
+  const factory = createV86ProcessEnvironmentFactoryV1({
+    V86: FakeV86,
+    loadArtifact: input => values.get(input.artifactId),
+    readyTimeoutMs: 1000
+  })
+  await assert.rejects(
+    factory.open({
+      configuration,
+      environmentId: '7:runtime',
+      generation: 7,
+      policy: quotaPolicy,
+      scope: 'runtime',
+      signal: new AbortController().signal
+    }),
+    TypeError
+  )
+  assert.equal(FakeV86.last.destroyed, true)
+})
+
 test('rejects a v86 artifact whose bytes do not match the Host manifest', async () => {
   const factory = createV86ProcessEnvironmentFactoryV1({
     V86: FakeV86,
@@ -247,10 +271,10 @@ test('rejects a v86 artifact whose bytes do not match the Host manifest', async 
   await assert.rejects(
     factory.open({
       configuration,
-      environmentId: '7:runtime',
+      environmentId: '7:processTree',
       generation: 7,
-      policy: {},
-      scope: 'runtime',
+      policy: quotaPolicy,
+      scope: 'processTree',
       signal: new AbortController().signal
     }),
     TypeError
@@ -265,10 +289,10 @@ test('rejects a Linux kernel missing a Host-required Bridge capability', async (
   await assert.rejects(
     factory.open({
       configuration: { ...configuration, requiredKernelCapabilities: ['process', 'fuse'] },
-      environmentId: '7:runtime',
+      environmentId: '7:processTree',
       generation: 7,
-      policy: {},
-      scope: 'runtime',
+      policy: quotaPolicy,
+      scope: 'processTree',
       signal: new AbortController().signal
     }),
     TypeError
@@ -287,7 +311,7 @@ test('maps an injected v86 supervisor through the Node ChildProcess resource', a
     executable: backend.normalizeExecutable({ kind: 'guestPath', path: '/bin/tool' }),
     executableId: 'tool',
     generation: 9,
-    policy: { access: 'sandboxed' },
+    policy: quotaPolicy,
     runtimeArgs: ['--fixture']
   })
   const running = backend.spawn(launch, {
@@ -322,7 +346,7 @@ test('attributes v86 fetch traffic to the exact admitted Linux process', async (
     executable: backend.normalizeExecutable({ kind: 'guestPath', path: '/bin/curl' }),
     executableId: 'curl',
     generation: 9,
-    policy: { access: 'sandboxed' },
+    policy: quotaPolicy,
     runtimeArgs: []
   })
   const running = backend.spawn(launch, {
@@ -342,7 +366,7 @@ test('attributes v86 fetch traffic to the exact admitted Linux process', async (
     init: { method: 'GET' },
     linuxPid: 41,
     parentLinuxPid: 1,
-    policy: { access: 'sandboxed' },
+    policy: quotaPolicy,
     processId: 37,
     processResourceId: 'process-network-1',
     processStartTimeTicks: 9001,
@@ -364,7 +388,7 @@ test('destroys v86 when the Host-required network adapter is unavailable', async
       configuration,
       environmentId: '7:processTree:missing-network',
       generation: 7,
-      policy: { access: 'sandboxed' },
+      policy: quotaPolicy,
       scope: 'processTree',
       signal: new AbortController().signal
     }),

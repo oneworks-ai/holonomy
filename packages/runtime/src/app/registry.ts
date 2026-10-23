@@ -22,7 +22,8 @@ import type { HttpServerRuntime } from '../http-server/index.js'
 import type { NodeCoreCompatOptions } from '../node-compat/index.js'
 import type { createNodeTestSyntheticModules } from '../node-test/index.js'
 import type { InstalledRuntimeConsole } from '../runtime-console/index.js'
-import type { RuntimeTimers } from '../timers/index.js'
+import type { StorageFacade } from '../storage/index.js'
+import type { RuntimeImmediate, RuntimeTimers } from '../timers/index.js'
 import type { RuntimeSyntheticModuleBinding } from './types.js'
 
 const KEYS = Object.keys
@@ -105,7 +106,30 @@ const add = (
     }
     const descriptor = getRuntimeOwnDescriptor(source, specifier)
     if (descriptor == null || !('value' in descriptor)) throw runtimeComposerError('runtime_composer.invalid_options')
-    defineRuntimeData(target, specifier, descriptor.value)
+    const value = descriptor.value as RuntimeSyntheticModuleBinding
+    const explicit = getRuntimeOwnDescriptor(value, 'commonjsValue')
+    if (explicit != null && !('value' in explicit)) throw runtimeComposerError('runtime_composer.invalid_options')
+    const names = value.descriptor.exportNames
+    let hasDefault = false
+    for (let nameIndex = 0; nameIndex < names.length; nameIndex += 1) {
+      if (names[nameIndex] === 'default') hasDefault = true
+    }
+    const defaultExport = hasDefault ? getRuntimeOwnDescriptor(value.namespace, 'default') : undefined
+    if (hasDefault && (defaultExport == null || !('value' in defaultExport))) {
+      throw runtimeComposerError('runtime_composer.invalid_options')
+    }
+    const commonjsValue = explicit == null
+      ? hasDefault ? defaultExport!.value : value.namespace
+      : explicit.value
+    defineRuntimeData(
+      target,
+      specifier,
+      freezeRuntimeValue({
+        commonjsValue,
+        descriptor: value.descriptor,
+        namespace: value.namespace
+      })
+    )
   }
 }
 
@@ -117,9 +141,11 @@ const createRegistry = (
     readonly git?: GitFacade
     readonly httpServer?: HttpServerRuntime
     readonly nodeCore: NodeCoreCompatOptions
+    readonly storage?: StorageFacade
     readonly moduleOverrides?: Readonly<Record<string, RuntimeSyntheticModuleBinding>>
     readonly testModules: ReturnType<typeof createNodeTestSyntheticModules>
     readonly timers?: RuntimeTimers
+    readonly immediate?: RuntimeImmediate
   }
 ) => {
   const modules = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
@@ -163,7 +189,17 @@ const createRegistry = (
   }
   if (input.timers != null) {
     const source = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
-    defineRuntimeData(source, 'node:timers', binding(input.timers.syntheticModule, KEYS(input.timers.syntheticModule)))
+    const namespace = createRuntimeRecord() as Record<string, unknown>
+    for (const name of KEYS(input.timers.syntheticModule)) {
+      const descriptor = getRuntimeOwnDescriptor(input.timers.syntheticModule, name)
+      if (descriptor == null || !('value' in descriptor)) throw runtimeComposerError('runtime_composer.invalid_options')
+      defineRuntimeData(namespace, name, descriptor.value)
+    }
+    if (input.immediate != null) {
+      defineRuntimeData(namespace, 'clearImmediate', input.immediate.syntheticModule.clearImmediate)
+      defineRuntimeData(namespace, 'setImmediate', input.immediate.syntheticModule.setImmediate)
+    }
+    defineRuntimeData(source, 'node:timers', binding(namespace, KEYS(namespace)))
     add(modules, source)
   }
   if (input.fs != null) {
@@ -185,6 +221,17 @@ const createRegistry = (
     defineRuntimeData(source, 'node:child_process', createChildProcessSyntheticModuleBinding({ git: input.git }))
     add(modules, source, overrideSpecifiers)
   }
+  if (input.storage != null) {
+    const source = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
+    const namespace = freezeRuntimeValue({
+      credentials: input.storage.credentials,
+      kv: input.storage.kv,
+      sqlite: input.storage.sqlite,
+      default: input.storage
+    })
+    defineRuntimeData(source, 'holo:storage', binding(namespace, ['credentials', 'kv', 'sqlite'], input.storage))
+    add(modules, source)
+  }
   if (input.moduleOverrides != null) {
     const source = createRuntimeRecord() as Record<string, RuntimeSyntheticModuleBinding>
     for (const specifier of KEYS(input.moduleOverrides)) {
@@ -198,9 +245,13 @@ const createRegistry = (
       const value = bindingValue.value as RuntimeSyntheticModuleBinding
       const names = value?.descriptor?.exportNames
       const namespace = value?.namespace
+      const commonjsValue = value == null ? undefined : getRuntimeOwnDescriptor(value, 'commonjsValue')
       if (
         !Array.isArray(names) || new Set(names).size !== names.length || names.some(name => typeof name !== 'string')
       ) {
+        throw runtimeComposerError('runtime_composer.invalid_options')
+      }
+      if (commonjsValue != null && !('value' in commonjsValue)) {
         throw runtimeComposerError('runtime_composer.invalid_options')
       }
       if (namespace == null || (typeof namespace !== 'object' && typeof namespace !== 'function')) {
@@ -216,6 +267,7 @@ const createRegistry = (
         source,
         specifier,
         freezeRuntimeValue({
+          ...(commonjsValue == null ? {} : { commonjsValue: commonjsValue.value }),
           descriptor: freezeRuntimeValue({ exportNames: freezeRuntimeValue([...names]) }),
           namespace
         })

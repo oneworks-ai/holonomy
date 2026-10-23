@@ -15,6 +15,7 @@ export class DeviceOperationScheduler {
     })
     this.#deviceTails.set(deviceId, consumed)
     this.#tasks.add(consumed)
+    return consumed
   }
 
   cancel(operationId) {

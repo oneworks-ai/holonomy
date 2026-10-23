@@ -8,10 +8,19 @@ type FilesystemOperationV1 =
   | 'filesystem.file.write'
   | 'filesystem.file.open'
   | 'filesystem.file.close'
+  | 'filesystem.file.truncate'
+  | 'filesystem.file.sync'
+  | 'filesystem.file.datasync'
   | 'filesystem.metadata.stat'
   | 'filesystem.metadata.lstat'
+  | 'filesystem.metadata.access'
+  | 'filesystem.metadata.utimes'
+  | 'filesystem.metadata.chmod'
   | 'filesystem.directory.read'
   | 'filesystem.directory.create'
+  | 'filesystem.directory.open'
+  | 'filesystem.directory.sync'
+  | 'filesystem.directory.close'
   | 'filesystem.entry.rename'
   | 'filesystem.entry.unlink'
   | 'filesystem.watch.subscribe'
@@ -77,6 +86,8 @@ type FsMkdirRecursiveResultSnapshotV1 =
 Schema先按arguments选择闭合branch，再冻结对应result与callback delivery；Provider result不能反向改变branch。readFile无options/null encoding→RuntimeBuffer，显式string encoding→string；readdir仅`withFileTypes:true`返回Dirent；mkdir仅`recursive:true`具有第二callback result槽。`FsMkdirRecursiveResultSnapshotV1` 是 Host-side machine snapshot；Facade 将 `kind=undefined` 重建为 Guest `undefined`，不会把tag object暴露给Guest。
 
 ## H.1.2 Per-export Registry
+
+此表冻结 core rows；新增标准元数据/耐久 API 与 Host-only directory resource rows 唯一见[H.2](filesystem-metadata-and-durability.md)，共同组成同一 `FilesystemOperationV1` Registry。
 
 | Module/member         | Mode     | Args / result                              | Operation/right                        | callback          |
 | --------------------- | -------- | ------------------------------------------ | -------------------------------------- | ----------------- |

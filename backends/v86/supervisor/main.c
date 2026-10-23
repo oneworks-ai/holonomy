@@ -1,4 +1,5 @@
 #include "process.h"
+#include "process-internal.h"
 #include "protocol.h"
 #include "fuse-bridge.h"
 #include "network.h"
@@ -134,8 +135,15 @@ static int handle_control(
         result = frame.payload_length == 0 ? 0 : -1;
         *running = 0;
     } else if (frame.operation == HOLO_CONFIGURE && !*configured) {
-        result = holo_configuration_apply(fd, &frame, exec_gate_timeout_ms);
+        result = holo_configuration_apply(
+            fd,
+            &frame,
+            exec_gate_timeout_ms,
+            &table->max_total_processes,
+            &table->max_process_tree_depth
+        );
         if (result == 0) *configured = 1;
+        else result = holo_write_error(fd, frame.request_id, 0, "configuration.invalid");
     } else if (frame.operation == HOLO_SPAWN && *configured && frame.process_id == 0 && frame.request_id != 0) {
         result = holo_process_spawn(table, fd, &frame);
     } else if (frame.operation == HOLO_FILESYSTEM_RESPONSE && frame.request_id != 0) {

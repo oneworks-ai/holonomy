@@ -3,36 +3,27 @@ package ai.oneworks.holonomy.v86
 import ai.oneworks.holonomy.host.RuntimeTrustedBackendHost
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AndroidV86EnvironmentManagerTest {
     @Test
-    fun `runtime scope reuses one environment until generation close`() {
+    fun `runtime scope cannot share a v86 environment across roots`() {
         val backends = mutableListOf<FakeBackend>()
         val transport = ClosingTransport()
-        val manager = manager("runtime", backends, transport)
+        val manager = manager("processTree", backends, transport)
 
         manager.start(host()).get()
-        val first = manager.acquire("runtime", "process-1")
-        val second = manager.acquire("runtime", "process-2")
-
-        assertEquals(1, backends.size)
-        assertSame(first.backend, second.backend)
-        assertEquals(first.environmentId, second.environmentId)
-        first.close()
-        second.close()
-        assertEquals(0, backends.single().closeCount.get())
+        assertTrue(runCatching { manager.acquire("runtime", "process-1") }.exceptionOrNull() is IllegalStateException)
+        assertTrue(backends.isEmpty())
 
         manager.close()
         manager.close()
-        assertEquals(1, backends.single().closeCount.get())
         assertEquals(1, transport.closeCount.get())
+        assertTrue(runCatching { manager("runtime", backends) }.exceptionOrNull() is IllegalArgumentException)
     }
 
     @Test
@@ -70,22 +61,29 @@ class AndroidV86EnvironmentManagerTest {
             eventSink = AndroidV86ProcessEventSink {},
             networkTransport = null,
         ) { _, _, _ -> backend }
-        val executor = Executors.newSingleThreadExecutor()
-        try {
-            manager.start(host()).get()
-            val acquisition = executor.submit<Throwable?> {
-                runCatching { manager.acquire("processTree", "process-1") }.exceptionOrNull()
-            }
-            assertTrue(backend.started.await(1, TimeUnit.SECONDS))
-            manager.close()
-            backend.readiness.complete(Unit)
+        manager.start(host()).get()
+        val lease = manager.acquire("processTree", "process-1")
+        assertTrue(backend.started.await(1, TimeUnit.SECONDS))
+        assertTrue(!lease.readiness.isDone)
+        manager.close()
+        backend.readiness.complete(Unit)
 
-            assertTrue(acquisition.get(1, TimeUnit.SECONDS) is IllegalStateException)
-            assertEquals(emptySet<String>(), manager.activeEnvironmentIds())
-            assertEquals(1, backend.closeCount.get())
-        } finally {
-            executor.shutdownNow()
-        }
+        assertTrue(lease.readiness.isCompletedExceptionally)
+        assertEquals(emptySet<String>(), manager.activeEnvironmentIds())
+        assertEquals(1, backend.closeCount.get())
+    }
+
+    @Test
+    fun `known ready lease cannot submit after manager close or release`() {
+        val backends = mutableListOf<FakeBackend>()
+        val manager = manager("processTree", backends)
+        manager.start(host()).get()
+        val lease = manager.acquire("processTree", "process-1")
+        assertTrue(lease.readiness.isDone)
+        manager.close()
+        assertTrue(runCatching { lease.submit(org.json.JSONObject()) }.isFailure)
+        lease.close()
+        assertEquals(1, backends.single().closeCount.get())
     }
 
     private fun manager(

@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 
 import Ajv2020 from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
+import { STORAGE_CAPABILITY_CONSTRAINTS_V1_SCHEMA } from '../../../packages/capabilities/storage/src/kernel/storage-schema.js'
 
 import {
   CANONICAL_RESOURCE_V1_SCHEMA,
@@ -33,6 +34,7 @@ import {
   normalizeInvocationSnapshotEnvelopeV1,
   normalizeNetworkInvocationSnapshotV1,
   normalizeNetworkRedirectInvocationV1,
+  normalizeProcessBackendDescriptorV1,
   normalizeProcessBackendProbeEvidenceV1,
   normalizeResolvedResourceChallengeV1,
   validateOperationRegistryV1
@@ -238,6 +240,38 @@ describe('checked-in capability machine artifacts', () => {
     )).toBe(true)
   })
 
+  it('validates generated Storage Policy, resource, capability and operation vectors', () => {
+    const storage = json<{
+      capability: {
+        available: unknown
+        narrowed: unknown
+        narrowerSatisfied: boolean
+        required: unknown
+        widenedSatisfied: boolean
+      }
+      invocation: { arguments: unknown; providerData: unknown }
+      operation: {
+        invalid: readonly { schemaId: string; value: unknown }[]
+        valid: readonly { schemaId: string; value: unknown }[]
+      }
+      policy: { digest: string; invalid: readonly unknown[]; normalized: unknown }
+      resources: { key: unknown; prefix: unknown; sql: unknown }
+    }>('storage-contract-v1.vectors.json')
+    expect(validates(SANDBOX_POLICY_V2_SCHEMA, storage.policy.normalized)).toBe(true)
+    expect(storage.policy.invalid.every(value => !validates(SANDBOX_POLICY_V2_SCHEMA, value))).toBe(true)
+    expect(storage.policy.digest).toMatch(/^[0-9a-f]{64}$/u)
+    expect(Object.values(storage.resources).every(value => validates(CANONICAL_RESOURCE_V1_SCHEMA, value))).toBe(true)
+    expect(storage.resources.key).not.toEqual(storage.resources.prefix)
+    expect(storage.capability.narrowerSatisfied).toBe(true)
+    expect(storage.capability.widenedSatisfied).toBe(false)
+    expect(validates(STORAGE_CAPABILITY_CONSTRAINTS_V1_SCHEMA, storage.capability.narrowed)).toBe(true)
+    expect(storage.operation.valid.every(vector => validatesOperationSchema(vector.schemaId, vector.value))).toBe(true)
+    expect(storage.operation.invalid.every(vector => !validatesOperationSchema(vector.schemaId, vector.value))).toBe(
+      true
+    )
+    expect(storage.invocation.providerData).toEqual({ storageCallToken: 'native-controller:1:call:1' })
+  })
+
   it('validates platform-neutral Process Backend descriptors', () => {
     const backends = json<{ vectors: readonly { normalized: unknown }[] }>(
       'process-backend-v1.vectors.json'
@@ -248,6 +282,16 @@ describe('checked-in capability machine artifacts', () => {
     expect(backends.vectors.map(vector => (vector.normalized as { backendId: string }).backendId)).toEqual([
       'native.darwin-seatbelt-v1'
     ])
+    const descriptor = backends.vectors[0]!.normalized as Record<string, unknown> & {
+      features: Record<string, unknown>
+    }
+    expect(() => normalizeProcessBackendDescriptorV1(descriptor)).not.toThrow()
+    for (const field of Object.keys(descriptor.features)) {
+      const incomplete = structuredClone(descriptor)
+      delete incomplete.features[field]
+      expect(validates(PROCESS_BACKEND_DESCRIPTOR_V1_SCHEMA, incomplete)).toBe(false)
+      expect(() => normalizeProcessBackendDescriptorV1(incomplete)).toThrow()
+    }
     const probes = json<{ vectors: readonly { normalized: unknown }[] }>(
       'process-backend-probe-v1.vectors.json'
     )

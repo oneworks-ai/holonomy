@@ -117,7 +117,6 @@ describe('mobileModuleLoader F1 module plan', () => {
     expect(first.modules.map(module => module.url)).toEqual(expect.arrayContaining([
       'app:///bundle/cycle-a.mjs',
       'app:///bundle/cycle-b.mjs',
-      'app:///bundle/dynamic.mjs?revision=f1',
       'app:///bundle/entry.mjs',
       'app:///bundle/node_modules/@fixture/f1-runtime/dist/import-plugin.mjs',
       'app:///bundle/node_modules/@fixture/f1-runtime/dist/named-plugin.js',
@@ -149,7 +148,8 @@ describe('mobileModuleLoader F1 module plan', () => {
       }),
       expect.objectContaining({
         kind: 'dynamic-import',
-        resolvedUrl: 'app:///bundle/dynamic.mjs?revision=f1'
+        resolvedUrl: null,
+        specifier: './dynamic.mjs?revision=f1'
       })
     ]))
 
@@ -172,6 +172,10 @@ describe('mobileModuleLoader F1 module plan', () => {
       specifier: null
     }])
     expect(first.modules.some(module => module.url.includes('ignored.mjs'))).toBe(false)
+    expect(first.modules.some(module => module.url.includes('/dynamic.mjs'))).toBe(false)
+    const dynamic = await loader.createPlan('./dynamic.mjs?revision=f1', { parentUrl: first.entryUrl })
+    expect(dynamic.entryUrl).toBe('app:///bundle/dynamic.mjs?revision=f1')
+    expect(moduleBySuffix(dynamic, '/dynamic.mjs?revision=f1').sha256).toMatch(/^[a-f0-9]{64}$/u)
 
     const cycleA = moduleBySuffix(first, '/cycle-a.mjs')
     const cycleB = moduleBySuffix(first, '/cycle-b.mjs')

@@ -3,7 +3,10 @@ package ai.oneworks.holonomy.v86
 import ai.oneworks.holonomy.host.RuntimeTrustedBackend
 import ai.oneworks.holonomy.host.RuntimeTrustedBackendHost
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import org.json.JSONObject
@@ -18,9 +21,16 @@ internal class AndroidV86EnvironmentLease(
     val backend: AndroidV86EnvironmentBackend,
     val environmentId: String,
     val scope: String,
+    val readiness: CompletableFuture<Unit>,
+    private val submitCurrent: (JSONObject) -> Unit,
     private val release: () -> Unit,
 ) : AutoCloseable {
     private val closed = AtomicBoolean(false)
+
+    fun submit(command: JSONObject) {
+        check(!closed.get()) { "Android v86 environment lease is closed" }
+        submitCurrent(command)
+    }
 
     override fun close() {
         if (closed.compareAndSet(false, true)) release()
@@ -28,8 +38,8 @@ internal class AndroidV86EnvironmentLease(
 }
 
 /**
- * Generation-owned v86 environment selection. Runtime scope shares one Linux VM while processTree
- * scope owns one VM for each root ChildProcess resource.
+ * Generation-owned v86 environment selection. Every root ChildProcess owns a VM;
+ * shared runtime scope is unavailable until network packets carry kernel-bound PID identity.
  */
 internal class AndroidV86EnvironmentManager(
     private val processId: String,
@@ -45,9 +55,12 @@ internal class AndroidV86EnvironmentManager(
     private val lock = Any()
     private val records = linkedMapOf<String, Record>()
     private val started = AtomicBoolean(false)
+    private val startupExecutor = Executors.newSingleThreadScheduledExecutor { task ->
+        Thread(task, "holonomy-v86-startup-timeout").apply { isDaemon = true }
+    }
 
     init {
-        require(defaultScope == RUNTIME_SCOPE || defaultScope == PROCESS_TREE_SCOPE)
+        require(defaultScope == PROCESS_TREE_SCOPE)
         require(startupTimeoutMs in 1..600_000)
     }
 
@@ -55,40 +68,33 @@ internal class AndroidV86EnvironmentManager(
         check(started.compareAndSet(false, true)) { "Android v86 environment manager already started" }
         check(!closed.get()) { "Android v86 environment manager is closed" }
         this.host.set(host)
-        return if (defaultScope == RUNTIME_SCOPE) {
-            ensureRecord(RUNTIME_SCOPE, RUNTIME_KEY).readiness
-        } else {
-            CompletableFuture.completedFuture(Unit)
-        }
+        return CompletableFuture.completedFuture(Unit)
     }
 
     fun acquire(scope: String, processResourceId: String): AndroidV86EnvironmentLease {
-        check(scope == RUNTIME_SCOPE || scope == PROCESS_TREE_SCOPE) { "Unsupported v86 environment scope" }
+        check(scope == PROCESS_TREE_SCOPE) { "Unsupported v86 environment scope" }
         check(started.get() && !closed.get()) { "Android v86 environment manager is unavailable" }
-        val key = if (scope == RUNTIME_SCOPE) RUNTIME_KEY else "$PROCESS_TREE_SCOPE:$processResourceId"
+        val key = "$PROCESS_TREE_SCOPE:$processResourceId"
         val record = ensureRecord(scope, key)
-        try {
-            record.readiness.get(startupTimeoutMs, TimeUnit.MILLISECONDS)
-        } catch (error: Throwable) {
-            if (scope == PROCESS_TREE_SCOPE) releaseRecord(key, record)
-            throw error
-        }
-        return synchronized(lock) {
-            check(!closed.get() && records[key] === record) {
-                "Android v86 environment manager closed during acquisition"
-            }
-            AndroidV86EnvironmentLease(record.backend, record.environmentId, scope) {
-                if (scope == PROCESS_TREE_SCOPE) releaseRecord(key, record)
-            }
-        }
+        return AndroidV86EnvironmentLease(
+            record.backend, record.environmentId, scope, record.readiness,
+            submitCurrent = { command ->
+                synchronized(lock) {
+                    check(!closed.get() && records[key] === record) { "Android v86 environment is stale" }
+                    record.backend.submit(command)
+                }
+            },
+            release = { releaseRecord(key, record) },
+        )
     }
 
     override fun close() {
-        if (!closed.compareAndSet(false, true)) return
         val owned = synchronized(lock) {
+            if (!closed.compareAndSet(false, true)) return
             records.values.toList().also { records.clear() }
         }
-        owned.forEach { record -> runCatching { record.backend.close() } }
+        startupExecutor.shutdownNow()
+        owned.forEach { record -> retire(record) }
         runCatching { networkTransport?.close() }
         host.set(null)
     }
@@ -98,7 +104,7 @@ internal class AndroidV86EnvironmentManager(
             val entry = records.entries.firstOrNull { (_, record) -> record.environmentId == environmentId }
             if (entry == null) null else records.remove(entry.key)
         }
-        if (removed != null) runCatching { removed.backend.close() }
+        if (removed != null) retire(removed)
     }
 
     internal fun activeEnvironmentIds(): Set<String> = synchronized(lock) {
@@ -117,25 +123,51 @@ internal class AndroidV86EnvironmentManager(
                 eventSink.emit(source.put("environmentId", environmentId))
             },
         )
-        Record(backend, environmentId, backend.start(trustedHost)).also { records[key] = it }
+        val record = Record(backend, environmentId, CompletableFuture())
+        records[key] = record
+        record.timeout = startupExecutor.schedule({
+            if (record.readiness.completeExceptionally(TimeoutException("Android v86 startup timed out"))) {
+                releaseRecord(key, record)
+            }
+        }, startupTimeoutMs, TimeUnit.MILLISECONDS)
+        runCatching { backend.start(trustedHost) }.fold(
+            onSuccess = { readiness -> readiness.whenComplete { _, error ->
+                record.timeout?.cancel(false)
+                if (error == null) record.readiness.complete(Unit) else {
+                    record.readiness.completeExceptionally(error)
+                    releaseRecord(key, record)
+                }
+            } },
+            onFailure = { error ->
+                record.readiness.completeExceptionally(error)
+                releaseRecord(key, record)
+            },
+        )
+        record
     }
 
     private fun releaseRecord(key: String, expected: Record) {
         val removed = synchronized(lock) {
             if (records[key] === expected) records.remove(key) else null
         }
-        if (removed != null) runCatching { removed.backend.close() }
+        if (removed != null) retire(removed)
+    }
+
+    private fun retire(record: Record) {
+        record.timeout?.cancel(false)
+        record.readiness.completeExceptionally(IllegalStateException("Android v86 environment closed"))
+        // Production Backend close has a bounded ten-second join and skips its own worker.
+        runCatching { record.backend.close() }
     }
 
     private data class Record(
         val backend: AndroidV86EnvironmentBackend,
         val environmentId: String,
         val readiness: CompletableFuture<Unit>,
+        var timeout: ScheduledFuture<*>? = null,
     )
 
     private companion object {
         private const val PROCESS_TREE_SCOPE = "processTree"
-        private const val RUNTIME_KEY = "runtime"
-        private const val RUNTIME_SCOPE = "runtime"
     }
 }

@@ -35,6 +35,7 @@ pnpm test
 
 - [Documentation](./.oo/docs/en/index.md)
 - [Getting started](./.oo/docs/en/getting-started/index.md)
+- [Standalone Native holo](./.oo/docs/en/platforms/native/index.md)
 - [Guides](./.oo/docs/en/guides/index.md)
 - [Support matrix](./.oo/docs/en/capabilities/support-matrix.md)
 

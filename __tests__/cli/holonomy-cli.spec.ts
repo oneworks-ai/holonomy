@@ -27,7 +27,8 @@ import { HOLONOMY_SESSION_LIMITS, encodeHolonomySession } from '../../tools/holo
 
 describe('holonomy CLI module graph', () => {
   it('requires an explicit target and admits managed launch options', () => {
-    expect(() => parseHolonomyArgs(['run', 'entry.mjs'])).toThrow('--target android|node is required')
+    expect(() => parseHolonomyArgs(['run', 'entry.mjs'])).toThrow('--target android|node|native is required')
+    expect(parseHolonomyArgs(['run', '--target', 'native', 'entry.mjs']).options.target).toBe('native')
     expect(parseHolonomyArgs([
       'run',
       '--target',
@@ -76,6 +77,8 @@ describe('holonomy CLI module graph', () => {
     expect(() => parseHolonomyArgs(['run', '--target', 'android', '--watch', 'entry.mjs'])).toThrow(
       '--watch is supported by Node/Desktop Runtime only'
     )
+    expect(parseHolonomyArgs(['run', '--target', 'native', '--watch', 'entry.mjs']).options.watch)
+      .toBe(true)
   })
 
   it('builds relative Runtime plugins into private canonical holo-plugins Bundles', () => {
@@ -233,7 +236,7 @@ describe('holonomy CLI module graph', () => {
     })
   })
 
-  it('compiles a target-neutral immutable launch snapshot before contacting the service', () => {
+  it('compiles a target-neutral immutable launch snapshot before contacting the service', async () => {
     const parsed = parseHolonomyArgs([
       'run',
       '--target',
@@ -242,7 +245,7 @@ describe('holonomy CLI module graph', () => {
       'capability.json',
       'conformance/specs/console.test.mjs'
     ])
-    const snapshot = prepareHolonomyLaunchSnapshot(parsed.command, parsed.options, {
+    const snapshot = await prepareHolonomyLaunchSnapshot(parsed.command, parsed.options, {
       randomUUID: () => 'fixed-id',
       readCapabilityRuntime: () => ({ processProfileId: 'developer', schemaVersion: 1 })
     })

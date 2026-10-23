@@ -1,4 +1,5 @@
 import type { ProcessSandboxV2 } from '@holonomyjs/capability-process/kernel/policy-process-types'
+import type { StorageSandboxV2 } from '@holonomyjs/capability-storage/kernel/storage-types'
 import type {
   DeviceSandboxV2,
   DiagnosticsSandboxV2,
@@ -20,6 +21,7 @@ export interface SandboxPolicyV2 {
   readonly network: NetworkSandboxV2
   readonly process: ProcessSandboxV2
   readonly schemaVersion: 2
+  readonly storage: StorageSandboxV2
   readonly systemInformation: SystemInformationSandboxV2
 }
 
@@ -31,6 +33,7 @@ export interface CompiledSandboxPolicyV2 {
 
 /* eslint-disable perfectionist/sort-exports -- dprint owns mixed package/relative export order. */
 export * from '@holonomyjs/capability-process/kernel/policy-process-types'
+export * from '@holonomyjs/capability-storage/kernel/storage-types'
 export * from '@holonomyjs/capability-system/kernel/policy-host-types'
 export * from './policy-types.js'
 /* eslint-enable perfectionist/sort-exports */

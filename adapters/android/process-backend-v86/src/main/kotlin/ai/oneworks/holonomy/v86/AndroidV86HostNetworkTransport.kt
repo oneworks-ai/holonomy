@@ -161,7 +161,7 @@ class AndroidV86HostNetworkTransport(
 
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
-        handles.values.toSet().forEach { resource -> closeResource(resource, emit = false) }
+        handles.values.forEach { resource -> closeResource(resource, emit = false) }
         handles.clear()
         readers.shutdownNow()
     }

@@ -68,10 +68,11 @@ const main = async () => {
     supervisor: { protocolVersion: 1 }
   })
 
+  const probeLimits = { maxProcessTreeDepth: 1, maxTotalProcesses: 1 }
   const launch = createV86ProbeLaunchV1({
     backend,
     configuration,
-    policy: fuse.policy ?? { access: 'sandboxed' }
+    policy: fuse.policy ?? { access: 'sandboxed', limits: probeLimits }
   })
 
   try {

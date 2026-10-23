@@ -35,6 +35,7 @@ pnpm test
 
 - [文档首页](./.oo/docs/index.md)
 - [快速开始](./.oo/docs/getting-started/index.md)
+- [独立 Native holo](./.oo/docs/platforms/native/index.md)
 - [使用指南](./.oo/docs/guides/index.md)
 - [支持矩阵](./.oo/docs/capabilities/support-matrix.md)
 

@@ -1,3 +1,7 @@
+import {
+  STORAGE_KV_RESOURCE_V1_SCHEMA,
+  STORAGE_SQL_RESOURCE_V1_SCHEMA
+} from '@holonomyjs/capability-storage/kernel/storage-resource-schema'
 import { BINDING_SCHEMA_V1, DIGEST_SCHEMA_V1, IDENTIFIER_SCHEMA_V1 } from './registry-schema-primitives.js'
 import {
   DEVICE_FIELD_RESOURCE_V1_SCHEMA,
@@ -15,6 +19,8 @@ export const OPERATION_RESOURCE_SCHEMAS_V1: Readonly<Record<string, JsonSchema>>
   DeviceFieldResourceV1: DEVICE_FIELD_RESOURCE_V1_SCHEMA,
   FilesystemResourceV1: FILESYSTEM_RESOURCE_V1_SCHEMA,
   NetworkResourceV1: NETWORK_RESOURCE_V1_SCHEMA,
+  StorageKvResourceV1: STORAGE_KV_RESOURCE_V1_SCHEMA,
+  StorageSqlResourceV1: STORAGE_SQL_RESOURCE_V1_SCHEMA,
   NetworkResponseBodyBindingV1: strictObject({
     bodyDigest: DIGEST_SCHEMA_V1,
     consumed: { type: 'boolean' },
@@ -25,6 +31,10 @@ export const OPERATION_RESOURCE_SCHEMAS_V1: Readonly<Record<string, JsonSchema>>
     responseId: IDENTIFIER_SCHEMA_V1
   }, ['consumed', 'generation', 'hop', 'logicalRequestId', 'readerId', 'responseId']),
   OpaqueFileHandleResourceV1: strictObject({
+    binding: BINDING_SCHEMA_V1,
+    rightsDigest: DIGEST_SCHEMA_V1
+  }),
+  OpaqueDirectoryHandleResourceV1: strictObject({
     binding: BINDING_SCHEMA_V1,
     rightsDigest: DIGEST_SCHEMA_V1
   }),

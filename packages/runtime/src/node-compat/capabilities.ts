@@ -153,6 +153,7 @@ export const NODE_CORE_CAPABILITY_MATRIX = Object.freeze(
           'process.on',
           'process.off',
           'process.once',
+          'process.nextTick',
           'process.stdio.byteAdmissionCopy',
           'process.stdio.chunkLimit',
           'process.stdio.providerFailureMapping'
@@ -171,8 +172,7 @@ export const NODE_CORE_CAPABILITY_MATRIX = Object.freeze(
           'process.kill',
           'process.setgid',
           'process.setuid',
-          'process.umask',
-          'process.nextTick'
+          'process.umask'
         ],
         PROCESS_CONSTRAINTS
       ),

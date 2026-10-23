@@ -49,6 +49,7 @@ export type CapabilityConstraintKindV1 =
   | 'numericReader'
   | 'process'
   | 'system'
+  | 'storage'
 
 export interface CapabilityDefinitionDescriptorV1 {
   readonly constraintKind: CapabilityConstraintKindV1

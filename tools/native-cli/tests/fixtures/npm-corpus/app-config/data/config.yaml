@@ -1,0 +1,7 @@
+# deployment settings
+defaults: &retry
+  attempts: 3
+service:
+  retry: *retry
+  environment: development
+  enabled: false

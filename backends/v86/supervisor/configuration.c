@@ -50,26 +50,43 @@ static int write_all(int fd, const char *bytes, size_t length) {
     return 0;
 }
 
-int holo_configuration_apply(int control_fd, const struct holo_frame *frame, uint32_t *exec_gate_timeout_ms) {
+int holo_configuration_apply(
+    int control_fd,
+    const struct holo_frame *frame,
+    uint32_t *exec_gate_timeout_ms,
+    uint32_t *max_total_processes,
+    uint32_t *max_process_tree_depth
+) {
     struct holo_reader reader = { frame->payload, frame->payload_length, 0 };
     uint8_t version;
     uint8_t flags;
     uint16_t count;
     uint16_t index;
     uint8_t timeout_bytes[4];
+    uint8_t total_bytes[4];
+    uint8_t depth_bytes[4];
     uint32_t timeout;
+    uint32_t total;
+    uint32_t depth;
     int fd = -1;
     int result = -1;
     if (
         frame->process_id != 0 || frame->request_id == 0 || frame->sequence != 0 ||
-        holo_reader_u8(&reader, &version) != 0 || version != 1 ||
+        holo_reader_u8(&reader, &version) != 0 || version != 2 ||
         holo_reader_u8(&reader, &flags) != 0 || flags != 0 ||
         holo_reader_u16(&reader, &count) != 0 || count > HOLO_MAX_HOSTS ||
-        holo_reader_bytes(&reader, timeout_bytes, sizeof(timeout_bytes)) != 0
+        holo_reader_bytes(&reader, timeout_bytes, sizeof(timeout_bytes)) != 0 ||
+        holo_reader_bytes(&reader, total_bytes, sizeof(total_bytes)) != 0 ||
+        holo_reader_bytes(&reader, depth_bytes, sizeof(depth_bytes)) != 0
     ) return -1;
     timeout = ((uint32_t)timeout_bytes[0] << 24U) | ((uint32_t)timeout_bytes[1] << 16U) |
         ((uint32_t)timeout_bytes[2] << 8U) | timeout_bytes[3];
-    if (timeout < 1 || timeout > 120000U) return -1;
+    total = ((uint32_t)total_bytes[0] << 24U) | ((uint32_t)total_bytes[1] << 16U) |
+        ((uint32_t)total_bytes[2] << 8U) | total_bytes[3];
+    depth = ((uint32_t)depth_bytes[0] << 24U) | ((uint32_t)depth_bytes[1] << 16U) |
+        ((uint32_t)depth_bytes[2] << 8U) | depth_bytes[3];
+    if (timeout < 1 || timeout > 120000U || total < 1 || total > 100000U ||
+        depth < 1 || depth > 32U) return -1;
     fd = open("/etc/.hosts.holo.tmp", O_CLOEXEC | O_CREAT | O_EXCL | O_WRONLY, 0644);
     if (fd < 0) return -1;
     if (write_all(fd, "127.0.0.1 localhost\n", 20) != 0) goto done;
@@ -96,7 +113,11 @@ int holo_configuration_apply(int control_fd, const struct holo_frame *frame, uin
     fd = -1;
     if (rename("/etc/.hosts.holo.tmp", "/etc/hosts") != 0) goto done;
     result = holo_write_empty(control_fd, HOLO_ACK, frame->request_id, 0);
-    if (result == 0) *exec_gate_timeout_ms = timeout;
+    if (result == 0) {
+        *exec_gate_timeout_ms = timeout;
+        *max_total_processes = total;
+        *max_process_tree_depth = depth;
+    }
 done:
     if (fd >= 0) close(fd);
     if (result != 0) unlink("/etc/.hosts.holo.tmp");

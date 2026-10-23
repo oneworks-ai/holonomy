@@ -6,6 +6,14 @@ const MAX_FRAME_BYTES = 1024 * 1024
 
 const frame = (opcode, payload) => {
   if (payload.byteLength < 126) return Buffer.concat([Buffer.from([0x80 | opcode, payload.byteLength]), payload])
+  if (payload.byteLength > MAX_FRAME_BYTES) throw new Error('WebSocket frame exceeds its limit')
+  if (payload.byteLength > 65_535) {
+    const header = Buffer.alloc(10)
+    header[0] = 0x80 | opcode
+    header[1] = 127
+    header.writeBigUInt64BE(BigInt(payload.byteLength), 2)
+    return Buffer.concat([header, payload])
+  }
   const header = Buffer.alloc(4)
   header[0] = 0x80 | opcode
   header[1] = 126
@@ -14,7 +22,7 @@ const frame = (opcode, payload) => {
 }
 
 const sendJson = (socket, value) => {
-  if (socket.destroyed) return
+  if (socket.destroyed || socket.writableEnded) return
   socket.write(frame(0x1, Buffer.from(JSON.stringify(value))))
 }
 
@@ -91,7 +99,16 @@ export const handleInspectorUpgrade = (proxy, request, socket, head) => {
     ) return rejectUpgrade(socket, 400)
     const inspectorId = decodeURIComponent(match[1])
     const token = url.searchParams.get('access_token')
-    const session = proxy.connectAuthorized(inspectorId, token, message => sendJson(socket, message))
+    let closing = false
+    const closeSocket = () => {
+      if (closing || socket.destroyed) return
+      closing = true
+      if (!socket.writableEnded) socket.end(frame(0x8, Buffer.from([0x03, 0xE9])))
+      const timeout = setTimeout(() => socket.destroy(), 1_000)
+      timeout.unref()
+      socket.once('close', () => clearTimeout(timeout))
+    }
+    const session = proxy.connectAuthorized(inspectorId, token, message => sendJson(socket, message), closeSocket)
     const accept = createHash('sha1').update(`${key}${MAGIC}`).digest('base64')
     socket.write([
       'HTTP/1.1 101 Switching Protocols',
@@ -101,7 +118,7 @@ export const handleInspectorUpgrade = (proxy, request, socket, head) => {
       '\r\n'
     ].join('\r\n'))
     const decoder = new WebSocketFrameDecoder({
-      close: () => socket.end(),
+      close: closeSocket,
       message: async message => sendJson(socket, await session.receive(JSON.parse(message))),
       pong: payload => socket.write(frame(0xA, payload))
     })
@@ -110,7 +127,7 @@ export const handleInspectorUpgrade = (proxy, request, socket, head) => {
         decoder.push(chunk)
       } catch {
         session.close()
-        socket.end()
+        closeSocket()
       }
     })
     socket.once('close', session.close)

@@ -3,6 +3,26 @@ import { describe, expect, it } from 'vitest'
 import { createNodeTestSyntheticModules } from '../../../src/node-test/index.js'
 
 describe('node:test runtime', () => {
+  it('exposes the callable default with named registration and hook aliases', () => {
+    const module = createNodeTestSyntheticModules('desktop')['node:test']
+    const test = module.default as typeof module.test & {
+      readonly after: typeof module.after
+      readonly before: typeof module.before
+      readonly describe: typeof module.describe
+      readonly it: typeof module.it
+      readonly run: typeof module.run
+      readonly test: typeof module.test
+    }
+    expect(test).toBe(module.it)
+    expect(test.it).toBe(module.it)
+    expect(test.test).toBe(module.test)
+    expect(test.describe).toBe(module.describe)
+    expect(test.run).toBe(module.run)
+    expect(test.after).toBe(module.after)
+    expect(test.before).toBe(module.before)
+    expect(Object.isFrozen(test)).toBe(true)
+  })
+
   it('runs common cases and excludes platform cases from the common denominator', async () => {
     const modules = createNodeTestSyntheticModules('android')
     const { describe: registerSuite, it: registerCase, run } = modules['node:test']

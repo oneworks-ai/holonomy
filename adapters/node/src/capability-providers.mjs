@@ -147,3 +147,16 @@ export const createNodeCapabilityProvidersV1 = (session, generation, processBack
     ['host.system', new NodeSystemProviderV1(session.runtimeCreation.configuration.systemProjection)]
   ])
 }
+
+// Start every Provider's synchronous revocation prefix before awaiting any
+// teardown. Fatal child exit cannot rely on a later microtask starting cleanup.
+export const closeNodeCapabilityProvidersV1 = providers =>
+  Promise.allSettled(
+    [...providers.values()].map(provider => {
+      try {
+        return provider.close?.()
+      } catch {
+        return undefined
+      }
+    })
+  )

@@ -17,6 +17,8 @@ import type { StorageAuthorityInput, StorageFacade } from '../storage/index.js'
 import type { RuntimeTimers } from '../timers/index.js'
 
 export interface RuntimeSyntheticModuleBinding {
+  /** Optional on input; the registry supplies a require value on every published binding. */
+  readonly commonjsValue?: unknown
   readonly descriptor: Readonly<{ readonly exportNames: readonly string[] }>
   readonly namespace: object
 }
@@ -34,6 +36,8 @@ export interface HolonomyRuntimeOptions {
   readonly git?: GitAuthorityInput
   readonly storage?: StorageAuthorityInput
   readonly testPlatform?: HolonomyTestPlatform
+  /** Trusted synchronous engine-native Promise brand predicate; never grants I/O. */
+  readonly testPromiseBrand?: (value: unknown) => boolean
   readonly timers?: RuntimeTimers
   readonly network?: Omit<WebNetworkRuntimeOptions, 'authority' | 'bridge'> & {
     readonly authority: NetworkAuthority
@@ -74,8 +78,10 @@ export interface HolonomyRuntimeGlobals {
   readonly console?: object
   readonly fetch?: object
   readonly clearInterval?: object
+  readonly clearImmediate?: object
   readonly clearTimeout?: object
   readonly setInterval?: object
+  readonly setImmediate?: object
   readonly setTimeout?: object
 }
 

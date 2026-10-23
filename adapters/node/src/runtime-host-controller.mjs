@@ -3,6 +3,8 @@
 import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
+import process from 'node:process'
+import { types } from 'node:util'
 import vm from 'node:vm'
 
 import { NodeCapabilityRuntimeHostV1 } from './capability-host.mjs'
@@ -17,7 +19,12 @@ export class NodeRuntimeHostController {
   #capabilityRuntime
   #emitLog
   #emitNetwork
+  #onTerminate
   #eventLoopWakeup
+  #checkWakeup
+  #wakeupTicket = 0
+  #immediateWakeup = false
+  #wakeupPhase
   #graph
   #nativePort
   #nextTimerId = 1
@@ -28,11 +35,14 @@ export class NodeRuntimeHostController {
   #timerFire
   #timers = new Map()
   #turn
+  #nextTickCheckpoint
+  #terminated = false
   #userModules
 
-  constructor({ emitLog, emitNetwork, generation, graph, runtimeContext, session }) {
+  constructor({ emitLog, emitNetwork, generation, graph, runtimeContext, session, onTerminate }) {
     this.#emitLog = emitLog
     this.#emitNetwork = emitNetwork
+    this.#onTerminate = onTerminate
     this.#graph = graph
     this.#runtimeContext = runtimeContext
     this.#session = session
@@ -51,13 +61,16 @@ export class NodeRuntimeHostController {
     await this.#plugins.close()
     await this.#capabilityRuntime?.close()
     clearTimeout(this.#eventLoopWakeup)
+    clearImmediate(this.#checkWakeup)
+    this.#wakeupTicket++
+    this.#immediateWakeup = false
     for (const timer of this.#timers.values()) {
       if (timer.interval) clearInterval(timer.handle)
       else clearTimeout(timer.handle)
     }
     this.#timers.clear()
     this.#nativePort?.dispose()
-    if (this.#disposeGuest != null) await this.#invoke(this.#disposeGuest)
+    if (!this.#terminated && this.#disposeGuest != null) await this.#invoke(this.#disposeGuest)
   }
 
   updateRules(rules) {
@@ -78,9 +91,57 @@ export class NodeRuntimeHostController {
   }
 
   #invoke(callback, args = []) {
+    if (this.#terminated) return undefined
+    try {
+      return this.#invokeActive(callback, args)
+    } catch (error) {
+      if (!this.#terminated) throw error
+      return undefined
+    }
+  }
+
+  #invokeActive(callback, args) {
     const result = Reflect.apply(callback, undefined, args)
+    if (this.#terminated) return result
+    // Callbacks leave only the shared tick queue before entering the engine's
+    // microtask checkpoint. Promises may enqueue another batch of ticks.
+    this.#drainNextTicks()
+    if (this.#terminated) return result
     vm.runInContext('', this.#runtimeContext.context)
+    while (!this.#terminated && this.#drainNextTicks()) {
+      vm.runInContext('', this.#runtimeContext.context)
+    }
     return result
+  }
+
+  #drainNextTicks() {
+    return this.#nextTickCheckpoint != null && Reflect.apply(this.#nextTickCheckpoint, undefined, []) === true
+  }
+
+  #terminate(reason) {
+    if (this.#terminated) return null
+    this.#terminated = true
+    const message = String(reason)
+    this.#emitLog({ level: 'error', text: `Runtime terminated: ${message}` })
+    // Start the existing Host generation's synchronous revocation prefix before
+    // OS exit. Provider revocation starts before asynchronous teardown.
+    void this.#capabilityRuntime?.close().catch(() => undefined)
+    try {
+      this.#nativePort?.dispose()
+    } catch { /* OS teardown remains the terminal backstop. */ }
+    const explicit = /^process\.exit\((\d{1,3})\)$/u.exec(message)
+    if (this.#onTerminate != null) {
+      this.#onTerminate(
+        explicit != null && Number(explicit[1]) <= 255 ? Number(explicit[1]) : message === 'runtime.terminated' ? 0 : 1
+      )
+    } else if (explicit == null) {
+      // Reuse the child owner's existing uncaughtException/fatal path. Never
+      // continue Guest jobs after the shared loop selected an error terminal.
+      queueMicrotask(() => {
+        throw new Error('Holonomy Runtime terminated')
+      })
+    }
+    return null
   }
 
   #operations() {
@@ -137,6 +198,7 @@ export class NodeRuntimeHostController {
         }
       },
       now: () => performance.now(),
+      isPromise: value => types.isPromise(value),
       onError: (name, error) =>
         this.#emitLog({
           level: 'error',
@@ -159,10 +221,15 @@ export class NodeRuntimeHostController {
         this.#turn = callback
         return true
       },
-      requestWakeup: deadline => this.#requestWakeup(deadline),
+      registerNextTickCheckpoint: callback => {
+        if (typeof callback !== 'function') return false
+        this.#nextTickCheckpoint = callback
+        return true
+      },
+      requestWakeup: (deadline, phase) => this.#requestWakeup(deadline, phase),
       scheduleTimer: (delay, interval) => this.#scheduleTimer(delay, interval),
       sha256Chunks: chunks => this.#sha256Chunks(chunks),
-      terminate: reason => this.#emitLog({ level: 'error', text: `Runtime terminated: ${String(reason)}` }),
+      terminate: reason => this.#terminate(reason),
       writeOutput: (level, text) => this.#emitLog({ level, text: String(text).slice(0, 65_536) })
     })
   }
@@ -181,12 +248,35 @@ export class NodeRuntimeHostController {
     return this.#invoke(sink, [createNativeEventValue(this.#runtimeContext, event)])
   }
 
-  #requestWakeup(deadline) {
+  #requestWakeup(deadline, phase = 'next-tick') {
+    if (phase !== 'next-tick' && phase !== 'event-loop') throw new TypeError('Invalid Runtime wakeup phase')
+    if (
+      deadline != null && deadline <= performance.now() && this.#immediateWakeup &&
+      phase === this.#wakeupPhase && !this.#terminated
+    ) return
+    const ticket = ++this.#wakeupTicket
     clearTimeout(this.#eventLoopWakeup)
+    clearImmediate(this.#checkWakeup)
+    this.#eventLoopWakeup = undefined
+    this.#checkWakeup = undefined
+    this.#immediateWakeup = false
+    this.#wakeupPhase = undefined
+    if (deadline === null || this.#terminated) return
     const delay = Math.max(0, Math.ceil(deadline - performance.now()))
-    this.#eventLoopWakeup = setTimeout(() => {
+    const fire = () => {
+      if (ticket !== this.#wakeupTicket || this.#terminated) return
+      this.#immediateWakeup = false
+      this.#eventLoopWakeup = undefined
+      this.#checkWakeup = undefined
+      this.#wakeupPhase = undefined
       if (this.#turn != null) this.#invoke(this.#turn)
-    }, delay)
+    }
+    if (delay === 0) {
+      this.#immediateWakeup = true
+      this.#wakeupPhase = phase
+      if (phase === 'next-tick') process.nextTick(fire)
+      else this.#checkWakeup = setImmediate(fire)
+    } else this.#eventLoopWakeup = setTimeout(fire, delay)
   }
 
   #scheduleTimer(delay, interval) {

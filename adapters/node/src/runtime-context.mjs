@@ -1,97 +1,165 @@
 import { Buffer } from 'node:buffer'
 import vm from 'node:vm'
 
-const MAX_LOG_RECORDS = 256
-const MAX_LOG_TEXT_UNITS = 16 * 1024
+import { installNodeEngineGateV1, reserveNodeEngineGateContextV1 } from './engine-gate-native.mjs'
+import { HOST_FACADE_SOURCE, INSTALL_RUNTIME_GLOBALS } from './runtime-context-sources.mjs'
 
-const INSTALL_RUNTIME_GLOBALS = `(() => {
-  const records = []
-  const stringify = value => {
-    let text
+export { createContextValue, drainRuntimeLogs } from './runtime-context-values.mjs'
+
+const INSTALL_WASM_FACADE = `(() => {
+  const Native = WebAssembly
+  const NativeArrayBuffer = ArrayBuffer
+  const NativeDataView = DataView
+  const NativeModule = Native.Module
+  const NativeInstance = Native.Instance
+  const NativeUint8Array = Uint8Array
+  const ReflectApply = Reflect.apply
+  const ReflectConstruct = Reflect.construct
+  const ObjectDefineProperty = Object.defineProperty
+  const ObjectFreeze = Object.freeze
+  const ObjectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor
+  const TypedArrayPrototype = Object.getPrototypeOf(Uint8Array.prototype)
+  const arrayBufferByteLength = ObjectGetOwnPropertyDescriptor(NativeArrayBuffer.prototype, 'byteLength').get
+  const arrayBufferResizable = ObjectGetOwnPropertyDescriptor(NativeArrayBuffer.prototype, 'resizable')?.get
+  const dataViewBuffer = ObjectGetOwnPropertyDescriptor(NativeDataView.prototype, 'buffer').get
+  const dataViewByteLength = ObjectGetOwnPropertyDescriptor(NativeDataView.prototype, 'byteLength').get
+  const dataViewByteOffset = ObjectGetOwnPropertyDescriptor(NativeDataView.prototype, 'byteOffset').get
+  const typedArrayBuffer = ObjectGetOwnPropertyDescriptor(TypedArrayPrototype, 'buffer').get
+  const typedArrayByteLength = ObjectGetOwnPropertyDescriptor(TypedArrayPrototype, 'byteLength').get
+  const typedArrayByteOffset = ObjectGetOwnPropertyDescriptor(TypedArrayPrototype, 'byteOffset').get
+  const typedArraySet = TypedArrayPrototype.set
+  const moduleBytes = new WeakMap()
+  const assertFixedArrayBuffer = buffer => {
+    ReflectApply(arrayBufferByteLength, buffer, [])
+    if (arrayBufferResizable != null && ReflectApply(arrayBufferResizable, buffer, [])) {
+      throw new TypeError('Resizable WebAssembly source is unsupported')
+    }
+  }
+  const copyBytes = (buffer, offset, length) => {
+    assertFixedArrayBuffer(buffer)
+    const view = ReflectConstruct(NativeUint8Array, [buffer, offset, length])
+    const copy = ReflectConstruct(NativeUint8Array, [length])
+    ReflectApply(typedArraySet, copy, [view])
+    return copy
+  }
+  const snapshotSource = source => {
     try {
-      text = typeof value === 'string' ? value : JSON.stringify(value)
-    } catch {
-      text = '[unserializable]'
+      const value = ReflectApply(arrayBufferByteLength, source, [])
+      if (arrayBufferResizable != null && ReflectApply(arrayBufferResizable, source, [])) {
+        throw new TypeError('Resizable WebAssembly source is unsupported')
+      }
+      if (Number.isSafeInteger(value) && value >= 0) return copyBytes(source, 0, value)
+    } catch {}
+    try {
+      const value = ReflectApply(typedArrayByteLength, source, [])
+      const offset = ReflectApply(typedArrayByteOffset, source, [])
+      const buffer = ReflectApply(typedArrayBuffer, source, [])
+      if (Number.isSafeInteger(value) && value >= 0) return copyBytes(buffer, offset, value)
+    } catch {}
+    try {
+      const value = ReflectApply(dataViewByteLength, source, [])
+      const offset = ReflectApply(dataViewByteOffset, source, [])
+      const buffer = ReflectApply(dataViewBuffer, source, [])
+      if (Number.isSafeInteger(value) && value >= 0) return copyBytes(buffer, offset, value)
+    } catch {}
+    throw new TypeError('WebAssembly source must be a non-shared BufferSource')
+  }
+  const stage = source => {
+    const snapshot = snapshotSource(source)
+    stageWasmSource(snapshot)
+    return snapshot
+  }
+  const deny = () => { throw new Native.CompileError('Wasm code generation disallowed') }
+  const Module = function Module(source) {
+    if (new.target == null) throw new TypeError("WebAssembly.Module must be called with 'new'")
+    const bytes = stage(source)
+    const value = ReflectConstruct(NativeModule, [source], NativeModule)
+    moduleBytes.set(value, bytes)
+    return value
+  }
+  Module.prototype = NativeModule.prototype
+  ObjectDefineProperty(NativeModule.prototype, 'constructor', { configurable: true, value: Module })
+  for (const name of ['customSections', 'exports', 'imports']) {
+    ObjectDefineProperty(Module, name, { value: (...args) => NativeModule[name](...args) })
+  }
+  const Instance = function Instance(module, imports) {
+    if (new.target == null) throw new TypeError("WebAssembly.Instance must be called with 'new'")
+    const source = moduleBytes.get(module)
+    if (source == null || !requestWasm(source)) deny()
+    return ReflectConstruct(NativeInstance, arguments.length > 1 ? [module, imports] : [module], NativeInstance)
+  }
+  Instance.prototype = NativeInstance.prototype
+  ObjectDefineProperty(NativeInstance.prototype, 'constructor', { configurable: true, value: Instance })
+  const compile = source => {
+    const snapshot = stage(source)
+    return Native.compile(source).then(module => {
+      moduleBytes.set(module, snapshot)
+      return module
+    })
+  }
+  const instantiate = (source, imports) => {
+    if (moduleBytes.has(source)) {
+      if (!requestWasm(moduleBytes.get(source))) deny()
+      return Native.instantiate(source, imports)
     }
-    if (text === undefined) text = String(value)
-    return text.length > ${MAX_LOG_TEXT_UNITS} ? text.slice(0, ${MAX_LOG_TEXT_UNITS}) : text
+    const snapshot = stage(source)
+    return Native.instantiate(source, imports).then(result => {
+      if (result?.module != null) moduleBytes.set(result.module, snapshot)
+      return result
+    })
   }
-  const write = (level, values) => {
-    if (records.length >= ${MAX_LOG_RECORDS}) return
-    records.push(Object.freeze({ level, text: values.map(stringify).join(' ') }))
+  const readStreaming = async source => {
+    const response = await source
+    if (response == null || typeof response.arrayBuffer !== 'function') {
+      throw new TypeError('WebAssembly streaming source must resolve to a Response')
+    }
+    return await response.arrayBuffer()
   }
-  const runtimeConsole = Object.freeze({
-    debug(...values) { write('debug', values) },
-    error(...values) { write('error', values) },
-    info(...values) { write('info', values) },
-    log(...values) { write('log', values) },
-    warn(...values) { write('warn', values) }
-  })
-  Object.defineProperty(globalThis, 'console', {
-    configurable: true,
-    enumerable: true,
-    value: runtimeConsole,
+  ObjectDefineProperty(globalThis, 'WebAssembly', {
+    configurable: false,
+    enumerable: false,
+    value: ObjectFreeze({
+      CompileError: Native.CompileError,
+      Global: Native.Global,
+      Instance,
+      LinkError: Native.LinkError,
+      Memory: Native.Memory,
+      Module,
+      RuntimeError: Native.RuntimeError,
+      Table: Native.Table,
+      compile,
+      compileStreaming: source => readStreaming(source).then(compile),
+      instantiate,
+      instantiateStreaming: (source, imports) => readStreaming(source).then(bytes => instantiate(bytes, imports)),
+      validate: source => Native.validate(source)
+    }),
     writable: false
-  })
-  return Object.freeze({
-    drain() { return records.splice(0, records.length) },
-    parseNativeEvent(json) {
-      const event = JSON.parse(json)
-      if (Array.isArray(event.binary)) {
-        for (const handle of event.binary) {
-          const source = handle.dataBase64.replace(/=+$/u, '')
-          const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-          const bytes = []
-          let buffer = 0
-          let bits = 0
-          for (const character of source) {
-            const digit = alphabet.indexOf(character)
-            if (digit < 0) throw new TypeError('Invalid native binary')
-            buffer = (buffer << 6) | digit
-            bits += 6
-            if (bits >= 8) {
-              bits -= 8
-              bytes.push((buffer >> bits) & 0xFF)
-            }
-          }
-          handle.data = new Uint8Array(bytes)
-          delete handle.dataBase64
-        }
-      }
-      return event
-    },
-    parseFrozen(json) {
-      const value = JSON.parse(json)
-      const freeze = current => {
-        if (current !== null && typeof current === 'object') {
-          for (const child of Object.values(current)) freeze(child)
-          Object.freeze(current)
-        }
-        return current
-      }
-      return freeze(value)
-    }
   })
 })()`
 
-export function createRuntimeContext(name = 'holonomy-runtime') {
+export function createRuntimeContext(name = 'holonomy-runtime', codeGeneration = undefined) {
   const sandbox = Object.create(null)
+  const engineGateContextId = reserveNodeEngineGateContextV1(sandbox)
   const context = vm.createContext(sandbox, {
     codeGeneration: { strings: false, wasm: false },
     name
   })
+  const engineGate = installNodeEngineGateV1(engineGateContextId, codeGeneration)
+  if (engineGate.stageWasmSource != null && engineGate.requestWasm != null) {
+    const installWasmFacade = vm.compileFunction(`return ${INSTALL_WASM_FACADE}`, [], {
+      contextExtensions: [Object.freeze({
+        requestWasm: engineGate.requestWasm,
+        stageWasmSource: engineGate.stageWasmSource
+      })],
+      filename: 'holonomy:///runtime/wasm-gate-bootstrap.mjs',
+      parsingContext: context
+    })
+    installWasmFacade()
+  }
   const controls = vm.runInContext(INSTALL_RUNTIME_GLOBALS, context, {
     filename: 'holonomy:///runtime/context-bootstrap.mjs'
   })
-  return Object.freeze({ context, controls })
-}
-
-export function createContextValue(runtimeContext, value) {
-  return runtimeContext.controls.parseFrozen(JSON.stringify(value))
-}
-
-export function drainRuntimeLogs(runtimeContext) {
-  return runtimeContext.controls.drain().map(record => ({ level: record.level, text: record.text }))
+  return Object.freeze({ context, controls, engineGate })
 }
 
 export function createNativeEventValue(runtimeContext, event) {
@@ -106,39 +174,6 @@ export function createNativeEventValue(runtimeContext, event) {
     }
   return runtimeContext.controls.parseNativeEvent(JSON.stringify(serializable))
 }
-
-const HOST_FACADE_SOURCE = `(() => {
-  const call = (name, ...args) => dispatch(name, args)
-  return Object.freeze({
-    capabilityAbort: (...args) => call('capabilityAbort', ...args),
-    capabilityConfiguration: () => call('capabilityConfiguration'),
-    capabilityInvoke: (...args) => call('capabilityInvoke', ...args),
-    capabilityInvokeImmediate: (...args) => call('capabilityInvokeImmediate', ...args),
-    capabilityInvokeSync: (...args) => call('capabilityInvokeSync', ...args),
-    capabilityReleaseResource: (...args) => call('capabilityReleaseResource', ...args),
-    capabilitySubscribeResource: (...args) => call('capabilitySubscribeResource', ...args),
-    cancelNative: (...args) => call('cancelNative', ...args),
-    cancelTimer: (...args) => call('cancelTimer', ...args),
-    closeNativeResource: (...args) => call('closeNativeResource', ...args),
-    configuration: () => call('configuration'),
-    disposeNative: () => call('disposeNative'),
-    grantNativeCredits: (...args) => call('grantNativeCredits', ...args),
-    installSyntheticModules: (...args) => call('installSyntheticModules', ...args),
-    nativeDispatch: (...args) => call('nativeDispatch', ...args),
-    networkDiagnostic: (...args) => call('networkDiagnostic', ...args),
-    now: () => call('now'),
-    readModule: (...args) => call('readModule', ...args),
-    registerDispose: (...args) => call('registerDispose', ...args),
-    registerRuleUpdater: (...args) => call('registerRuleUpdater', ...args),
-    registerTimerFire: (...args) => call('registerTimerFire', ...args),
-    registerTurn: (...args) => call('registerTurn', ...args),
-    requestWakeup: (...args) => call('requestWakeup', ...args),
-    scheduleTimer: (...args) => call('scheduleTimer', ...args),
-    sha256Chunks: (...args) => call('sha256Chunks', ...args),
-    terminate: (...args) => call('terminate', ...args),
-    writeOutput: (...args) => call('writeOutput', ...args)
-  })
-})()`
 
 export function installRuntimeHostBridge(runtimeContext, operations) {
   const dispatch = (name, args) => {

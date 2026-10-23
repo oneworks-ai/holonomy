@@ -33,7 +33,7 @@ export const updateContext = (
     return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
   }
   record.dataStarted = true
-  record.dataBytes += input.byteLength
+  record.dataBytes += inputSnapshot.byteLength
   let providerOutput: Uint8Array
   try {
     providerOutput = providerOperation(state, record, () => state.provider.update(record.providerContext, input!))
@@ -44,7 +44,7 @@ export const updateContext = (
     if (record.kind === 'hash' || record.kind === 'hmac') return byteLength === 0
     return record.outputBytes + byteLength <= record.dataBytes
   })
-  record.outputBytes += output.byteLength
+  record.outputBytes += inspectBytes(output).byteLength
   return output
 }
 
@@ -69,7 +69,7 @@ export const setContextAAD = (
   } catch {
     return terminalFailure(state, record, cryptoError('ERR_HOLONOMY_CRYPTO_OPERATION_FAILED'))
   }
-  record.aadBytes += aad.byteLength
+  record.aadBytes += snapshot.byteLength
   try {
     const output = providerOperation(state, record, () => state.provider.setAAD(record.providerContext, aad!))
     if (output !== undefined) {

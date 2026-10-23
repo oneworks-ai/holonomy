@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- public process admission and generation fencing share one control facade. */
 
 import { createServiceCapabilityRuntimeManagerV1 } from './capability-runtime-manager.mjs'
+import { normalizeCapabilityObserverRegistryV1 } from './capability-runtime-observers.mjs'
 import { DEFAULT_EVENT_RETENTION_MS } from './constants.mjs'
 import { createControlDeviceWatcher } from './control-device-watcher.mjs'
 import { ControlDirectMutations } from './control-direct-mutations.mjs'
@@ -34,21 +35,39 @@ export class HolonomyControlCore {
   #store
 
   constructor(options) {
+    const observerRegistry = normalizeCapabilityObserverRegistryV1(options.capabilityObserverRegistry)
     const capabilityRuntime = options.capabilityRuntimeManager ?? createServiceCapabilityRuntimeManagerV1({
       deviceSnapshotFactory: options.capabilityDeviceSnapshotFactory,
+      engineGate: options.capabilityEngineGate,
       middlewareRegistry: options.capabilityMiddlewareRegistry,
+      observerHostCaps: options.capabilityObserverHostCaps,
+      observerRegistry,
+      sourceReaderHostCaps: options.capabilityEngineSourceReaderHostCaps,
       processBackendInstallations: options.capabilityProcessBackendInstallations,
       processBackendRegistry: options.capabilityProcessBackendRegistry,
       processProfiles: options.capabilityProcessProfiles,
+      nativeDeviceProvider: options.nativeDeviceProvider,
+      nativeDiagnosticSourceReader: options.nativeDiagnosticSourceReader,
+      nativeDiagnosticAudit: options.nativeDiagnosticAudit,
+      nativeObserverProfiles: options.nativeObserverProfiles,
       stateDirectory: options.stateDirectory,
       systemProjectionFactory: options.capabilitySystemProjectionFactory
     })
     this.#adapters = options.adapterDispatcher ?? createTargetAdapterDispatcher({
       android: options.adbPort ?? createOptionalAndroidRuntimeAdapter(),
-      node: options.nodeAdapter ?? createNodeRuntimeAdapter()
+      node: options.nodeAdapter ?? createNodeRuntimeAdapter({
+        engineGate: options.capabilityEngineGate,
+        observerBindings: [...observerRegistry.values()],
+        observerHostCaps: options.capabilityObserverHostCaps,
+        sourceReaderHostCaps: options.capabilityEngineSourceReaderHostCaps
+      })
     })
     this.#store = options.store
-    this.#inspectorProxy = options.inspectorProxy ?? new InspectorCdpProxy({ now: options.now })
+    this.#inspectorProxy = options.inspectorProxy ?? new InspectorCdpProxy({
+      engineGate: options.capabilityEngineGate,
+      now: options.now,
+      sourceReaderHostCaps: options.capabilityEngineSourceReaderHostCaps
+    })
     this.#registry = new ControlRegistry(options.store, {
       capabilityRuntime,
       now: options.now,
@@ -86,10 +105,14 @@ export class HolonomyControlCore {
     })
     this.#inspectorProxy.configureResume?.(async input => {
       const process = this.#registry.get('processes', input.processId, 'Runtime process')
-      if (process.generation !== input.generation || process.state !== 'waiting_for_debugger') {
+      if (process.generation !== input.generation) {
         throw serviceError('service.precondition_failed', 'Runtime process is not waiting for this inspector')
       }
-      await this.resumeProcess(process.id, process.generation, input.idempotencyKey)
+      if (process.state === 'running') return
+      if (process.state !== 'waiting_for_debugger') {
+        throw serviceError('service.precondition_failed', 'Runtime process is not waiting for this inspector')
+      }
+      await this.resumeProcess(process.id, process.generation, input.idempotencyKey, true)
     })
   }
 
@@ -98,7 +121,11 @@ export class HolonomyControlCore {
     await this.#outputs.open()
     await this.#reconciler.open(this.#store.getSnapshot())
     await reconcileServiceState(this.#store)
-    await this.#registry.pruneRetention()
+    await this.#runner.retryRemovalCleanups()
+    await this.#registry.pruneRetention({
+      beforeRemoveProcess: process => this.#runner.releaseExpiredProcess(process),
+      afterRemoveProcess: process => this.#runner.finalizeRemovedProcess(process)
+    })
     await this.#store.pruneEvents()
     await this.#deviceWatcher.start()
   }
@@ -147,9 +174,15 @@ export class HolonomyControlCore {
     if (!admission.replayed) this.#runner.scheduleRestart(resultValue(admission), expectedGeneration)
     return admission
   }
-  async resumeProcess(id, expectedGeneration, idempotencyKey) {
+  async resumeProcess(id, expectedGeneration, idempotencyKey, waitForCompletion = false) {
     const admission = await this.#registry.admitProcessAction('resume', id, expectedGeneration, idempotencyKey)
-    if (!admission.replayed) this.#runner.scheduleResume(resultValue(admission))
+    const completion = admission.replayed ? undefined : this.#runner.scheduleResume(resultValue(admission))
+    if (waitForCompletion) {
+      await completion
+      if (this.#registry.get('operations', admission.value.operation.id, 'Operation').state !== 'succeeded') {
+        throw serviceError('service.unavailable', 'Runtime resume did not complete')
+      }
+    }
     return admission
   }
   async removeProcess(id, expectedGeneration, idempotencyKey) {
@@ -207,8 +240,12 @@ export class HolonomyControlCore {
     return await this.#outputs.page(processId, options)
   }
   async pruneRetention() {
+    await this.#runner.retryRemovalCleanups()
     const retainedProcessIds = new Set(this.#registry.list('processes').map(process => process.id))
-    const resources = await this.#registry.pruneRetention()
+    const resources = await this.#registry.pruneRetention({
+      beforeRemoveProcess: process => this.#runner.releaseExpiredProcess(process),
+      afterRemoveProcess: process => this.#runner.finalizeRemovedProcess(process)
+    })
     const currentProcessIds = new Set(this.#registry.list('processes').map(process => process.id))
     const expiredProcessIds = [...retainedProcessIds].filter(id => !currentProcessIds.has(id))
     await this.#runner.releaseRetainedFixtures(expiredProcessIds)

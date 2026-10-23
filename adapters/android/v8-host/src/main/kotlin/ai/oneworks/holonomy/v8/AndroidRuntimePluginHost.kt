@@ -8,6 +8,10 @@ import ai.oneworks.holonomy.host.RuntimeCapabilityHost
 import ai.oneworks.holonomy.host.RuntimeCapabilityResourceEventSink
 import ai.oneworks.holonomy.host.RuntimeModuleResolver
 import ai.oneworks.holonomy.host.RuntimeModuleSource
+import ai.oneworks.holonomy.host.RuntimeNativeHost
+import ai.oneworks.holonomy.host.RuntimeNativeBinary
+import ai.oneworks.holonomy.host.RuntimeNativeEvent
+import ai.oneworks.holonomy.host.RuntimeNativeEventSink
 import ai.oneworks.holonomy.host.RuntimeOutputStream
 import ai.oneworks.holonomy.host.RuntimeProcessHost
 import ai.oneworks.holonomy.host.RuntimeThreadGuard
@@ -36,6 +40,7 @@ internal class AndroidRuntimePluginHost(
     private val processHost: RuntimeProcessHost,
     private val runtimeHost: RuntimeAdapterHost,
     private val threadGuard: RuntimeThreadGuard,
+    private val nativeHost: RuntimeNativeHost,
 ) : AutoCloseable {
     private val assetResolver = AndroidAssetModuleResolver(assets)
     private val runtime: V8Runtime = V8Host.getV8Instance().createV8Runtime()
@@ -53,6 +58,13 @@ internal class AndroidRuntimePluginHost(
     private var capabilitySubscribeResourceDriver: V8ValueFunction? = null
     private var capabilityUnsubscribeResourceDriver: V8ValueFunction? = null
     private var timerDriver: V8ValueFunction? = null
+    private var storageDispatchDriver: V8ValueFunction? = null
+    private var storageCancelDriver: V8ValueFunction? = null
+    private var storageNativeEventDriver: V8ValueFunction? = null
+    private val storageSinks = mutableMapOf<String, Pair<String, RuntimeNativeEventSink>>()
+    private val storageBinding by lazy {
+        AndroidStorageNativeBinding(nativeHost, capabilityHost, runtimeHost, { closed.get() }, ::storageNativeEvent)
+    }
     private val providerSubscriptions = mutableMapOf<String, CapabilitySubscription>()
     private val guestResourceSinks = mutableMapOf<String, RuntimeCapabilityResourceEventSink>()
     private val guestResourceDisposers = mutableMapOf<String, V8ValueFunction>()
@@ -103,6 +115,9 @@ internal class AndroidRuntimePluginHost(
                 "Capability resource unsubscribe",
             )
             timerDriver = takeDriver(TIMER_DRIVER_GLOBAL, "plugin timer")
+            storageDispatchDriver = takeDriver(STORAGE_DISPATCH_GLOBAL, "Storage dispatch")
+            storageCancelDriver = takeDriver(STORAGE_CANCEL_GLOBAL, "Storage cancel")
+            storageNativeEventDriver = takeDriver(STORAGE_NATIVE_EVENT_GLOBAL, "Storage completion")
             runtime.globalObject.delete(HOST_GLOBAL)
             started = true
         } catch (error: Throwable) {
@@ -187,6 +202,36 @@ internal class AndroidRuntimePluginHost(
         }
     }
 
+    fun dispatchStorage(
+        token: String, requestId: String, requestJson: String,
+        binary: List<RuntimeNativeBinary>, sink: RuntimeNativeEventSink,
+    ): Boolean {
+        threadGuard.checkAccess()
+        if (!started || closed.get() || storageSinks.size >= 128 || storageSinks.containsKey(token)) return false
+        val request = JSONObject(requestJson).put("binary", AndroidStorageNativeBinding.encodeBinary(binary))
+        storageSinks[token] = requestId to sink
+        return try {
+            requireNotNull(storageDispatchDriver).callVoid(runtime.globalObject, token, request.toString())
+            runtime.await(V8AwaitMode.RunTillNoMoreTasks)
+            true
+        } catch (_: Throwable) { storageSinks.remove(token); false }
+    }
+
+    fun cancelStorage(token: String): Boolean {
+        threadGuard.checkAccess()
+        if (storageSinks.remove(token) == null) return false
+        runCatching { storageCancelDriver?.callVoid(runtime.globalObject, token) }
+        runtime.await(V8AwaitMode.RunTillNoMoreTasks)
+        return true
+    }
+
+    private fun storageNativeEvent(id: Double, terminal: String) {
+        threadGuard.checkAccess()
+        if (closed.get()) return
+        storageNativeEventDriver?.callVoid(runtime.globalObject, id, terminal)
+        runtime.await(V8AwaitMode.RunTillNoMoreTasks)
+    }
+
     fun closeCapabilityRuntime() {
         threadGuard.checkAccess()
         if (!started || closed.get()) return
@@ -202,6 +247,7 @@ internal class AndroidRuntimePluginHost(
         guestResourceDisposers.values.forEach { disposer -> runCatching { disposer.close() } }
         guestResourceDisposers.clear()
         guestResourceSinks.clear()
+        storageSinks.clear()
         providerSubscriptions.values.forEach { subscription ->
             runCatching { subscription.native.close() }
             runCatching { subscription.callback.close() }
@@ -217,6 +263,10 @@ internal class AndroidRuntimePluginHost(
             capabilitySubscribeResourceDriver,
             capabilityUnsubscribeResourceDriver,
             disposeDriver,
+            timerDriver,
+            storageDispatchDriver,
+            storageCancelDriver,
+            storageNativeEventDriver,
         ).forEach { driver -> runCatching { driver?.close() } }
         capabilityCloseDriver = null
         capabilityInvokeDriver = null
@@ -227,9 +277,13 @@ internal class AndroidRuntimePluginHost(
         capabilitySubscribeResourceDriver = null
         capabilityUnsubscribeResourceDriver = null
         timerDriver = null
+        storageDispatchDriver = null
+        storageCancelDriver = null
+        storageNativeEventDriver = null
         disposeDriver = null
         runCatching { hostObject.unbind(callbacks) }
         runCatching { hostObject.close() }
+        modules.values.forEach { module -> runCatching { module.close() } }
         modules.clear()
         runCatching { runtime.close() }
     }
@@ -325,6 +379,7 @@ internal class AndroidRuntimePluginHost(
             when {
                 resourcePlugin || referrerPlugin && !trustedLibrary ->
                     moduleResolver?.resolve(specifier, referrer)
+                        ?: emptyRuntimePluginManifest(specifier, referrerInternal, processHost.configuration.runtimePluginsJson)
                 referrerInternal || trustedLibrary || specifier == "cordis" ->
                     assetResolver.resolve(specifier, referrer)
                 else -> null
@@ -402,6 +457,34 @@ internal class AndroidRuntimePluginHost(
         this != null && runCatching { URI(this).scheme == scheme }.getOrDefault(false)
 
     private inner class PluginHostCallbacks {
+        @V8Function
+        fun nativeConfiguration(): String = nativeHost.configurationJson()
+
+        @V8Function
+        fun storageStart(id: Double, command: String): Boolean = try {
+            if (closed.get()) false else storageBinding.start(id, command)
+        } catch (_: Throwable) { false }
+
+        @V8Function
+        fun storageCancel(token: String) { storageBinding.cancel(token) }
+
+        @V8Function
+        fun emitStorageGuest(token: String, terminal: String) {
+            val (requestId, sink) = storageSinks.remove(token) ?: return
+            val event = runCatching {
+                require(terminal.toByteArray(Charsets.UTF_8).size <= 2 * 1024 * 1024)
+                val output = JSONObject(terminal)
+                RuntimeNativeEvent(JSONObject().put("id", requestId).put("type", "result")
+                    .put("value", output.getJSONObject("value")).toString(),
+                    AndroidStorageNativeBinding.decodeBinary(output.optJSONArray("binary")))
+            }.getOrElse {
+                RuntimeNativeEvent(JSONObject().put("id", requestId).put("type", "result")
+                    .put("value", JSONObject(AndroidStorageNativeBinding.failure("storage.protocol_error")).getJSONObject("value"))
+                    .toString())
+            }
+            sink.emit(event)
+        }
+
         @V8Function
         fun capabilityConfiguration(): String? = capabilityHost?.let { capability ->
             runCatching { capability.configurationJson() }
@@ -540,6 +623,9 @@ internal class AndroidRuntimePluginHost(
         private const val INTERNAL_SCHEME = "holonomy"
         private const val TIMER_DRIVER_GLOBAL = "__oneworksAndroidPluginTimer"
         private const val MAX_CAPABILITY_CHECKPOINTS = 64
+        private const val STORAGE_DISPATCH_GLOBAL = "__oneworksAndroidStorageDispatch"
+        private const val STORAGE_CANCEL_GLOBAL = "__oneworksAndroidStorageCancel"
+        private const val STORAGE_NATIVE_EVENT_GLOBAL = "__oneworksAndroidStorageNativeEvent"
         private const val MAX_CAPABILITY_JSON_BYTES = 1024 * 1024
         private const val MAX_OUTPUT_CHARS = 65_536
         private const val MAX_PLUGIN_BOOTSTRAP_CHECKPOINTS = 64

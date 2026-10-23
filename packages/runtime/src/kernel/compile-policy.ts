@@ -1,6 +1,7 @@
 import { normalizeFilesystemSandbox } from '@holonomyjs/capability-fs/kernel/normalize-filesystem'
 import { normalizeNetworkSandbox } from '@holonomyjs/capability-network/kernel/normalize-network'
 import { normalizeProcessSandbox } from '@holonomyjs/capability-process/kernel/normalize-process'
+import { normalizeStorageSandboxV2 } from '@holonomyjs/capability-storage/kernel/storage-policy'
 import {
   normalizeDeviceSandbox,
   normalizeDiagnosticsSandbox,
@@ -32,6 +33,7 @@ const TOP_LEVEL = [
   'network',
   'process',
   'schemaVersion',
+  'storage',
   'systemInformation'
 ] as const
 
@@ -58,6 +60,7 @@ const compileV2 = (value: unknown): CompiledSandboxPolicyV2 => {
     network: normalizeNetworkSandbox(input.network ?? defaults.network),
     process: normalizeProcessSandbox(input.process ?? defaults.process, filesystem),
     schemaVersion: 2,
+    storage: normalizeStorageSandboxV2(input.storage ?? defaults.storage),
     systemInformation: normalizeSystemSandbox(input.systemInformation ?? defaults.systemInformation)
   })
 }

@@ -3,7 +3,7 @@ export interface HolonomySourceModule {
   readonly url: string
 }
 
-export function expandHolonomyEntries(patterns: readonly string[]): string[]
+export function expandHolonomyEntries(patterns: readonly string[], options?: { native?: boolean }): string[]
 export function collectHolonomyGraph(
   entries: readonly string[],
   rootUrl: URL

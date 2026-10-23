@@ -12,6 +12,7 @@ import {
 } from '@holonomyjs/runtime/kernel/validation'
 
 const RIGHTS = [
+  'chmod',
   'create',
   'delete',
   'list',

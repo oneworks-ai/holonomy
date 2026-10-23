@@ -17,11 +17,15 @@
   "json": {},
   "markdown": {},
   "excludes": [
+    "target/**",
+    "adapters/desktop/v8-host/generated/**",
+    "adapters/desktop/v8-host/assets/**",
     "**/node_modules",
     "**/dist",
     "**/coverage",
     "backends/v86/images/*-lock-v1.json",
-    "packages/runtime/src/kernel/machine/*.json"
+    "packages/runtime/src/kernel/machine/*.json",
+    "tools/native-cli/tests/fixtures/npm-corpus/packages/**"
   ],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.95.11.wasm",

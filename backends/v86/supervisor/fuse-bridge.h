@@ -13,6 +13,7 @@ struct holo_fuse_pending {
     uint32_t process_id;
     uint32_t request_id;
     uint64_t unique;
+    uint32_t opcode;
 };
 
 struct holo_fuse_bridge {

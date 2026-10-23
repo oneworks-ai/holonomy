@@ -10,6 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const repositoryRoot = fileURLToPath(new URL('../../..', import.meta.url))
 const adapterSource = fileURLToPath(new URL('../src', import.meta.url))
+const adapterNativeSource = fileURLToPath(new URL('../native/engine-gate', import.meta.url))
 const acornPackage = dirname(fileURLToPath(import.meta.resolve('acorn/package.json')))
 const ajvPackage = dirname(fileURLToPath(import.meta.resolve('ajv/package.json')))
 const cordisPackage = dirname(fileURLToPath(import.meta.resolve('cordis/package.json')))
@@ -18,9 +19,17 @@ const cosmokitPackage = dirname(createRequire(import.meta.resolve('cordis')).res
 test('starts from an installed package layout with runtime dependencies resolved as siblings', async t => {
   const temporary = await mkdtemp(join(tmpdir(), 'holonomy-node-package-'))
   t.after(() => rm(temporary, { force: true, recursive: true }))
-  const packageRoot = join(temporary, 'node_modules', '@oneworks', 'holonomy')
+  const packageRoot = join(temporary, 'node_modules', 'holonomy')
   await mkdir(join(packageRoot, 'adapters', 'node'), { recursive: true })
   await cp(adapterSource, join(packageRoot, 'adapters', 'node', 'src'), { recursive: true })
+  await mkdir(join(packageRoot, 'backends', 'v86'), { recursive: true })
+  await cp(join(repositoryRoot, 'backends', 'v86', 'host'), join(packageRoot, 'backends', 'v86', 'host'), {
+    recursive: true
+  })
+  const nativeDestination = join(packageRoot, 'adapters', 'node', 'native', 'engine-gate')
+  await mkdir(nativeDestination, { recursive: true })
+  await cp(join(adapterNativeSource, 'binding.gyp'), join(nativeDestination, 'binding.gyp'))
+  await cp(join(adapterNativeSource, 'src'), join(nativeDestination, 'src'), { recursive: true })
   await cp(join(repositoryRoot, 'dist'), join(packageRoot, 'dist'), { recursive: true })
   await cp(join(repositoryRoot, 'src'), join(packageRoot, 'src'), { recursive: true })
   await writeFile(join(packageRoot, 'package.json'), JSON.stringify({ name: 'holonomy', type: 'module' }))
@@ -33,6 +42,7 @@ test('starts from an installed package layout with runtime dependencies resolved
     ['capability-fs', 'packages/capabilities/fs'],
     ['capability-network', 'packages/capabilities/network'],
     ['capability-process', 'packages/capabilities/process'],
+    ['capability-storage', 'packages/capabilities/storage'],
     ['capability-system', 'packages/capabilities/system'],
     ['plugin-audit', 'packages/plugins/audit'],
     ['plugin-permission', 'packages/plugins/permission']

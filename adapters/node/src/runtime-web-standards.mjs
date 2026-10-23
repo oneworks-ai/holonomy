@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- The portable URL and bounded decoder share one embedded planner asset. */
 const normalizePath = input => {
   const trailingSlash = input.endsWith('/')
   const output = []
@@ -81,6 +82,9 @@ const parseAbsolute = value => {
 }
 
 export class RuntimeURL {
+  #hash = ''
+  #search = ''
+
   constructor(value, base) {
     const input = String(value)
     if (/^[a-z][a-z\d+.-]*:/iu.test(input)) this.#assign(parseAbsolute(input))
@@ -111,6 +115,24 @@ export class RuntimeURL {
     Object.assign(this, parts)
   }
 
+  get hash() {
+    return this.#hash === '#' ? '' : this.#hash
+  }
+
+  set hash(value) {
+    const selected = String(value)
+    this.#hash = selected === '' || selected.startsWith('#') ? selected : `#${selected}`
+  }
+
+  get search() {
+    return this.#search === '?' ? '' : this.#search
+  }
+
+  set search(value) {
+    const selected = String(value)
+    this.#search = selected === '' || selected.startsWith('?') ? selected : `?${selected}`
+  }
+
   get host() {
     return this.port === '' ? this.hostname : `${this.hostname}:${this.port}`
   }
@@ -133,14 +155,17 @@ export class RuntimeURL {
     const credentials = this.username === ''
       ? ''
       : `${this.username}${this.password === '' ? '' : `:${this.password}`}@`
-    return `${this.protocol}//${credentials}${this.host}${this.pathname}${this.search}${this.hash}`
+    return `${this.protocol}//${credentials}${this.host}${this.pathname}${this.#search}${this.#hash}`
   }
 }
+
+const stripBom = (text, ignore) => !ignore && text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text
 
 export class RuntimeTextDecoder {
   constructor(label = 'utf-8', options = {}) {
     if (!/^utf-?8$/iu.test(String(label))) throw new RangeError('Only UTF-8 is supported')
     this.fatal = options.fatal === true
+    this.ignoreBOM = options.ignoreBOM === true
   }
 
   decode(input = new Uint8Array()) {
@@ -168,11 +193,11 @@ export class RuntimeTextDecoder {
       }
       output += String.fromCodePoint(point)
     }
-    return output
+    return stripBom(output, this.ignoreBOM)
   }
 
   #invalid(prefix) {
     if (this.fatal) throw new TypeError('Invalid UTF-8')
-    return `${prefix}\uFFFD`
+    return stripBom(`${prefix}\uFFFD`, this.ignoreBOM)
   }
 }

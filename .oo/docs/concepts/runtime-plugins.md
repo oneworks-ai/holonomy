@@ -91,12 +91,14 @@ CLI 配置格式是：
 
 CLI 从配置所属 workspace 解析、校验并构建 Bundle，再把无 Host 路径的不可变资源图提交给 Service。Android Host 可以从 APK assets 或自己管理的存储准备同样的 Bundle；Service 和 Runtime 不会反向读取调用方文件系统。
 
+`run` 与 `test` 都可用 `--config holo.config.json` 在入口前静态安装插件；绝对来源可用 `--plugin-root` 显式选择允许根。测试不在 suite 中途替换插件图，`--watch` 仍只限 `run`。独立 Rust/V8 目标的受控 Wasm 和动态 import 测试示例见[受管 Native Engine Gate](../../../adapters/desktop/managed-engine-gates.zh-Hans.md)；各平台只能使用实际安装的能力。
+
 ## `watch` 模式
 
 Node/Desktop 命令为：
 
 ```bash
-holonomy run app.mjs --config holo.config.json --watch
+holonomy run app.mjs --target node --config holo.config.json --watch
 ```
 
 CLI watcher 每次看到配置文件变化都会重新读取完整文件。只有 JSON、配置 Schema、插件 Schema、来源和 integrity 全部有效，候选 Bundle 才会通过 Service 的 revision CAS 提交给 Runtime。

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Guest child resources share one ordered event owner. */
 import type { CapabilityGuestBridgeV1 } from '@holonomyjs/runtime/kernel/guest-facade-support'
 import {
   capabilityResourceFieldsV1,
@@ -6,60 +7,45 @@ import {
   readCapabilityTerminalV1
 } from '@holonomyjs/runtime/kernel/guest-facade-support'
 import type { JsonValueV1 } from '@holonomyjs/runtime/kernel/json-types'
+import { attachChildProcessAbortV1 } from './guest-child-process-abort.js'
+import type { PreparedChildProcessAbortSignalV1 } from './guest-child-process-abort.js'
+import { emit, errorFrom, eventTarget } from './guest-child-process-events.js'
 import {
   childProcessCallbackV1,
   childProcessInvalidStateV1,
   childProcessRecordV1,
-  invalidChildProcessValueV1
+  snapshotChildProcessStdinDataV1
 } from './guest-child-process-support.js'
 
 type Listener = (...args: unknown[]) => unknown
 type Fields = Readonly<Record<string, JsonValueV1>>
 
-const scheduleCallback = (callback: () => void) => {
-  void Promise.resolve().then(callback)
-}
+const scheduleCallback = (callback: () => void) => void Promise.resolve().then(callback)
 
-const errorFrom = (value: unknown) => {
-  const source = childProcessRecordV1(value)
-  const error = new Error(typeof source.message === 'string' ? source.message : 'Controlled child process failed')
-  error.name = typeof source.name === 'string' ? source.name : 'Error'
-  if (typeof source.code === 'string') Object.defineProperty(error, 'code', { enumerable: true, value: source.code })
-  return error
-}
-const emit = (listeners: Map<string, Set<Listener>>, event: string, ...args: unknown[]) => {
-  for (const listener of listeners.get(event) ?? []) {
+export const createChildProcessResourceFactoryV1 = (
+  bridge: CapabilityGuestBridgeV1,
+  scheduleNextTick?: (callback: () => void) => void
+) => {
+  const subscriptionDisposers = new Map<string, () => void>()
+  const subscribe = (bindingId: string, listener: (event: string) => void) => {
+    let actual = () => {}
+    let stopped = false
+    const stop = () => {
+      if (stopped) return
+      stopped = true
+      subscriptionDisposers.delete(bindingId)
+      actual()
+    }
+    subscriptionDisposers.set(bindingId, stop)
     try {
-      listener(...args)
-    } catch {
-      // Event listeners never affect the Host resource state machine.
+      actual = bridge.subscribeResource?.(bindingId, listener) ?? actual
+      if (stopped) actual()
+    } catch (error) {
+      subscriptionDisposers.delete(bindingId)
+      throw error
     }
+    return stop
   }
-}
-const eventTarget = (listeners: Map<string, Set<Listener>>, target: Record<string, unknown>) => {
-  target.on = (event: unknown, listener: unknown) => {
-    if (typeof event !== 'string') return invalidChildProcessValueV1('Process event name must be a string')
-    const accepted = childProcessCallbackV1(listener)
-    let entries = listeners.get(event)
-    if (entries == null) {
-      entries = new Set()
-      listeners.set(event, entries)
-    }
-    entries.add(accepted)
-    return target
-  }
-  target.once = (event: unknown, listener: unknown) => {
-    const accepted = childProcessCallbackV1(listener)
-    const wrapped = (...args: unknown[]) => {
-      listeners.get(String(event))?.delete(wrapped)
-      accepted(...args)
-    }
-    return (target.on as Function)(event, wrapped)
-  }
-  return target
-}
-
-export const createChildProcessResourceFactoryV1 = (bridge: CapabilityGuestBridgeV1) => {
   const sync = (member: string, args: JsonValueV1, fields: Fields) =>
     readCapabilityTerminalV1(
       bridge.invokeSync(createCapabilityRequestV1('node:child_process', member, 'sync', args, fields))
@@ -79,24 +65,26 @@ export const createChildProcessResourceFactoryV1 = (bridge: CapabilityGuestBridg
     const fields = capabilityResourceFieldsV1(snapshot, 'process.readable')
     const listeners = new Map<string, Set<Listener>>()
     const api = eventTarget(listeners, Object.create(null) as Record<string, unknown>)
-    bridge.subscribeResource?.(fields.bindingId, source => {
+    let closed = false
+    const close = () => {
+      closed = true
+      subscriptionDisposers.get(fields.bindingId)?.()
+    }
+    subscribe(fields.bindingId, source => {
       const event = childProcessRecordV1(readCapabilityResourceEventV1(source))
       const tuple = Array.isArray(event.tuple) ? event.tuple : []
+      if (event.event === 'end' || event.event === 'close') closed = true
       emit(listeners, String(event.event), ...(event.event === 'error' ? [errorFrom(tuple[0])] : tuple))
+      if (event.event === 'close') close()
     })
-    api.destroy = () => {
-      sync('stdout/stderr.destroy', {}, fields)
+    const control = (member: string) => {
+      if (!closed) sync(member, {}, fields)
       return api
     }
-    api.pause = () => {
-      sync('stdout/stderr.pause', {}, fields)
-      return api
-    }
-    api.resume = () => {
-      sync('stdout/stderr.resume', {}, fields)
-      return api
-    }
-    return Object.freeze(api)
+    api.destroy = () => control('stdout/stderr.destroy')
+    api.pause = () => control('stdout/stderr.pause')
+    api.resume = () => control('stdout/stderr.resume')
+    return { api: Object.freeze(api), close }
   }
   const stdin = (snapshot: unknown) => {
     if (snapshot == null) return null
@@ -150,13 +138,13 @@ export const createChildProcessResourceFactoryV1 = (bridge: CapabilityGuestBridg
       if (ended || closed || destroyed) throw childProcessInvalidStateV1()
       const callbackId = register(done)
       try {
-        return immediate('ChildProcess.stdin.write', data as JsonValueV1, fields, callbackId)
+        return immediate('ChildProcess.stdin.write', snapshotChildProcessStdinDataV1(data), fields, callbackId)
       } catch (error) {
         forget(callbackId)
         throw error
       }
     }
-    dispose = bridge.subscribeResource?.(fields.bindingId as string, source => {
+    dispose = subscribe(fields.bindingId as string, source => {
       const event = childProcessRecordV1(readCapabilityResourceEventV1(source))
       if (event.event === 'callback') settle(event.callbackId, event.error)
       if (event.event === 'close') {
@@ -166,10 +154,10 @@ export const createChildProcessResourceFactoryV1 = (bridge: CapabilityGuestBridg
         for (const callbackId of [...callbacks.keys()]) settle(callbackId, error)
         dispose()
       }
-    }) ?? dispose
+    })
     return Object.freeze(api)
   }
-  return (snapshot: unknown) => {
+  return (snapshot: unknown, abortSignal?: PreparedChildProcessAbortSignalV1) => {
     const source = childProcessRecordV1(snapshot)
     const fields = capabilityResourceFieldsV1(source, 'process.child')
     const nestedBindingIds = [
@@ -179,22 +167,52 @@ export const createChildProcessResourceFactoryV1 = (bridge: CapabilityGuestBridg
     ].filter((value): value is string => value != null)
     const listeners = new Map<string, Set<Listener>>()
     const api = eventTarget(listeners, Object.create(null) as Record<string, unknown>)
+    let errorDelivered = false
+    const deliverError = (error: Error) => {
+      if (errorDelivered) return
+      errorDelivered = true
+      emit(listeners, 'error', error)
+    }
+    const stdout = readable(source.stdout)
+    const stderr = readable(source.stderr)
     Object.assign(api, {
       kill: (signal: unknown = 'SIGTERM') => sync('ChildProcess.kill', signal as JsonValueV1, fields),
       pid: source.pid,
-      stderr: readable(source.stderr),
+      stderr: stderr?.api ?? null,
       stdin: stdin(source.stdin),
-      stdout: readable(source.stdout)
+      stdout: stdout?.api ?? null
     })
-    bridge.subscribeResource?.(fields.bindingId, eventSource => {
+    subscribe(fields.bindingId, eventSource => {
       const event = childProcessRecordV1(readCapabilityResourceEventV1(eventSource))
       const tuple = Array.isArray(event.tuple) ? event.tuple : []
-      emit(listeners, String(event.event), ...(event.event === 'error' ? [errorFrom(tuple[0])] : tuple))
       if (event.event === 'close') {
-        for (const bindingId of nestedBindingIds) bridge.releaseResource?.(bindingId)
-        bridge.releaseResource?.(fields.bindingId)
+        stdout?.close()
+        stderr?.close()
+      }
+      const deliver = () => {
+        if (event.event === 'error') deliverError(errorFrom(tuple[0]))
+        else emit(listeners, String(event.event), ...tuple)
+      }
+      if (event.event === 'close') scheduleCallback(deliver)
+      else deliver()
+      if (event.event === 'close') {
+        for (const bindingId of nestedBindingIds) {
+          subscriptionDisposers.get(bindingId)?.()
+          try {
+            bridge.releaseResource?.(bindingId)
+          } catch {
+            // A prior destroy or close may have released this same handle.
+          }
+        }
+        subscriptionDisposers.get(fields.bindingId)?.()
+        try {
+          bridge.releaseResource?.(fields.bindingId)
+        } catch {
+          // Terminal cleanup remains idempotent across race and restart paths.
+        }
       }
     })
+    attachChildProcessAbortV1(abortSignal, api, deliverError, scheduleNextTick)
     return Object.freeze(api)
   }
 }

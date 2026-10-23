@@ -21,11 +21,15 @@ const maxLinesTestRule = [
 export default config(
   {
     ignores: [
+      'target/**',
+      'adapters/desktop/v8-host/generated/**',
+      'adapters/desktop/v8-host/assets/**',
       '**/*.d.ts',
       'dist/**',
       'coverage/**',
       'backends/v86/images/*-lock-v1.json',
-      'packages/runtime/src/kernel/machine/*.json'
+      'packages/runtime/src/kernel/machine/*.json',
+      'tools/native-cli/tests/fixtures/npm-corpus/packages/**'
     ],
     stylistic: false,
     rules: {
@@ -57,6 +61,20 @@ export default config(
       overrides: {
         'test/consistent-test-it': 'off'
       }
+    }
+  },
+  {
+    // npm owns one declarative manifest; source-module size limits do not model its complexity.
+    files: ['package.json'],
+    rules: {
+      'max-lines': maxLinesTestRule
+    }
+  },
+  {
+    // Frozen machine inventory: every package file and this manifest are SHA-pinned by the Rust corpus.
+    files: ['tools/native-cli/tests/fixtures/npm-corpus/package-assets.json'],
+    rules: {
+      'max-lines': ['error', { max: 2000, skipBlankLines: false, skipComments: false }]
     }
   },
   {

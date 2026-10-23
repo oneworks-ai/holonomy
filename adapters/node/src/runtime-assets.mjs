@@ -17,7 +17,7 @@ const WORKSPACE_MODULE_ROOTS = Object.freeze([
     ...packageRuntimeRoot('@holonomyjs/runtime'),
     prefix: 'packages/runtime/'
   }),
-  ...['device', 'fs', 'network', 'process', 'system'].map(name =>
+  ...['device', 'fs', 'network', 'process', 'storage', 'system'].map(name =>
     Object.freeze({
       ...packageRuntimeRoot(`@holonomyjs/capability-${name}`),
       prefix: `packages/capabilities/${name}/`

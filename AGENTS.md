@@ -47,6 +47,7 @@ Read [`.oo/rules/project-identity.md`](.oo/rules/project-identity.md) before cha
 - `adapters/android/network-host/`: authorized `host.network` HTTP(S) provider over an address-pinned, bounded HTTP/1.1 transport; it owns cancellable DNS, socket/TLS and body-stream work and never implements Fetch-visible semantics or connection pooling.
 - `adapters/android/session-host/`: non-UI foreground Supervisor, logical Runtime generations, command-v2 replay, app-private state/output and local-abstract control transport. It does not understand CLI, OpenAPI, tests or Network rule text.
 - `adapters/node/`: one isolated Node child process per Runtime, restricted VM context, shared JavaScript bootstrap, exact-address Network host and Inspector endpoint. Read its nearest `AGENTS.md` before changing it.
+- `adapters/desktop/`: standalone Rust/rusty_v8 Host, source admission and embedded shared Runtime. `tools/native-cli/` owns the native `holo` command. Read `adapters/desktop/AGENTS.md`; implementation checkpoints live in `adapters/desktop/implementation-plan.md`.
 - `.oo/docs/`: public product and usage documentation. Simplified Chinese is the root locale and English mirrors it under `.oo/docs/en/`; read `.oo/docs/AGENTS.md` before changing the tree.
 - `.oo/rules/rfcs/0001-holo-capability-runtime.md`: proposed design for `holo:*` modules, host-created Runtime context, unified capability middleware, device information and controlled engine hooks. It is not a current support claim; read it before implementing that proposal.
 - `conformance/`: developer-visible CLI end-to-end cases written against `node:test`; they prove the complete CLI → Adapter → JavaScript API → Runtime path without copying lower-layer matrices. Common cases are the capability denominator and `*.holonomy.<platform>` cases are separate platform verification. Read `conformance/AGENTS.md` and `.oo/rules/testing-strategy.md` before adding cases.
@@ -57,7 +58,7 @@ Read [`.oo/rules/project-identity.md`](.oo/rules/project-identity.md) before cha
 
 - JavaScript callbacks execute synchronously on one caller-owned thread, and `runTurn()` is not reentrant.
 - A turn drains a pre-existing next-tick queue, or runs at most one ready macrotask and then drains next ticks. Each non-idle turn that remains active ends with exactly one host microtask checkpoint.
-- Ready macrotasks, native completions and timers are selected by ready time, then insertion order.
+- Ordinary ready macrotasks, native completions and timers use ready time then insertion order. Explicit local I/O callbacks drain a bounded sequence-captured poll batch, then a bounded Immediate check batch before newly due timers; they retain one callback and the normal tick/microtask boundary per turn. This does not claim a complete libuv phase implementation.
 - A native completion is admitted only while its request is pending. Unknown, canceled, late and duplicate completions are rejected without running their callback.
 - Intervals use fixed-rate deadlines and skip missed occurrences instead of burst catch-up or callback-time drift.
 - Unreferenced work can run opportunistically but does not keep the loop alive or request a host wakeup by itself.

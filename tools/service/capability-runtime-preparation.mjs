@@ -10,9 +10,10 @@ import {
   createDefaultHostSystemProjectionV1,
   createDefaultNodeDeviceSnapshotV1
 } from './capability-runtime-host-snapshots.mjs'
+import { SERVICE_CAPABILITY_OWNER_ID } from './capability-runtime-observers.mjs'
 import { serviceError } from './errors.mjs'
 
-const OWNER_ID = 'holonomy-service'
+const OWNER_ID = SERVICE_CAPABILITY_OWNER_ID
 
 const deviceDescriptor = target => {
   const all = [
@@ -71,7 +72,7 @@ const binding = (bindingId, generation) => ({
   version: '1'
 })
 
-const providerBindings = (policy, generation) => {
+const providerBindings = (policy, generation, target) => {
   const modules = []
   if (Object.keys(policy.device.operations).length > 0) modules.push('host.device')
   if (policy.filesystem.access === 'sandboxed') modules.push('host.fs')
@@ -79,6 +80,7 @@ const providerBindings = (policy, generation) => {
     modules.push(policy.network.access === 'mockOnly' ? 'host.network.mock' : 'host.network')
   }
   if (policy.process.access === 'sandboxed') modules.push('host.process')
+  if (target === 'android' && policy.storage.access === 'sandboxed') modules.push('host.storage')
   if (Object.keys(policy.systemInformation.fields).length > 0) modules.push('host.system')
   return modules.map(module => ({
     module,
@@ -94,7 +96,8 @@ export const prepareCapabilityRuntimeV1 = async (
   stateDirectory,
   factories = {},
   processProfile,
-  processBackendInstallation
+  processBackendInstallation,
+  observerBindings = []
 ) => {
   const request = process.capabilityRuntime
   const launch = createNodeModuleLaunchV1({
@@ -109,7 +112,7 @@ export const prepareCapabilityRuntimeV1 = async (
   const configuration = compileRuntimeCreationConfigurationV1({
     context: request.context,
     deviceProviderDescriptor: deviceDescriptor(target),
-    inspector: { enabled: false },
+    inspector: { enabled: target === 'node' && process.inspectorMode !== 'off' },
     launch,
     sandboxPolicy: policy,
     schemaVersion: 1,
@@ -118,9 +121,13 @@ export const prepareCapabilityRuntimeV1 = async (
   const hostBindings = compileRuntimeCreationHostBindingsV1({
     engineGate: binding('engine-gate', process.generation),
     initialMiddlewareSet: binding('middleware', process.generation),
-    initialObservers: [],
+    initialObservers: observerBindings.map(observer => ({
+      bindingId: observer.bindingId,
+      ownerId: observer.ownerId,
+      version: observer.version
+    })),
     moduleResolver: binding('module-resolver', process.generation),
-    providerBindings: providerBindings(policy, process.generation)
+    providerBindings: providerBindings(policy, process.generation, target)
   })
   const deviceSnapshot = await (factories.deviceSnapshot?.({ policy, process, target }) ??
     (target === 'node' ? createDefaultNodeDeviceSnapshotV1() : { deviceReadings: {} }))

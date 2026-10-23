@@ -1,0 +1,2 @@
+# Pinned npm compatibility fixtures retain the exact upstream package bytes.
+tools/native-cli/tests/fixtures/npm-corpus/packages/** -whitespace

@@ -205,7 +205,7 @@ export const resolveNativeAuthority = (
   }
 }
 
-const readGlobalDataConstructor = (name: 'AbortSignal' | 'EventTarget') => {
+const readGlobalDataConstructor = (name: 'AbortSignal') => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, name)
   return descriptor != null && 'value' in descriptor &&
       typeof descriptor.value === 'function'
@@ -215,20 +215,22 @@ const readGlobalDataConstructor = (name: 'AbortSignal' | 'EventTarget') => {
 
 const prepareAbortSignal = (signal: unknown): PreparedAbortSignal => {
   const abortSignal = readGlobalDataConstructor('AbortSignal')
-  const eventTarget = readGlobalDataConstructor('EventTarget')
-  if (!abortSignal || !eventTarget || signal == null || typeof signal !== 'object') {
+  if (!abortSignal || signal == null || typeof signal !== 'object') {
     throw createNativeBridgeError('invalid_request')
   }
+  // Native and injected AbortSignal constructors both inherit their own
+  // EventTarget methods. Do not require or publish an unrelated global class.
+  const eventTargetPrototype = Object.getPrototypeOf(abortSignal.prototype) as object | null
   const abortGetter = Object.getOwnPropertyDescriptor(
     abortSignal.prototype,
     'aborted'
   )?.get
   const addEventListener = Object.getOwnPropertyDescriptor(
-    eventTarget.prototype,
+    eventTargetPrototype ?? {},
     'addEventListener'
   )?.value
   const removeEventListener = Object.getOwnPropertyDescriptor(
-    eventTarget.prototype,
+    eventTargetPrototype ?? {},
     'removeEventListener'
   )?.value
   if (
@@ -313,7 +315,9 @@ const resolveDeadline = (
       throw createNativeBridgeError('limit_exceeded')
     }
     const timeoutDeadline = now + timeoutMs
-    if (!Number.isSafeInteger(timeoutDeadline)) {
+    // The Host's monotonic clock may have sub-millisecond precision. Retain
+    // that precision instead of rejecting or rounding the deadline upward.
+    if (!Number.isFinite(timeoutDeadline) || timeoutDeadline > Number.MAX_SAFE_INTEGER) {
       throw createNativeBridgeError('limit_exceeded')
     }
     deadline = deadline === undefined

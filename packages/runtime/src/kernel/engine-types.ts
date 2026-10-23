@@ -15,8 +15,8 @@ export interface EngineHookCapabilityProbeV1 {
   readonly metadata: EngineGateMetadataSupportV1
   readonly provenance: Readonly<{
     generationLevel: 'behavioralProbe'
-    metadata: 'profileStaticUnsupported'
-    perCompilationCallback: 'profileStaticUnsupported'
+    metadata: 'behavioralProbe' | 'profileStaticUnsupported'
+    perCompilationCallback: 'behavioralProbe' | 'profileStaticUnsupported'
   }>
   readonly schemaVersion: 1
   readonly strings: Readonly<{

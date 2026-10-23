@@ -1,7 +1,7 @@
 /* eslint-disable max-lines -- queued lifecycle transitions and their resource finalizers share one runner. */
 
 import { redactAdapterFailure } from './adb-port.mjs'
-import { PROCESS_TERMINAL_STATES } from './constants.mjs'
+import { OPERATION_TERMINAL_STATES, PROCESS_TERMINAL_STATES } from './constants.mjs'
 import { RunnerCapabilityActions } from './control-runner-capabilities.mjs'
 import { DeviceOperationScheduler } from './device-operation-scheduler.mjs'
 import { ConformanceFixtureManager } from './fixture-manager.mjs'
@@ -72,24 +72,23 @@ export class HolonomyControlRunner {
   scheduleStop(value) {
     const { operation, process } = value
     this.#scheduler.schedule(process.deviceId, operation.id, async signal => {
-      await this.#registry.updateOperation(operation.id, 'running')
-      this.#lifecycle.unwatch(process)
+      let stopConfirmed = PROCESS_TERMINAL_STATES.has(process.state)
+      let stopAttempted = false
       try {
+        await this.#registry.updateOperation(operation.id, 'running')
+        this.#lifecycle.unwatch(process)
         await this.#outputs.stop(process, { drain: true }).catch(() => undefined)
-        if (!PROCESS_TERMINAL_STATES.has(process.state)) {
+        if (!stopConfirmed) {
+          stopAttempted = true
           await this.#adapters.target(process.target).stopProcess({ process, signal })
+          stopConfirmed = true
         }
+        await this.#closeProcessLeases(process)
+        const current = await this.#registry.completeProcessStop(process, operation.id)
+        await this.#registry.updateOperation(operation.id, 'succeeded', { result: { process: current } })
       } catch (error) {
-        await this.#failProcess(process.id, process.generation, operation.id, error)
-        return
+        await this.#failStop(process, operation.id, error, { signal, stopAttempted, stopConfirmed })
       }
-      await this.#closeProcessLeases(process)
-      const current = await this.#registry.updateProcess(process.id, process.generation, {
-        activeOperationId: null,
-        exit: { reason: 'stopped' },
-        state: PROCESS_TERMINAL_STATES.has(process.state) ? process.state : 'cancelled'
-      })
-      await this.#registry.updateOperation(operation.id, 'succeeded', { result: { process: current } })
     })
   }
 
@@ -115,18 +114,46 @@ export class HolonomyControlRunner {
 
   scheduleResume(value) {
     const { operation, process } = value
-    this.#scheduler.schedule(process.deviceId, operation.id, async signal => {
+    return this.#scheduler.schedule(process.deviceId, operation.id, async signal => {
       await this.#registry.updateOperation(operation.id, 'running')
+      let failure
+      let failed = false
+      let cleanupPending = false
       try {
         await this.#adapters.target(process.target).resumeProcess({ process, signal })
-        const current = await this.#registry.updateProcess(process.id, process.generation, {
-          activeOperationId: null,
-          state: 'running'
-        })
-        await this.#registry.updateOperation(operation.id, 'succeeded', { result: { process: current } })
       } catch (error) {
-        await this.#failProcess(process.id, process.generation, operation.id, error)
+        failed = true
+        failure = error
+        if (process.target === 'native') {
+          // An acknowledgement can be lost after Rust released entry. Reap the
+          // owned generation before publishing failure; never infer rollback.
+          try {
+            await this.#adapters.target(process.target).stopProcess({ process, signal })
+          } catch {
+            cleanupPending = true
+          }
+        }
       }
+      const completed = await this.#registry.completeProcessResume(process, operation, !failed, cleanupPending)
+      if (!completed.applied) {
+        if (['queued', 'running'].includes(this.#registry.get('operations', operation.id, 'Operation').state)) {
+          await this.#registry.updateOperation(operation.id, 'cancelled')
+        }
+        return
+      }
+      if (failed) {
+        this.#lifecycle.unwatch(process)
+        await this.#outputs.stop(process).catch(() => undefined)
+        await this.#outputs.captureStartupFailure(completed.process).catch(() => undefined)
+        this.#inspectorProxy?.closeProcess(process.id, process.generation)
+      }
+      await this.#registry.updateOperation(
+        operation.id,
+        failed ? 'failed' : 'succeeded',
+        !failed
+          ? { result: { process: completed.process } }
+          : { error: redactAdapterFailure(failure) }
+      )
     })
   }
 
@@ -166,17 +193,26 @@ export class HolonomyControlRunner {
       process: staged.process,
       signal
     })
-    this.#inspectorProxy?.attachDiagnostics(staged.process, result?.diagnostics)
-    if (networkRules != null) await this.#registry.completeNetworkRules(networkRules, operation, 'active')
-    const state = result?.waitingForDebugger === true ? 'waiting_for_debugger' : 'running'
-    const current = await this.#registry.updateProcess(process.id, process.generation, {
-      activeOperationId: null,
-      ...(result?.sessionId == null ? {} : { sessionId: result.sessionId }),
-      state
-    })
-    await this.#outputs.start(current)
-    await this.#lifecycle.watch(current)
-    return current
+    try {
+      this.#inspectorProxy?.attachDiagnostics(staged.process, result?.diagnostics)
+      if (networkRules != null) await this.#registry.completeNetworkRules(networkRules, operation, 'active')
+      const state = result?.waitingForDebugger === true ? 'waiting_for_debugger' : 'running'
+      const current = await this.#registry.updateProcess(process.id, process.generation, {
+        activeOperationId: null,
+        ...(result?.sessionId == null ? {} : { sessionId: result.sessionId }),
+        state
+      })
+      await this.#outputs.start(current)
+      await this.#lifecycle.watch(current)
+      return current
+    } catch (error) {
+      try {
+        await adapter.stopProcess({ process: staged.process })
+      } catch {
+        await this.#registry.updateProcessCleanupPending(process.id, process.generation, true).catch(() => undefined)
+      }
+      throw error
+    }
   }
   async #closeProcessLeases(process, options = {}) {
     await closeProcessLeases({
@@ -193,7 +229,78 @@ export class HolonomyControlRunner {
     await this.#closeProcessLeases(process)
   }
 
+  async #failStop(process, operationId, error, status) {
+    let recoveryError
+    try {
+      try {
+        this.#lifecycle.unwatch(process)
+      } catch { /* Keep closing the owned generation. */ }
+      await this.#outputs.stop(process).catch(() => undefined)
+      let live = this.#registry.get('processes', process.id, 'Runtime process')
+      let cleanupPending = error?.details?.cleanupPending === true
+      if (
+        !status.stopAttempted && !status.stopConfirmed && live.generation === process.generation &&
+        !PROCESS_TERMINAL_STATES.has(live.state)
+      ) {
+        try {
+          await this.#adapters.target(process.target).stopProcess({ process, signal: status.signal })
+          status.stopConfirmed = true
+        } catch {
+          cleanupPending = true
+        }
+      }
+      if (!status.stopConfirmed && live.generation === process.generation && !PROCESS_TERMINAL_STATES.has(live.state)) {
+        cleanupPending = true
+      }
+      if (cleanupPending) {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            await this.#registry.updateProcessCleanupPending(process.id, process.generation, true)
+            break
+          } catch (failure) {
+            if (attempt === 1) throw failure
+          }
+        }
+      }
+      live = this.#registry.get('processes', process.id, 'Runtime process')
+      if (live.generation === process.generation) {
+        await this.#outputs.captureStartupFailure(live).catch(() => undefined)
+        try {
+          this.#inspectorProxy?.closeProcess(process.id, process.generation)
+        } catch { /* Preserve the stop failure. */ }
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            await this.#registry.completeProcessStop(process, operationId, 'failed')
+            break
+          } catch (failure) {
+            const current = this.#registry.get('processes', process.id, 'Runtime process')
+            if (current.generation !== process.generation) break
+            if (PROCESS_TERMINAL_STATES.has(current.state) && current.activeOperationId !== operationId) break
+            if (attempt === 1) throw failure
+          }
+        }
+      }
+    } catch (failure) {
+      recoveryError = failure
+    }
+    // A cleanup side effect must not keep the public operation running.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const selected = this.#registry.get('operations', operationId, 'Operation')
+        if (OPERATION_TERMINAL_STATES.has(selected.state)) break
+        await this.#registry.updateOperation(operationId, 'failed', { error: redactAdapterFailure(error) })
+        break
+      } catch (failure) {
+        if (attempt === 1) throw failure
+      }
+    }
+    if (recoveryError != null) throw recoveryError
+  }
+
   async #failProcess(processId, generation, operationId, error) {
+    if (error?.details?.cleanupPending === true) {
+      await this.#registry.updateProcessCleanupPending(processId, generation, true).catch(() => undefined)
+    }
     this.#lifecycle.unwatch({ generation, id: processId })
     await this.#outputs.stop({ generation, id: processId }).catch(() => undefined)
     const process = this.#registry.get('processes', processId, 'Runtime process')
@@ -215,5 +322,25 @@ export class HolonomyControlRunner {
 
   async releaseRetainedFixtures(processIds) {
     await Promise.all(processIds.map(id => this.#fixtures.release?.(id) ?? this.#fixtures.stop(id)))
+  }
+  async releaseExpiredProcess(process) {
+    if (process.target === 'native') await this.#adapters.target('native').removeProcess({ process })
+    await this.releaseRetainedFixtures([process.id])
+    await this.#outputs.remove(process)
+  }
+  async finalizeRemovedProcess(process) {
+    if (process.target === 'native') {
+      await this.#adapters.target('native').removeProcess({ process, finalized: true })
+      await this.#registry.completeRemovalCleanup(process.id, process.generation)
+    }
+  }
+  async retryRemovalCleanups() {
+    const retained = new Set(this.#registry.list('processes').map(process => process.id))
+    for (const process of this.#registry.pendingRemovalCleanups()) {
+      if (retained.has(process.id)) continue
+      try {
+        await this.finalizeRemovedProcess(process)
+      } catch { /* Durable ticket survives for the next maintenance pass. */ }
+    }
   }
 }

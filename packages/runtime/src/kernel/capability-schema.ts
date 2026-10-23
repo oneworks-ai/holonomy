@@ -1,4 +1,6 @@
+import { FS_CANONICAL_SEGMENT_V1_SCHEMA } from '@holonomyjs/capability-fs/kernel/filesystem-path-segment'
 import { processCapabilityConstraintsSchema } from '@holonomyjs/capability-process/kernel/process-capability-schema'
+import { STORAGE_CAPABILITY_CONSTRAINTS_V1_SCHEMA } from '@holonomyjs/capability-storage/kernel/storage-schema'
 import { CAPABILITY_DEFINITION_REGISTRY_V1 } from './capability-registry.js'
 import { DEVICE_OPERATIONS_V1, SYSTEM_INFORMATION_FIELDS_V1 } from './registry-types.js'
 import type { JsonSchema } from './schema-primitives.js'
@@ -28,8 +30,8 @@ const fs = strictObject({
   limits: fsLimits,
   roots: {
     items: strictObject({
-      pathPrefixSegments: { items: id, maxItems: 256, type: 'array' },
-      rights: stringSetSchema({ enum: ['create', 'delete', 'list', 'move', 'read', 'watch', 'write'] }, 1, 7),
+      pathPrefixSegments: { items: FS_CANONICAL_SEGMENT_V1_SCHEMA, maxItems: 256, type: 'array' },
+      rights: stringSetSchema({ enum: ['chmod', 'create', 'delete', 'list', 'move', 'read', 'watch', 'write'] }, 1, 8),
       rootId: id,
       symlinks: { enum: ['deny', 'withinRoot'] }
     }),
@@ -86,6 +88,7 @@ const constraintsFor = (name: string): JsonSchema => {
   if (name.startsWith('host.device.')) return device
   if (name.startsWith('host.system.')) return system
   if (name === 'host.storage.credential') return credential
+  if (name === 'host.storage') return STORAGE_CAPABILITY_CONSTRAINTS_V1_SCHEMA
   return reader
 }
 
@@ -175,7 +178,7 @@ export const CAPABILITY_DEFINITION_REGISTRY_V1_SCHEMA = Object.freeze({
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   items: strictObject({
     constraintKind: {
-      enum: ['credential', 'device', 'empty', 'filesystem', 'network', 'numericReader', 'process', 'system']
+      enum: ['credential', 'device', 'empty', 'filesystem', 'network', 'numericReader', 'process', 'storage', 'system']
     },
     constraintSchemaId: id,
     name: { enum: CAPABILITY_DEFINITION_REGISTRY_V1.map(item => item.name) },

@@ -140,14 +140,25 @@ describe('node CLI Runtime plugin watch integration', () => {
       await waitFor(() => client.getProcess(process.id), value => value.pluginGraphRevision === 2, 'revision 2')
       await waitFor(logs, value => value.includes('WATCH_DENY:'), 'denied invocation')
       assert.match(observedLogs, /WATCH_DENY:(?:EACCES|ERR_ACCESS_DENIED)/u)
+      const deniedLogEnd = observedLogs.length
 
       await writeFile(configPath, '{"plugins":[')
-      await new Promise(resolve => setTimeout(resolve, 250))
+      await waitFor(
+        async () => diagnostics,
+        values => values.some(value => value.includes('revision 2 remains active; candidate was rejected')),
+        'invalid candidate rejection'
+      )
       assert.equal((await client.getProcess(process.id)).pluginGraphRevision, 2)
 
       await writeFile(configPath, config(false))
-      await waitFor(() => client.getProcess(process.id), value => value.pluginGraphRevision === 3, 'revision 3')
-      await waitFor(logs, value => value.includes('WATCH_ARCH:'), 'restored allowed invocation')
+      try {
+        await waitFor(() => client.getProcess(process.id), value => value.pluginGraphRevision === 3, 'revision 3')
+      } catch (error) {
+        assert.fail(
+          `${error.message}\n${JSON.stringify(diagnostics)}\n${JSON.stringify(await client.getProcess(process.id))}`
+        )
+      }
+      await waitFor(logs, value => value.slice(deniedLogEnd).includes('WATCH_ARCH:'), 'restored allowed invocation')
       assert.ok(diagnostics.some(value => value.includes('candidate was rejected')))
     } finally {
       await watcher?.close()

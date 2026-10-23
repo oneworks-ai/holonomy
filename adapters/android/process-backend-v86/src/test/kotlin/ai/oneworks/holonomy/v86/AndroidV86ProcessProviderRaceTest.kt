@@ -218,16 +218,432 @@ class AndroidV86ProcessProviderRaceTest {
         }
     }
 
+    @Test
+    fun `pre-spawn stdin write and end advance only after matching ACK`() {
+        val fixture = fixture(FakeBackend())
+        try {
+            val result = JSONObject(fixture.provider.invoke(spawnRequest()))
+            assertTrue(result.toString(), result.getBoolean("ok"))
+            val publications = result.getJSONArray("resources")
+            val resourceId = publications.getJSONObject(0).getJSONObject("processInstance")
+                .getString("processResourceId")
+            val stdinBindingId = publications.getJSONObject(1).getString("bindingId")
+            val events = mutableListOf<JSONObject>()
+            fixture.provider.subscribeResource(
+                stdinBindingId,
+                RuntimeCapabilityResourceEventSink { source -> events += JSONObject(source) },
+            )?.use {
+                assertTrue(JSONObject(fixture.provider.invoke(stdinRequest(stdinBindingId, "write", 1))).getBoolean("ok"))
+                assertTrue(JSONObject(fixture.provider.invoke(stdinRequest(stdinBindingId, "end", 2))).getBoolean("ok"))
+                assertEquals(listOf("spawn"), fixture.backend.commands.map { command -> command.getString("operation") })
+
+                fixture.provider.emit(spawnEvent(fixture.environmentId(), resourceId))
+                assertEquals(listOf("spawn", "stdin"), fixture.backend.commands.map { command -> command.getString("operation") })
+                val write = fixture.backend.commands.last()
+                val writeAck = stdinEvent(fixture.environmentId(), "ack", write)
+                fixture.provider.emit(writeAck)
+                assertEquals(listOf("spawn", "stdin", "end"), fixture.backend.commands.map { command -> command.getString("operation") })
+                fixture.provider.emit(writeAck)
+                val end = fixture.backend.commands.last()
+                fixture.provider.emit(stdinEvent(fixture.environmentId(), "ack", end))
+                fixture.provider.emit(stdinEvent(fixture.environmentId(), "ack", end))
+                assertEquals(listOf(1L, 2L), events.filter { event -> event.getString("event") == "callback" }
+                    .map { event -> event.getLong("callbackId") })
+                assertTrue(events.filter { event -> event.getString("event") == "callback" }
+                    .all { event -> !event.has("error") })
+
+                fixture.provider.emit(
+                    JSONObject().put("environmentId", fixture.environmentId()).put("event", "close")
+                        .put("processId", 17).put("code", 0).put("signal", JSONObject.NULL),
+                )
+                fixture.provider.emit(writeAck)
+                assertEquals(2, events.count { event -> event.getString("event") == "callback" })
+            }
+        } finally {
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `stdin dispatch failure settles each callback once and fences late events`() {
+        val fixture = fixture(FakeBackend(failOperation = "end"))
+        try {
+            val result = JSONObject(fixture.provider.invoke(spawnRequest()))
+            assertTrue(result.toString(), result.getBoolean("ok"))
+            val publications = result.getJSONArray("resources")
+            val resourceId = publications.getJSONObject(0).getJSONObject("processInstance")
+                .getString("processResourceId")
+            val childBindingId = publications.getJSONObject(0).getString("bindingId")
+            val stdinBindingId = publications.getJSONObject(1).getString("bindingId")
+            val childEvents = mutableListOf<JSONObject>()
+            val stdinEvents = mutableListOf<JSONObject>()
+            fixture.provider.subscribeResource(
+                childBindingId,
+                RuntimeCapabilityResourceEventSink { source -> childEvents += JSONObject(source) },
+            )?.use {
+                fixture.provider.subscribeResource(
+                    stdinBindingId,
+                    RuntimeCapabilityResourceEventSink { source -> stdinEvents += JSONObject(source) },
+                )?.use {
+                    assertTrue(JSONObject(fixture.provider.invoke(stdinRequest(stdinBindingId, "write", 1))).getBoolean("ok"))
+                    assertTrue(JSONObject(fixture.provider.invoke(stdinRequest(stdinBindingId, "end", 2))).getBoolean("ok"))
+                    fixture.provider.emit(spawnEvent(fixture.environmentId(), resourceId))
+                    val writeAck = stdinEvent(fixture.environmentId(), "ack", fixture.backend.commands.last())
+                    fixture.provider.emit(writeAck)
+                    fixture.provider.emit(writeAck)
+                    fixture.provider.emit(stdinEvent(fixture.environmentId(), "ack", fixture.backend.commands.last()))
+                }
+            }
+            assertEquals(listOf("spawn", "error", "close"), childEvents.map { event -> event.getString("event") })
+            val callbacks = stdinEvents.filter { event -> event.getString("event") == "callback" }
+            assertEquals(listOf(1L, 2L), callbacks.map { event -> event.getLong("callbackId") })
+            assertFalse(callbacks.first().has("error"))
+            assertEquals("ERR_INVALID_STATE", callbacks.last().getJSONObject("error").getString("code"))
+        } finally {
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `callback-less stdin error advances end and duplicate error is ignored`() {
+        val fixture = fixture(FakeBackend())
+        try {
+            val result = JSONObject(fixture.provider.invoke(spawnRequest()))
+            assertTrue(result.toString(), result.getBoolean("ok"))
+            val publications = result.getJSONArray("resources")
+            val resourceId = publications.getJSONObject(0).getJSONObject("processInstance")
+                .getString("processResourceId")
+            val childBindingId = publications.getJSONObject(0).getString("bindingId")
+            val stdinBindingId = publications.getJSONObject(1).getString("bindingId")
+            val childEvents = mutableListOf<JSONObject>()
+            val stdinEvents = mutableListOf<JSONObject>()
+            fixture.provider.subscribeResource(
+                childBindingId,
+                RuntimeCapabilityResourceEventSink { source -> childEvents += JSONObject(source) },
+            )?.use {
+                fixture.provider.subscribeResource(
+                    stdinBindingId,
+                    RuntimeCapabilityResourceEventSink { source -> stdinEvents += JSONObject(source) },
+                )?.use {
+                    assertTrue(JSONObject(fixture.provider.invoke(stdinRequest(stdinBindingId, "write", null))).getBoolean("ok"))
+                    assertTrue(JSONObject(fixture.provider.invoke(stdinRequest(stdinBindingId, "end", 2))).getBoolean("ok"))
+                    fixture.provider.emit(spawnEvent(fixture.environmentId(), resourceId))
+                    val writeError = stdinEvent(fixture.environmentId(), "error", fixture.backend.commands.last())
+                    fixture.provider.emit(writeError)
+                    fixture.provider.emit(writeError)
+                    assertEquals(listOf("spawn", "stdin", "end"), fixture.backend.commands.map { it.getString("operation") })
+                    fixture.provider.emit(stdinEvent(fixture.environmentId(), "ack", fixture.backend.commands.last()))
+                    assertEquals(listOf("spawn", "error"), childEvents.map { it.getString("event") })
+                    assertEquals(listOf(2L), stdinEvents.filter { it.getString("event") == "callback" }
+                        .map { it.getLong("callbackId") })
+                }
+            }
+        } finally {
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `cold spawn returns resources immediately and pending roots consume concurrent quota`() {
+        val readiness = CompletableFuture<Unit>()
+        val policy = processPolicy().apply { getJSONObject("limits").put("maxConcurrentProcesses", 1) }
+        val fixture = fixture(FakeBackend(readiness = readiness), policy = policy)
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            val invocation = executor.submit<String> { fixture.provider.invoke(spawnRequest()) }
+            val result = JSONObject(invocation.get(1, TimeUnit.SECONDS))
+            assertTrue(result.toString(), result.getBoolean("ok"))
+            assertTrue(fixture.backend.commands.isEmpty())
+            assertTrue(!readiness.isDone)
+            val second = JSONObject(fixture.provider.invoke(spawnRequest()))
+            assertEquals("resource.handle_limit", second.getJSONObject("error").getString("code"))
+            readiness.complete(Unit)
+            assertTrue(fixture.backend.spawnSubmittedLatch.await(1, TimeUnit.SECONDS))
+            assertEquals(listOf("spawn"), fixture.backend.commands.map { it.getString("operation") })
+        } finally {
+            executor.shutdownNow()
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `kill before readiness closes once and late ready never executes`() {
+        val readiness = CompletableFuture<Unit>()
+        val fixture = fixture(FakeBackend(readiness = readiness))
+        try {
+            val result = JSONObject(fixture.provider.invoke(spawnRequest()))
+            val publication = result.getJSONArray("resources").getJSONObject(0)
+            val bindingId = publication.getString("bindingId")
+            val resourceId = publication.getJSONObject("processInstance").getString("processResourceId")
+            val events = mutableListOf<JSONObject>()
+            fixture.provider.subscribeResource(bindingId, RuntimeCapabilityResourceEventSink { events += JSONObject(it) })?.use {
+                assertTrue(JSONObject(fixture.provider.invoke(signalRequest(bindingId, "SIGKILL"))).getBoolean("ok"))
+                fixture.provider.invoke(signalRequest(bindingId, "SIGTERM"))
+                readiness.complete(Unit)
+                fixture.provider.emit(spawnEvent(fixture.environmentId(), resourceId))
+            }
+            assertEquals(listOf("close"), events.map { it.getString("event") })
+            assertTrue(fixture.backend.commands.isEmpty())
+            assertEquals(1, fixture.backend.closeCount.get())
+            assertTrue(fixture.manager.activeEnvironmentIds().isEmpty())
+        } finally {
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `released pending child cancels VM without submitting spawn`() {
+        val readiness = CompletableFuture<Unit>()
+        val fixture = fixture(FakeBackend(readiness = readiness))
+        try {
+            val result = JSONObject(fixture.provider.invoke(spawnRequest()))
+            val bindingId = result.getJSONArray("resources").getJSONObject(0).getString("bindingId")
+            fixture.provider.releaseResource(bindingId)
+            fixture.provider.releaseResource(bindingId)
+            readiness.complete(Unit)
+            assertTrue(fixture.backend.commands.isEmpty())
+            assertEquals(1, fixture.backend.closeCount.get())
+            assertTrue(fixture.manager.activeEnvironmentIds().isEmpty())
+        } finally {
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `provider close cancels pending VM and fences late readiness`() {
+        val readiness = CompletableFuture<Unit>()
+        val fixture = fixture(FakeBackend(readiness = readiness))
+        try {
+            val result = JSONObject(fixture.provider.invoke(spawnRequest()))
+            val bindingId = result.getJSONArray("resources").getJSONObject(0).getString("bindingId")
+            val events = mutableListOf<JSONObject>()
+            fixture.provider.subscribeResource(bindingId, RuntimeCapabilityResourceEventSink { events += JSONObject(it) })
+            fixture.provider.close()
+            fixture.provider.close()
+            readiness.complete(Unit)
+            assertEquals(listOf("close"), events.map { it.getString("event") })
+            assertFalse(fixture.provider.ownsResource(bindingId))
+            assertTrue(fixture.backend.commands.isEmpty())
+            assertEquals(1, fixture.backend.closeCount.get())
+        } finally {
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `startup failure produces one error and close for an already returned child`() {
+        val readiness = CompletableFuture<Unit>()
+        val fixture = fixture(FakeBackend(readiness = readiness))
+        try {
+            val result = JSONObject(fixture.provider.invoke(spawnRequest()))
+            val bindingId = result.getJSONArray("resources").getJSONObject(0).getString("bindingId")
+            val events = java.util.concurrent.CopyOnWriteArrayList<JSONObject>()
+            val terminal = CountDownLatch(1)
+            fixture.provider.subscribeResource(bindingId, RuntimeCapabilityResourceEventSink {
+                events += JSONObject(it)
+                if (JSONObject(it).getString("event") == "close") terminal.countDown()
+            })?.use {
+                readiness.completeExceptionally(IllegalStateException("boot failed"))
+                assertTrue(terminal.await(1, TimeUnit.SECONDS))
+                fixture.provider.emit(JSONObject().put("event", "backend-error").put("environmentId", fixture.environmentId()))
+            }
+            assertEquals(listOf("error", "close"), events.map { it.getString("event") })
+            assertTrue(fixture.backend.commands.isEmpty())
+            assertEquals(1, fixture.backend.closeCount.get())
+            assertTrue(fixture.manager.activeEnvironmentIds().isEmpty())
+        } finally {
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `manager close terminates pending child and fences late readiness`() {
+        val readiness = CompletableFuture<Unit>()
+        val fixture = fixture(FakeBackend(readiness = readiness))
+        try {
+            val result = JSONObject(fixture.provider.invoke(spawnRequest()))
+            val bindingId = result.getJSONArray("resources").getJSONObject(0).getString("bindingId")
+            val events = java.util.concurrent.CopyOnWriteArrayList<JSONObject>()
+            val terminal = CountDownLatch(1)
+            fixture.provider.subscribeResource(bindingId, RuntimeCapabilityResourceEventSink {
+                events += JSONObject(it)
+                if (JSONObject(it).getString("event") == "close") terminal.countDown()
+            })?.use {
+                fixture.manager.close()
+                readiness.complete(Unit)
+                assertTrue(terminal.await(1, TimeUnit.SECONDS))
+            }
+            assertEquals(listOf("error", "close"), events.map { it.getString("event") })
+            assertTrue(fixture.backend.commands.isEmpty())
+            assertEquals(1, fixture.backend.closeCount.get())
+        } finally {
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `startup timeout releases pending VM independently of execution timer`() {
+        val readiness = CompletableFuture<Unit>()
+        val fixture = fixture(FakeBackend(readiness = readiness), startupTimeoutMs = 50)
+        try {
+            val result = JSONObject(fixture.provider.invoke(spawnRequest()))
+            val bindingId = result.getJSONArray("resources").getJSONObject(0).getString("bindingId")
+            val events = java.util.concurrent.CopyOnWriteArrayList<JSONObject>()
+            val terminal = CountDownLatch(1)
+            fixture.provider.subscribeResource(bindingId, RuntimeCapabilityResourceEventSink {
+                events += JSONObject(it)
+                if (JSONObject(it).getString("event") == "close") terminal.countDown()
+            })?.use { assertTrue(terminal.await(1, TimeUnit.SECONDS)) }
+            readiness.complete(Unit)
+            assertEquals(listOf("error", "close"), events.map { it.getString("event") })
+            assertTrue(fixture.backend.commands.isEmpty())
+            assertEquals(1, fixture.backend.closeCount.get())
+            assertTrue(fixture.manager.activeEnvironmentIds().isEmpty())
+        } finally {
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `stdin queues before VM readiness then flushes only after process spawn`() {
+        val readiness = CompletableFuture<Unit>()
+        val fixture = fixture(FakeBackend(readiness = readiness))
+        try {
+            val result = JSONObject(fixture.provider.invoke(spawnRequest()))
+            val publications = result.getJSONArray("resources")
+            val resourceId = publications.getJSONObject(0).getJSONObject("processInstance").getString("processResourceId")
+            val stdinBindingId = publications.getJSONObject(1).getString("bindingId")
+            assertTrue(JSONObject(fixture.provider.invoke(stdinRequest(stdinBindingId, "write", 1))).getBoolean("ok"))
+            assertTrue(JSONObject(fixture.provider.invoke(stdinRequest(stdinBindingId, "end", 2))).getBoolean("ok"))
+            assertTrue(fixture.backend.commands.isEmpty())
+            readiness.complete(Unit)
+            assertTrue(fixture.backend.spawnSubmittedLatch.await(1, TimeUnit.SECONDS))
+            assertEquals(listOf("spawn"), fixture.backend.commands.map { it.getString("operation") })
+            fixture.provider.emit(spawnEvent(fixture.environmentId(), resourceId))
+            val write = fixture.backend.commands.last()
+            assertEquals("stdin", write.getString("operation"))
+            fixture.provider.emit(stdinEvent(fixture.environmentId(), "ack", write))
+            assertEquals(listOf("spawn", "stdin", "end"), fixture.backend.commands.map { it.getString("operation") })
+        } finally {
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `short execution timeout starts only after readiness and still terminates program`() {
+        val readiness = CompletableFuture<Unit>()
+        val fixture = fixture(FakeBackend(readiness = readiness))
+        try {
+            val request = JSONObject(spawnRequest()).apply {
+                getJSONObject("arguments").getJSONObject("options").put("timeoutMs", 50)
+            }
+            val result = JSONObject(fixture.provider.invoke(request.toString()))
+            val publication = result.getJSONArray("resources").getJSONObject(0)
+            val bindingId = publication.getString("bindingId")
+            val resourceId = publication.getJSONObject("processInstance").getString("processResourceId")
+            val timeout = CountDownLatch(1)
+            fixture.provider.subscribeResource(bindingId, RuntimeCapabilityResourceEventSink {
+                val event = JSONObject(it)
+                if (event.getString("event") == "error" &&
+                    event.getJSONArray("tuple").getJSONObject(0).getString("code") == "ETIMEDOUT"
+                ) timeout.countDown()
+            })?.use {
+                assertFalse(timeout.await(100, TimeUnit.MILLISECONDS))
+                assertTrue(fixture.backend.commands.isEmpty())
+                readiness.complete(Unit)
+                assertTrue(fixture.backend.spawnSubmittedLatch.await(1, TimeUnit.SECONDS))
+                assertTrue(timeout.await(1, TimeUnit.SECONDS))
+                fixture.provider.emit(spawnEvent(fixture.environmentId(), resourceId))
+                assertEquals("SIGKILL", fixture.backend.commands.last().getString("signal"))
+            }
+        } finally {
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `startup cancellation settles queued stdin callbacks exactly once`() {
+        val readiness = CompletableFuture<Unit>()
+        val fixture = fixture(FakeBackend(readiness = readiness))
+        try {
+            val result = JSONObject(fixture.provider.invoke(spawnRequest()))
+            val publications = result.getJSONArray("resources")
+            val childBindingId = publications.getJSONObject(0).getString("bindingId")
+            val stdinBindingId = publications.getJSONObject(1).getString("bindingId")
+            val events = mutableListOf<JSONObject>()
+            fixture.provider.subscribeResource(stdinBindingId, RuntimeCapabilityResourceEventSink { events += JSONObject(it) })?.use {
+                assertTrue(JSONObject(fixture.provider.invoke(stdinRequest(stdinBindingId, "write", 1))).getBoolean("ok"))
+                assertTrue(JSONObject(fixture.provider.invoke(stdinRequest(stdinBindingId, "end", 2))).getBoolean("ok"))
+                fixture.provider.invoke(signalRequest(childBindingId, "SIGKILL"))
+                fixture.provider.invoke(signalRequest(childBindingId, "SIGKILL"))
+                readiness.complete(Unit)
+            }
+            assertEquals(listOf(1L, 2L), events.filter { it.getString("event") == "callback" }.map { it.getLong("callbackId") })
+            assertTrue(events.filter { it.getString("event") == "callback" }.all { it.has("error") })
+            assertEquals(1, events.count { it.getString("event") == "close" })
+            assertTrue(fixture.backend.commands.isEmpty())
+            assertEquals(1, fixture.backend.closeCount.get())
+        } finally {
+            fixture.provider.close()
+            fixture.manager.close()
+        }
+    }
+
+    @Test
+    fun `known ready spawn registers timeout atomically with close`() {
+        val fixture = fixture(FakeBackend())
+        val scheduler = HoldingTimeoutExecutor()
+        // A test-only scheduler pauses precisely before schedule returns its Future.
+        val field = AndroidV86ProcessProvider::class.java.getDeclaredField("timeoutExecutor").apply { isAccessible = true }
+        (field.get(fixture.provider) as java.util.concurrent.ScheduledExecutorService).shutdownNow()
+        field.set(fixture.provider, scheduler)
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val invocation = executor.submit<String> { fixture.provider.invoke(spawnRequest()) }
+            assertTrue(scheduler.scheduling.await(1, TimeUnit.SECONDS))
+            val closing = executor.submit<Unit> {
+                fixture.provider.emit(JSONObject().put("event", "backend-error").put("environmentId", fixture.environmentId()))
+            }
+            assertTrue(fixture.backend.closedLatch.await(1, TimeUnit.SECONDS))
+            // close has reached state teardown; it must wait for timeout ownership to be published.
+            assertTrue(runCatching { closing.get(100, TimeUnit.MILLISECONDS) }.exceptionOrNull() is java.util.concurrent.TimeoutException)
+            scheduler.releaseSchedule.countDown()
+            assertTrue(JSONObject(invocation.get(1, TimeUnit.SECONDS)).getBoolean("ok"))
+            closing.get(1, TimeUnit.SECONDS)
+            assertTrue(scheduler.scheduled.get().isCancelled)
+            assertEquals(1, fixture.backend.closeCount.get())
+            assertTrue(fixture.manager.activeEnvironmentIds().isEmpty())
+        } finally {
+            scheduler.releaseSchedule.countDown()
+            executor.shutdownNow()
+            fixture.provider.close()
+            fixture.manager.close()
+            scheduler.shutdownNow()
+        }
+    }
+
     private fun fixture(
         backend: FakeBackend,
         networkTransport: AndroidV86NetworkTransport? = null,
         policy: JSONObject = processPolicy(),
+        startupTimeoutMs: Long = 1_000,
     ): Fixture {
         val manager = AndroidV86EnvironmentManager(
             processId = "runtime-process",
             generation = 7,
             defaultScope = "processTree",
-            startupTimeoutMs = 1_000,
+            startupTimeoutMs = startupTimeoutMs,
             eventSink = AndroidV86ProcessEventSink {},
             networkTransport = networkTransport,
         ) { environmentId, _, _ -> backend.apply { this.environmentId = environmentId } }
@@ -305,6 +721,23 @@ class AndroidV86ProcessProviderRaceTest {
         .put("resource", JSONObject().put("kind", "processInstance"))
         .toString()
 
+    private fun stdinRequest(bindingId: String, member: String, callbackId: Long?) = JSONObject()
+        .put("arguments", if (member == "write") "payload" else JSONObject())
+        .put("inheritedBindingId", bindingId)
+        .put("member", "ChildProcess.stdin.$member")
+        .put("operation", "process.stdin.$member")
+        .apply { callbackId?.let { put("providerData", JSONObject().put("callbackId", it)) } }
+        .put("resource", JSONObject().put("kind", "processInstance"))
+        .toString()
+
+    private fun stdinEvent(environmentId: String, event: String, command: JSONObject) = JSONObject()
+        .put("callbackId", command.optLong("callbackId", -1).takeIf { it > 0 } ?: JSONObject.NULL)
+        .put("environmentId", environmentId)
+        .put("event", event)
+        .put("operation", command.getString("operation"))
+        .put("processId", command.getInt("processId"))
+        .put("stdinSequence", command.getLong("stdinSequence"))
+
     private fun spawnEvent(environmentId: String, resourceId: String) = JSONObject()
         .put("environmentId", environmentId)
         .put("event", "spawn")
@@ -368,21 +801,40 @@ class AndroidV86ProcessProviderRaceTest {
 
     private open class FakeBackend(
         private val failSpawn: Boolean = false,
+        private val failOperation: String? = null,
+        private val readiness: CompletableFuture<Unit> = CompletableFuture.completedFuture(Unit),
     ) : AndroidV86EnvironmentBackend {
         val closeCount = AtomicInteger()
+        val closedLatch = CountDownLatch(1)
+        val spawnSubmittedLatch = CountDownLatch(1)
         val commands = mutableListOf<JSONObject>()
         lateinit var environmentId: String
 
-        override fun start(host: RuntimeTrustedBackendHost) = CompletableFuture.completedFuture(Unit)
+        override fun start(host: RuntimeTrustedBackendHost) = readiness
 
         @Synchronized
         open override fun submit(command: JSONObject) {
             commands += JSONObject(command.toString())
+            if (command.getString("operation") == "spawn") spawnSubmittedLatch.countDown()
             if (failSpawn && command.getString("operation") == "spawn") error("spawn failed")
+            if (command.getString("operation") == failOperation) error("stdin dispatch failed")
         }
 
         override fun close() {
             closeCount.incrementAndGet()
+            closedLatch.countDown()
+        }
+    }
+
+    private class HoldingTimeoutExecutor : java.util.concurrent.ScheduledThreadPoolExecutor(1) {
+        val scheduling = CountDownLatch(1)
+        val releaseSchedule = CountDownLatch(1)
+        val scheduled = java.util.concurrent.atomic.AtomicReference<java.util.concurrent.ScheduledFuture<*>>()
+
+        override fun schedule(command: Runnable, delay: Long, unit: TimeUnit): java.util.concurrent.ScheduledFuture<*> {
+            scheduling.countDown()
+            check(releaseSchedule.await(1, TimeUnit.SECONDS))
+            return super.schedule(command, delay, unit).also { scheduled.set(it) }
         }
     }
 

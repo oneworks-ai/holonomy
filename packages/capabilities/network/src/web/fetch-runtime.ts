@@ -10,7 +10,7 @@ import { WebAbortController, WebAbortSignal } from './web-abort.js'
 import { WebBodyController } from './web-body.js'
 import { WebHeaders, sanitizeResponseHeaders, validateRawHeaderEntries } from './web-headers.js'
 import { WebRequest } from './web-request.js'
-import { WebResponse } from './web-response.js'
+import { WebResponse, createTrustedNetworkResponse } from './web-response.js'
 
 import type { NativeResourceHandle, NativeStream } from '@holonomyjs/runtime/native-port/types'
 import type { NetworkBridgeCallOptions } from './network-bridge-client.js'
@@ -25,7 +25,7 @@ import type {
   WebNetworkRuntime,
   WebNetworkRuntimeOptions
 } from './types.js'
-import type { WebBodySource } from './web-body.js'
+import type { WebBodyFailure, WebBodySource } from './web-body.js'
 import type { WebRequestInfo } from './web-request.js'
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308])
@@ -188,6 +188,10 @@ class NativeResponseBodyBranch implements WebBodySource {
     return this.source.cloneReader(this.readerId)
   }
 
+  getAbortFailure() {
+    return this.source.getAbortFailure(this.readerId)
+  }
+
   pull() {
     return this.source.pullReader(this.readerId)
   }
@@ -199,7 +203,8 @@ class SharedNativeResponseBody {
   private closed = false
   private chunks: Uint8Array[] = []
   private done = false
-  private failure?: unknown
+  private failure?: WebBodyFailure
+  private abortFailure?: WebBodyFailure
   private filling?: Promise<void>
   private nextReaderId = 1
   private readonly readers = new Map<number, NativeResponseReaderState>()
@@ -219,7 +224,13 @@ class SharedNativeResponseBody {
     private readonly onFailed: (code: string, cancelled: boolean) => void
   ) {
     if (options.signal != null) {
-      this.abortListener = () => this.cancel('abort')
+      this.abortListener = () => {
+        if (this.closed || this.done || this.failure != null) return
+        // The Guest reason stays in this realm; Host cleanup receives only fixed metadata.
+        this.abortFailure = { reason: options.signal!.reason }
+        this.failure = this.abortFailure
+        this.cancel('abort')
+      }
       options.signal.addEventListener('abort', this.abortListener, { once: true })
     }
   }
@@ -234,10 +245,15 @@ class SharedNativeResponseBody {
     return this.addReader(reader.cursor)
   }
 
+  getAbortFailure(readerId: number) {
+    return this.readers.has(readerId) ? this.abortFailure : undefined
+  }
+
   async pullReader(readerId: number): Promise<Uint8Array | undefined> {
     for (;;) {
       const reader = this.readers.get(readerId)
       if (reader == null) throw createWebNetworkError('network.cancelled')
+      if (this.abortFailure != null) throw this.abortFailure.reason
       const index = reader.cursor - this.baseCursor
       const chunk = this.chunks[index]
       if (chunk != null) {
@@ -248,7 +264,7 @@ class SharedNativeResponseBody {
       if (this.failure != null) {
         this.readers.delete(readerId)
         this.pruneChunks()
-        throw this.failure
+        throw this.failure.reason
       }
       if (this.done) {
         this.readers.delete(readerId)
@@ -267,7 +283,7 @@ class SharedNativeResponseBody {
 
   cancel(reason?: string) {
     if (this.closed) return
-    this.readers.clear()
+    if (this.abortFailure == null) this.readers.clear()
     this.chunks = []
     this.cancellationEpoch += 1
     this.stream?.close(reason)
@@ -306,17 +322,17 @@ class SharedNativeResponseBody {
     } catch (error) {
       if (!this.isPullCurrent(cancellationEpoch)) {
         this.close('late_response_body')
-        this.failure = createWebNetworkError('network.cancelled')
+        this.failure ??= { reason: createWebNetworkError('network.cancelled') }
         return
       }
       this.close('read_error')
       this.onFailed((error as { code?: string })?.code ?? 'network.internal', false)
-      this.failure = this.client.normalizeError(error)
+      this.failure = { reason: this.client.normalizeError(error) }
       return
     }
     if (!this.isPullCurrent(cancellationEpoch)) {
       this.close('late_response_body')
-      this.failure = createWebNetworkError('network.cancelled')
+      this.failure ??= { reason: createWebNetworkError('network.cancelled') }
       return
     }
     if (result.done) {
@@ -325,8 +341,8 @@ class SharedNativeResponseBody {
         this.done = true
         this.onFinished(this.totalBytes)
       } catch (error) {
+        this.failure = { reason: this.client.normalizeError(error) }
         this.onFailed((error as { code?: string })?.code ?? 'network.protocol_error', false)
-        this.failure = this.client.normalizeError(error)
       } finally {
         this.close('response_end')
       }
@@ -348,7 +364,7 @@ class SharedNativeResponseBody {
     }
     if (!this.isPullCurrent(cancellationEpoch)) {
       this.close('late_response_body')
-      this.failure = createWebNetworkError('network.cancelled')
+      this.failure ??= { reason: createWebNetworkError('network.cancelled') }
       return
     }
     const chunk = binary[0].data.slice()
@@ -378,7 +394,7 @@ class SharedNativeResponseBody {
     reason: string
   ) {
     if (this.closed) return
-    this.failure = createWebNetworkError(code)
+    this.failure = { reason: createWebNetworkError(code) }
     this.cancellationEpoch += 1
     this.stream?.close(reason)
     void this.client.request(WEB_NETWORK_OPERATIONS.http.cancel, {
@@ -477,7 +493,7 @@ class FetchRuntimeController {
           ? undefined
           : this.capabilityRequest(trace, url, method, headers, body)
         if (capabilityHooks != null && capabilityRequest != null) {
-          capabilityAdmission = await capabilityHooks.authorizeRequest(capabilityRequest)
+          capabilityAdmission = await capabilityHooks.authorizeRequest(capabilityRequest, options.signal)
         }
         this.emit({
           headers: diagnosticHeaders(headers),
@@ -572,7 +588,8 @@ class FetchRuntimeController {
             capabilityRequest,
             nextRequest,
             response.head.status as 301 | 302 | 303 | 307 | 308,
-            capabilityAdmission
+            capabilityAdmission,
+            options.signal
           )
           capabilityHooks.releaseResponse(capabilityAdmission)
           capabilityAdmission = undefined
@@ -734,27 +751,37 @@ class FetchRuntimeController {
       statusText: response.head.statusText,
       url: response.head.url
     })
-    if (capabilityAdmission != null) {
-      await this.options.capability?.authorizeResponse(
-        { admission: capabilityAdmission, metadata },
-        'Response.metadata'
-      )
+    try {
+      if (capabilityAdmission != null) {
+        await this.options.capability?.authorizeResponse(
+          { admission: capabilityAdmission, metadata },
+          'Response.metadata'
+        )
+      }
+      const releaseCapability = capabilityAdmission == null || this.options.capability == null
+        ? undefined
+        : () => this.options.capability!.releaseResponse(capabilityAdmission)
+      return createTrustedNetworkResponse({
+        body: new WebBodyController(sharedBody?.createReader(), releaseCapability),
+        ...(capabilityAdmission == null || this.options.capability == null
+          ? {}
+          : { capability: { admission: capabilityAdmission, hooks: this.options.capability, metadata } }),
+        headers: response.head.headers,
+        maxBodyBytes: this.authority.limits.maxResponseBodyBytes,
+        redirected,
+        status: response.head.status,
+        statusText: response.head.statusText,
+        url: response.head.url
+      })
+    } catch (error) {
+      try {
+        sharedBody?.cancel('response_admission_failed')
+      } catch {}
+      try {
+        this.closeConnection(response.lease, 'response_admission_failed')
+      } catch {}
+      throw error
     }
-    const releaseCapability = capabilityAdmission == null || this.options.capability == null
-      ? undefined
-      : () => this.options.capability!.releaseResponse(capabilityAdmission)
-    return WebResponse.fromNetwork({
-      body: new WebBodyController(sharedBody?.createReader(), releaseCapability),
-      ...(capabilityAdmission == null || this.options.capability == null
-        ? {}
-        : { capability: { admission: capabilityAdmission, hooks: this.options.capability, metadata } }),
-      headers: response.head.headers,
-      maxBodyBytes: this.authority.limits.maxResponseBodyBytes,
-      redirected,
-      status: response.head.status,
-      statusText: response.head.statusText,
-      url: response.head.url
-    })
   }
 
   private capabilityRequest(
@@ -784,8 +811,11 @@ class FetchRuntimeController {
   }
 
   private closeConnection(lease: ConnectionLease, reason: string) {
-    lease.resource?.close(reason)
-    this.releaseConnection(lease)
+    try {
+      lease.resource?.close(reason)
+    } finally {
+      this.releaseConnection(lease)
+    }
   }
 
   private releaseConnection(lease: ConnectionLease) {

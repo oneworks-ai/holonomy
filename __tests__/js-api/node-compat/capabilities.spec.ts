@@ -150,6 +150,7 @@ describe('node core capability matrix', () => {
     expect(modules['node:process'].features['process.stdio.backpressure']?.status).toBe(
       'partial'
     )
+    expect(modules['node:process'].features['process.nextTick']?.status).toBe('supported')
   })
 
   it('machine-documents stdio resource and partial URL boundaries', () => {
