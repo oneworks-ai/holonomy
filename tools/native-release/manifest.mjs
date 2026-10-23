@@ -1,15 +1,9 @@
-import { createHash } from 'node:crypto'
-import { lstat, readFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
+import { describeFile, sha256 } from '../artifact-archive/files.mjs'
 
-export const describeFile = async path => {
-  const stat = await lstat(path)
-  if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('Artifact inputs must be regular files')
-  const bytes = await readFile(path)
-  return { bytes: bytes.length, sha256: sha256(bytes) }
-}
+export { describeFile, sha256 }
 
 export const validateEngineInfo = (info, expected, { v86BackendCompiled = false } = {}) => {
   const keys = [

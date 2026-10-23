@@ -2,6 +2,8 @@
 
 [English](../../en/platforms/node/index.md)
 
+程序化 Host 可用 NodeRuntimeSupervisor({ crypto: { enabled: true } }) 安装共享 Crypto 的原生 SHA/HMAC/AES-GCM/随机数子集，默认缺省；session 不能开启它，普通 CLI/Service 也不会自动安装。参数、自检、配额、输出副本和 generation 销毁沿用共享端口，非完整 Node Crypto 或 WebCrypto subtle。跨 Realm/原型污染测试不意味着物理隔离。
+
 每个受管 Runtime 使用独立 Node 子进程、`--experimental-vm-modules` 和全新的 `vm` Context。Context 不继承宿主的 `process`、`require`、`Buffer` 或 `fetch`。
 
 共享 Runtime 安装经过审核的 globals、Node synthetic modules、Timers、Console、Fetch 和 Network Mock。只有 `restricted` 网络策略会创建真实 Node HTTP(S) Provider；它在 DNS 授权后固定精确地址，保留原 hostname 的 TLS/SNI/证书校验，不使用连接池，也不自动跟随重定向。

@@ -12,6 +12,176 @@ const environment = Object.freeze({
 })
 
 describe('child process environment symbol', () => {
+  it('uses the facade as listener this without exposing mutable listener records', () => {
+    const subscriptions = new Map<string, (event: string) => void>()
+    const terminal = JSON.stringify({
+      ok: true,
+      value: {
+        binding: { bindingId: 'listener-this-child', generation: 1 },
+        pid: 39,
+        resourceType: 'process.child',
+        stderr: null,
+        stdin: null,
+        stdout: null
+      }
+    })
+    const binding = createCapabilityChildProcessOverrideV1({
+      invoke: async () => terminal,
+      invokeImmediate: () => terminal,
+      invokeSync: () => JSON.stringify({ ok: true, value: {} }),
+      subscribeResource: (bindingId, listener) => {
+        subscriptions.set(bindingId, listener)
+        return () => subscriptions.delete(bindingId)
+      }
+    }, {})!
+    const child = (binding.namespace as Record<string, Function>).spawn('tool') as Record<string, Function>
+    let callbackThisIsFacade = false
+    let mutationRejected = false
+    child.on('spawn', function(this: Record<string, unknown>) {
+      callbackThisIsFacade = this === child
+      try {
+        this.listener = () => undefined
+      } catch {
+        mutationRejected = true
+      }
+    })
+
+    subscriptions.get('listener-this-child')!(JSON.stringify({ event: 'spawn', tuple: [] }))
+
+    expect(callbackThisIsFacade).toBe(true)
+    expect(Object.hasOwn(child, 'listener')).toBe(false)
+    expect(mutationRejected).toBe(true)
+  })
+
+  it('does not re-deliver a once callback retained by an outer delivery snapshot', () => {
+    const subscriptions = new Map<string, (event: string) => void>()
+    const terminal = JSON.stringify({
+      ok: true,
+      value: {
+        binding: { bindingId: 'once-reentry-child', generation: 1 },
+        pid: 40,
+        resourceType: 'process.child',
+        stderr: null,
+        stdin: null,
+        stdout: null
+      }
+    })
+    const binding = createCapabilityChildProcessOverrideV1({
+      invoke: async () => terminal,
+      invokeImmediate: () => terminal,
+      invokeSync: () => JSON.stringify({ ok: true, value: {} }),
+      subscribeResource: (bindingId, listener) => {
+        subscriptions.set(bindingId, listener)
+        return () => subscriptions.delete(bindingId)
+      }
+    }, {})!
+    const child = (binding.namespace as Record<string, Function>).spawn('tool') as Record<string, Function>
+    let nested = false
+    let onceCalls = 0
+    child.on('spawn', () => {
+      if (nested) return
+      nested = true
+      subscriptions.get('once-reentry-child')!(JSON.stringify({ event: 'spawn', tuple: [] }))
+    })
+    child.once('spawn', () => onceCalls += 1)
+
+    subscriptions.get('once-reentry-child')!(JSON.stringify({ event: 'spawn', tuple: [] }))
+
+    expect(onceCalls).toBe(1)
+    expect(child.listenerCount('spawn')).toBe(1)
+  })
+
+  it('keeps ChildProcess and pipe listener management local, ordered, and releasable', async () => {
+    const subscriptions = new Map<string, (event: string) => void>()
+    const terminal = JSON.stringify({
+      ok: true,
+      value: {
+        binding: { bindingId: 'listeners-child', generation: 1 },
+        pid: 41,
+        resourceType: 'process.child',
+        stderr: {
+          binding: { bindingId: 'listeners-stderr', generation: 1 },
+          resourceType: 'process.readable'
+        },
+        stdin: null,
+        stdout: {
+          binding: { bindingId: 'listeners-stdout', generation: 1 },
+          resourceType: 'process.readable'
+        }
+      }
+    })
+    const binding = createCapabilityChildProcessOverrideV1({
+      invoke: async () => terminal,
+      invokeImmediate: () => terminal,
+      invokeSync: () => JSON.stringify({ ok: true, value: {} }),
+      subscribeResource: (bindingId, listener) => {
+        subscriptions.set(bindingId, listener)
+        return () => subscriptions.delete(bindingId)
+      }
+    }, {})!
+    const child = (binding.namespace as Record<string, Function>).spawn('tool') as Record<string, Function>
+    const stdout = child.stdout as unknown as Record<string, Function>
+    const stderr = child.stderr as unknown as Record<string, Function>
+    const received: string[] = []
+    const repeated = () => received.push('repeated')
+    const removedOnce = () => received.push('removed-once')
+    const second = () => received.push('second')
+    const first = () => {
+      received.push('first')
+      child.removeListener('spawn', second)
+      child.on('spawn', () => received.push('late'))
+    }
+
+    expect(child.addListener('spawn', repeated)).toBe(child)
+    child.on('spawn', repeated)
+    child.once('spawn', removedOnce)
+    expect(child.listeners('spawn')).toEqual([repeated, repeated, removedOnce])
+    expect(child.listenerCount('spawn')).toBe(3)
+    expect(child.listenerCount('spawn', repeated)).toBe(2)
+    expect(child.off('spawn', repeated)).toBe(child)
+    expect(child.listeners('spawn')).toEqual([repeated, removedOnce])
+    child.removeListener('spawn', removedOnce)
+    child.on('spawn', first)
+    child.on('spawn', second)
+    expect(child.eventNames()).toEqual(['spawn'])
+
+    subscriptions.get('listeners-child')!(JSON.stringify({ event: 'spawn', tuple: [] }))
+    expect(received).toEqual(['repeated', 'first', 'second'])
+    subscriptions.get('listeners-child')!(JSON.stringify({ event: 'spawn', tuple: [] }))
+    expect(received).toEqual(['repeated', 'first', 'second', 'repeated', 'first', 'late'])
+
+    let streamThisIsFacade = false
+    const data = function(this: Record<string, unknown>, chunk: Uint8Array) {
+      streamThisIsFacade = this === stdout
+      received.push(`data:${chunk[0]}`)
+    }
+    const streamError = (error: Error & { code?: string }) => received.push(`stderr:${error.code}`)
+    stdout.once('data', data)
+    expect(stdout.removeListener('data', data)).toBe(stdout)
+    stdout.on('data', data)
+    stderr.once('error', streamError)
+    subscriptions.get('listeners-stdout')!(JSON.stringify({ event: 'data', tuple: [Uint8Array.of(7)] }))
+    subscriptions.get('listeners-stderr')!(JSON.stringify({
+      event: 'error',
+      tuple: [{ code: 'EPIPE', message: 'pipe failed', name: 'Error' }]
+    }))
+    expect(received.slice(-2)).toEqual(['data:7', 'stderr:EPIPE'])
+    expect(streamThisIsFacade).toBe(true)
+    expect(stdout.removeAllListeners('data')).toBe(stdout)
+    expect(stdout.listenerCount('data')).toBe(0)
+
+    let closeArguments = 0
+    child.once('close', function() {
+      closeArguments = arguments.length
+    })
+    subscriptions.get('listeners-child')!(JSON.stringify({ event: 'close', tuple: [0, null] }))
+    await Promise.resolve()
+    expect(closeArguments).toBe(2)
+    expect(child.eventNames()).toEqual([])
+    expect(child.listenerCount('spawn')).toBe(0)
+    expect(subscriptions.size).toBe(0)
+  })
+
   it('uses the Host default and removes the Symbol from the JSON snapshot', () => {
     const snapshot = snapshotChildProcessOptionsV1({ stdio: ['pipe', 'pipe', 'pipe'] }, false, false, environment)
 

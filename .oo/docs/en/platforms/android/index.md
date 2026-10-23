@@ -10,6 +10,8 @@ The current isolation mode is `runtime`: logical V8 isolation inside one Android
 
 Embed the production [`runtime-host` source SDK](../../../../../adapters/android/runtime-host/README.md) in your own Android app, not the E2E APK. It packages the shared Runtime and production bootstrap without diagnostic controls, fixtures or Linux images. It requires API 29+, JDK 17, SDK 35 and pinned Javet 5.0.10; the AAR is not a single-file SDK containing every transitive dependency.
 
+The [SDK packaging command](../../../../../adapters/android/sdk/README.md) produces eight development AARs, paired guides and an independent consumer. `pnpm package:android --output <new-directory>` builds from source by default; standalone verification proves archive membership, bytes and production-asset digests, not device execution or release acceptance.
+
 The Host may explicitly install a fresh `crypto-host` per generation for synchronous SHA-1/SHA-256, HMAC-SHA-256, AES-256-GCM, entropy and timing-safe comparison; it is absent by default. Optional [`storage-host`](../../../../../adapters/android/storage-host/README.md) supplies persistent binary KV through the shared Policy/Broker and an asynchronous native worker. Its logical namespace is `default`; SQLite and credentials remain unsupported. Adding a module grants no authority. Both run shared JS contracts and generation-recreation tests through the production bootstrap on an API 35 arm64 emulator, not a physical device.
 
 The network provider independently enforces authority, DNS address admission, socket/TLS behavior, quotas, cancellation, and streaming credit. The shared JavaScript Runtime still owns Fetch, redirect, Request, Response, and Abort semantics.

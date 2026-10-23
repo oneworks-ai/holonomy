@@ -15,6 +15,8 @@ import { RuntimeTextDecoder, RuntimeURL, RuntimeURLSearchParams } from './runtim
 const host = globalThis.__holonomyNodeHost
 if (host == null) throw new Error('Node Runtime host is unavailable')
 delete globalThis.__holonomyNodeHost
+const cryptoProvider = globalThis.__holonomyNodeCryptoProvider
+delete globalThis.__holonomyNodeCryptoProvider
 const configuration = JSON.parse(host.configuration())
 
 globalThis.URL = RuntimeURL
@@ -198,6 +200,7 @@ const runtime = await createHolonomyRuntime({
     principal: sandboxPlan.principal
   },
   console: runtimeConsole,
+  ...(cryptoProvider === undefined ? {} : { crypto: { provider: cryptoProvider } }),
   eventLoop,
   moduleLoader: { readModule, rootUrl: configuration.moduleRootUrl },
   nativePort: networkPort,

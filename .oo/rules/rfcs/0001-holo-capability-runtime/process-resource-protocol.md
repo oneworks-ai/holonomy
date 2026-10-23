@@ -32,21 +32,45 @@ type ChildProcessReadableEventV1 =
   | Readonly<{ event: 'error'; tuple: readonly [NodeErrorSnapshotV1] }>
   | Readonly<{ event: 'close'; tuple: readonly [] }>
 
-interface ChildProcessReadableFacadeV1 {
+interface ProcessLocalListenerMethodsV1 {
+  off<A extends readonly unknown[]>(
+    event: string,
+    listener: (...args: A) => unknown
+  ): this
+  removeListener<A extends readonly unknown[]>(
+    event: string,
+    listener: (...args: A) => unknown
+  ): this
+  removeAllListeners(event?: string): this
+  listenerCount<A extends readonly unknown[]>(
+    event: string,
+    listener?: (...args: A) => unknown
+  ): number
+  listeners(
+    event: string
+  ): readonly ((...args: readonly unknown[]) => unknown)[]
+  eventNames(): readonly string[]
+}
+
+interface ChildProcessReadableFacadeV1 extends ProcessLocalListenerMethodsV1 {
   on(event: 'data', listener: (chunk: RuntimeBufferV1) => void): this
   on(event: 'end' | 'close', listener: () => void): this
   on(event: 'error', listener: (error: NodeErrorSnapshotV1) => void): this
+  readonly addListener: ChildProcessReadableFacadeV1['on']
+  readonly once: ChildProcessReadableFacadeV1['on']
   pause(): this
   resume(): this
   destroy(): this
 }
 
-interface ChildProcessFacadeV1 {
+interface ChildProcessFacadeV1 extends ProcessLocalListenerMethodsV1 {
   readonly pid: number
   readonly stdin: ChildProcessStdinFacadeV1 | null
   readonly stdout: ChildProcessReadableFacadeV1 | null
   readonly stderr: ChildProcessReadableFacadeV1 | null
   kill(signal?: ProcessSignalV1): boolean
+  readonly addListener: ChildProcessFacadeV1['on']
+  readonly once: ChildProcessFacadeV1['on']
   on(event: 'spawn', listener: () => void): this
   on(event: 'error', listener: (error: NodeErrorSnapshotV1) => void): this
   on(
@@ -90,7 +114,9 @@ interface ChildProcessResourceStateV1 {
 
 stdout/stderr每个pipe拥有独立generation-bound queue、sequence和byte counter。Provider chunk先在Host复制/计量，再以`RuntimeBufferV1`复制进Guest；单chunk和累计bytes不得超过`ProcessLimitsV2`。正常顺序是零或多个data→end→close；失败是零或多个data→error→close且无end。end/error互斥，各至多一次，close exactly once。listener throw/slow不阻塞Provider；队满或stdout/stderr cap触发E.1 `resource.byte_limit`、终止完整process tree、对应stream error→close和ChildProcess error/exit/close。
 
-`.on(...)`只把Guest listener登记在既有readable facade上，不独立获取authority；真正的Host→Guest事件泵由J.1 `stdout/stderr events` systemOnly row和`ProcessReadableEventDeliveryV1`拥有，绑定同一ProcessInstance、generation、stream kind与queue/byte limits。Host Middleware不能匹配该delivery。
+`on/addListener/once/off/removeListener/removeAllListeners/listenerCount/listeners/eventNames` 只管理 Guest 本地回调记录，不触达 Provider、获取 authority 或创建新的 capability operation；它们归属既有 resourceEvents façade。真正的 Host→Guest 事件泵仍由 J.1 systemOnly row 与对应 EventDelivery 拥有，绑定同一 ProcessInstance、generation、stream kind 与配额，Host Middleware 不能匹配。
+
+事件名只接受 string。注册保留顺序和重复函数；remove 删除最近一次匹配注册，once 可由原函数移除。每次派发先快照记录，重入添加在下次生效，移除不改变当前快照；once 的独立 fired fence 防止嵌套派发后外层再次调用。回调 this 是真实 Guest child/pipe façade，绝不暴露内部登记记录。listeners/eventNames 返回独立数组；close 派发后清空本地记录。移除本地监听器不取消物理 Host 订阅，资源关闭仍是唯一回收 owner。Symbol、公开 emit、prepend、rawListeners 和 max-listener 配置仍不支持，不声明完整 Node EventEmitter。
 
 `pause()`只暂停Guest delivery，不暂停Host计量；有界queue满仍按output cap失败，不能无限缓存。`resume()`按sequence继续，不能重放已投递chunk。`destroy()`撤销该reader、清queue并close，不扩大process authority。Abort/stop/restart清空未交付bytes并使旧facade stale。
 

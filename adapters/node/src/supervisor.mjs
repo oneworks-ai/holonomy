@@ -18,6 +18,7 @@ import {
 
 import { verifyInstalledV86ProcessProfileV1 } from './capability-process-v86-installation.mjs'
 import { normalizeNodeRuntimePluginUpdateV1 } from './capability-runtime-plugins.mjs'
+import { normalizeNodeCryptoOptions } from './node-crypto-options.mjs'
 import { createParentCommand, readChildEvent } from './protocol.mjs'
 import { prepareHolonomyNodeSession } from './runtime-assets.mjs'
 import { normalizeNetworkRules, normalizeNodeRuntimeSession } from './session-validation.mjs'
@@ -51,6 +52,7 @@ const normalizeObserverBindings = value => {
 export class NodeRuntimeSupervisor extends EventEmitter {
   #requestedTermination = new WeakSet()
   #child
+  #crypto
   #engineGate
   #engineGateConfiguration
   #engineGatePending = new Map()
@@ -69,6 +71,7 @@ export class NodeRuntimeSupervisor extends EventEmitter {
 
   constructor(
     {
+      crypto,
       engineGate,
       observerBindings = [],
       observerHostCaps = DEFAULT_OBSERVER_HOST_CAPS,
@@ -77,6 +80,7 @@ export class NodeRuntimeSupervisor extends EventEmitter {
     } = {}
   ) {
     super()
+    this.#crypto = normalizeNodeCryptoOptions(crypto)
     if (engineGate != null && typeof engineGate !== 'function') throw new TypeError('Invalid Node Engine Gate')
     if (observerHostCaps == null || typeof observerHostCaps !== 'object' || Array.isArray(observerHostCaps)) {
       throw new TypeError('Invalid Node Runtime Observer Host caps')
@@ -106,7 +110,7 @@ export class NodeRuntimeSupervisor extends EventEmitter {
 
   async start(input) {
     if (this.#child != null || !['idle', 'stopped'].includes(this.#state)) throw adapterError('invalid_state')
-    const replayableSession = normalizeNodeRuntimeSession(input)
+    const replayableSession = Object.freeze({ ...normalizeNodeRuntimeSession(input), crypto: this.#crypto })
     const session = normalizeNodeRuntimeSession(
       await prepareHolonomyNodeSession(wireNodeRuntimeSessionV1(replayableSession))
     )

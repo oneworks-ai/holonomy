@@ -34,6 +34,7 @@ jobs:
       - run: pnpm format:check
       - run: pnpm rfc:check
       - run: pnpm docs:check
+      - run: pnpm test:android:sdk
       - run: pnpm test
       - run: pnpm test:adapter:node
       - run: pnpm test:service

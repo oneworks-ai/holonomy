@@ -2,6 +2,8 @@
 
 [简体中文](../../../platforms/node/index.md)
 
+A programmatic Host may select NodeRuntimeSupervisor({ crypto: { enabled: true } }) to install the shared native SHA/HMAC/AES-GCM/random subset. It is absent by default; sessions cannot enable it and ordinary CLI/Service startup does not auto-install it. Validation, self-test, quotas, owned copies and generation disposal reuse the shared port. This is not complete Node Crypto or WebCrypto subtle; realm/poisoning tests do not establish physical isolation.
+
 Each managed Runtime uses a separate Node child process, `--experimental-vm-modules`, and a fresh `vm` Context. The Context does not inherit the host `process`, `require`, `Buffer`, or `fetch`.
 
 The shared Runtime installs audited globals, Node synthetic modules, Timers, Console, Fetch, and Network Mock. Only a `restricted` network policy creates a real Node HTTP(S) provider. After DNS authorization, the provider pins the exact address, preserves the original hostname for TLS/SNI/certificate validation, disables pooling, and does not follow redirects automatically.
