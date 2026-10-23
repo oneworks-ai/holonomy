@@ -173,8 +173,8 @@ describe('service Process profile manifest', () => {
                 }
               },
               environment: {
-                allowedScopes: ['runtime', 'processTree'],
-                defaultScope: 'runtime'
+                allowedScopes: ['processTree'],
+                defaultScope: 'processTree'
               },
               executables: [{
                 executable: { kind: 'guestPath', path: '/usr/bin/cat' },

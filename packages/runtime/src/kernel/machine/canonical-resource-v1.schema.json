@@ -587,6 +587,123 @@
         "kind"
       ],
       "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "display": {
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "label"
+          ],
+          "type": "object"
+        },
+        "namespaceId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "semanticId": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "semanticResourceDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "kind": {
+          "const": "storageKv"
+        },
+        "selector": {
+          "enum": [
+            "key",
+            "prefix"
+          ]
+        },
+        "selectorDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "display",
+        "namespaceId",
+        "schemaVersion",
+        "semanticId",
+        "semanticResourceDigest",
+        "kind",
+        "selector",
+        "selectorDigest"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "display": {
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "label"
+          ],
+          "type": "object"
+        },
+        "namespaceId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "semanticId": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "semanticResourceDigest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "database": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+          "type": "string"
+        },
+        "kind": {
+          "const": "storageSql"
+        }
+      },
+      "required": [
+        "display",
+        "namespaceId",
+        "schemaVersion",
+        "semanticId",
+        "semanticResourceDigest",
+        "database",
+        "kind"
+      ],
+      "type": "object"
     }
   ]
 }

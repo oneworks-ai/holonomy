@@ -1,7 +1,9 @@
 export const TIMER_CAPABILITY_MATRIX = Object.freeze({
   globals: Object.freeze({
+    clearImmediate: 'supported',
     clearInterval: 'supported',
     clearTimeout: 'supported',
+    setImmediate: 'supported',
     setInterval: 'supported',
     setTimeout: 'supported'
   }),

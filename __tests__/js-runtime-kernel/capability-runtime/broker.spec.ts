@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- deterministic Broker race assertions stay in the owning Runtime suite. */
 import { describe, expect, it, vi } from 'vitest'
 
 import {
@@ -23,6 +24,29 @@ const fsInvocation = (mode: 'callback' | 'promise' | 'sync', member = 'readFile'
 })
 
 describe('capability invocation broker v1', () => {
+  it('does not infer chmod from a writable filesystem root', () => {
+    let providerCalls = 0
+    const fs = provider('host.fs', 'sync', {}, () => {
+      providerCalls += 1
+    })
+    const broker = new CapabilityInvocationBrokerV1({
+      admitted: creation({ 'host.fs': fs }),
+      engine: 'node-vm',
+      target: 'node'
+    })
+    expect(() =>
+      broker.invokeSync({
+        arguments: snapshot({ path: 'holo-fs://workspace/demo.txt', mode: 0o644 }, 'argument'),
+        invocationMode: 'sync',
+        member: 'chmodSync',
+        module: 'node:fs',
+        requestId: 'chmod-denied',
+        resource: fsResource()
+      })
+    ).toThrow(expect.objectContaining({ code: 'policy.denied' }))
+    expect(providerCalls).toBe(0)
+  })
+
   it('runs a filesystem resolution sub-admission without re-entering the requested continuation', () => {
     const events: string[] = []
     const resolved = canonicalizeFilesystemResource('holo-fs://workspace/real.txt', 'real.txt')
@@ -454,9 +478,14 @@ describe('capability invocation broker v1', () => {
 
   it('rejects late Provider completion after cancellation or generation close', async () => {
     let complete: (value: string) => unknown = () => undefined
+    let firstStarted!: () => void
+    const firstProviderStarted = new Promise<void>(resolve => {
+      firstStarted = resolve
+    })
     const delayed = provider('host.fs', 'async', 'unused', (_context, authority) =>
       new Promise(resolve => {
         complete = value => resolve(authority.complete(snapshot(value, 'result')))
+        firstStarted()
       }))
     const broker = new CapabilityInvocationBrokerV1({
       admitted: creation({ 'host.fs': delayed }),
@@ -464,15 +493,20 @@ describe('capability invocation broker v1', () => {
       target: 'node'
     })
     const pending = broker.invoke(fsInvocation('promise'))
-    await Promise.resolve()
+    await firstProviderStarted
     broker.close('generation-stale')
     await expect(pending).rejects.toMatchObject({ code: 'runtime.generation_stale' })
     expect(() => complete('late')).toThrow(expect.objectContaining({ code: 'runtime.generation_stale' }))
 
     let cancelledComplete: (value: string) => unknown = () => undefined
+    let secondStarted!: () => void
+    const secondProviderStarted = new Promise<void>(resolve => {
+      secondStarted = resolve
+    })
     const cancellable = provider('host.fs', 'async', 'unused', (_context, authority) =>
       new Promise(resolve => {
         cancelledComplete = value => resolve(authority.complete(snapshot(value, 'result')))
+        secondStarted()
       }))
     const next = new CapabilityInvocationBrokerV1({
       admitted: creation({ 'host.fs': cancellable }),
@@ -481,7 +515,7 @@ describe('capability invocation broker v1', () => {
     })
     const controller = new AbortController()
     const cancelled = next.invoke({ ...fsInvocation('promise'), requestId: 'cancelled', signal: controller.signal })
-    await Promise.resolve()
+    await secondProviderStarted
     controller.abort()
     await expect(cancelled).rejects.toMatchObject({ code: 'runtime.cancelled' })
     expect(() => cancelledComplete('late')).toThrow(expect.objectContaining({ code: 'runtime.cancelled' }))

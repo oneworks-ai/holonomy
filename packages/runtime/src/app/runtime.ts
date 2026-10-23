@@ -1,10 +1,13 @@
+/* eslint-disable max-lines -- one Runtime composition path owns the corresponding cleanup. */
+
 import {
-  DEFAULT_ABORT_CONSTRUCTORS,
-  createUnsupportedCapabilityWebSocketV1
+  createUnsupportedCapabilityWebSocketV1,
+  createWebAbortConstructors
 } from '@holonomyjs/capability-network/web/index'
 import { createGitAuthority, createGitFacade } from '../git/index.js'
 import { createNodeTestSyntheticModules } from '../node-test/index.js'
 import { createStorageAuthority, createStorageFacade } from '../storage/index.js'
+import { createRuntimeImmediate } from '../timers/index.js'
 import { snapshotGitAuthorityInput, snapshotStorageAuthorityInput } from './authority-snapshot.js'
 import { composeRuntimeModuleLoader } from './compose-loader.js'
 import { disposeQuietly } from './dispose.js'
@@ -34,13 +37,18 @@ const TOP = [
   'nodeCore',
   'storage',
   'testPlatform',
+  'testPromiseBrand',
   'timers'
 ] as const
 const FREEZE = Object.freeze
 const KEYS = Object.keys
+const APPLY = Reflect.apply
 
 export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Promise<HolonomyRuntime> => {
   const options = snapshotRecord(input, TOP, ['authority', 'eventLoop', 'nativePort', 'nodeCore'])
+  if (options.testPromiseBrand !== undefined && typeof options.testPromiseBrand !== 'function') {
+    throw runtimeComposerError('runtime_composer.invalid_options')
+  }
   const root = snapshotRuntimeAuthority(options.authority)
   const factories = getRuntimeComposerFactories()
   const bridgeOptions = options.bridge === undefined ? undefined : snapshotRecord(options.bridge, ['limits'])
@@ -49,6 +57,8 @@ export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Prom
   let httpServer: ReturnType<(typeof factories)['createHttpServerRuntime']> | undefined
   let crypto: ReturnType<(typeof factories)['installCryptoRuntime']> | undefined
   let network: ReturnType<(typeof factories)['createFetchRuntime']> | undefined
+  let abort: ReturnType<typeof createWebAbortConstructors> | undefined
+  let immediate: ReturnType<typeof createRuntimeImmediate> | undefined
   try {
     bridge = factories.createNativeBridge(
       options.nativePort as HolonomyRuntimeOptions['nativePort'],
@@ -77,6 +87,7 @@ export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Prom
       )
     }
     if (options.crypto !== undefined) crypto = factories.installCryptoRuntime(options.crypto as never)
+    abort = createWebAbortConstructors(options.eventLoop as HolonomyRuntimeOptions['eventLoop'])
     if (options.network !== undefined) {
       if (
         !hasCapability(root.capabilities, 'host.network.http') &&
@@ -84,8 +95,15 @@ export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Prom
       ) {
         throw runtimeComposerError('runtime_composer.required_capability')
       }
+      const networkOptions = prepareRuntimeNetworkOptions(options.network, root.principal)
       network = factories.createFetchRuntime({
-        ...prepareRuntimeNetworkOptions(options.network, root.principal),
+        ...networkOptions,
+        constructors: {
+          AbortController: networkOptions.constructors?.AbortController ??
+            abort.AbortController as unknown as typeof globalThis.AbortController,
+          AbortSignal: networkOptions.constructors?.AbortSignal ??
+            abort.AbortSignal as unknown as typeof globalThis.AbortSignal
+        },
         bridge
       })
     }
@@ -101,7 +119,14 @@ export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Prom
     const storage = options.storage === undefined
       ? undefined
       : createStorageFacade({ authority: storageAuthority!, bridge })
-    const testModules = createNodeTestSyntheticModules((options.testPlatform ?? 'node') as never)
+    const testModules = createNodeTestSyntheticModules(
+      (options.testPlatform ?? 'node') as never,
+      options.testPromiseBrand as never
+    )
+    let disposed = false
+    const pendingNextTicks = new Set<number>()
+    const eventLoop = options.eventLoop as HolonomyRuntimeOptions['eventLoop']
+    if (options.timers != null) immediate = createRuntimeImmediate(eventLoop)
     const syntheticModules = createRuntimeRegistry({
       console: options.console as never,
       crypto,
@@ -109,12 +134,32 @@ export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Prom
       git,
       httpServer,
       moduleOverrides: options.moduleOverrides as never,
-      nodeCore: options.nodeCore as never,
+      nodeCore: {
+        ...(options.nodeCore as HolonomyRuntimeOptions['nodeCore']),
+        nextTick: (callback: (...args: unknown[]) => unknown, ...args: unknown[]) => {
+          if (disposed) throw runtimeComposerError('runtime_composer.disposed')
+          let taskId: number | undefined
+          let completed = false
+          const admittedId = eventLoop.enqueueNextTick(() => {
+            completed = true
+            if (taskId !== undefined) pendingNextTicks.delete(taskId)
+            if (!disposed) APPLY(callback, undefined, args)
+          })
+          taskId = admittedId
+          if (!completed) pendingNextTicks.add(admittedId)
+        }
+      },
+      storage,
       testModules,
-      timers: options.timers as never
+      timers: options.timers as never,
+      immediate
     })
     const networkGlobals: Record<string, object> = network == null
-      ? { WebSocket: createUnsupportedCapabilityWebSocketV1(), ...DEFAULT_ABORT_CONSTRUCTORS }
+      ? {
+        WebSocket: createUnsupportedCapabilityWebSocketV1(),
+        AbortController: abort.AbortController,
+        AbortSignal: abort.AbortSignal
+      }
       : {
         WebSocket: createUnsupportedCapabilityWebSocketV1(),
         AbortController: network.AbortController,
@@ -128,9 +173,9 @@ export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Prom
       crypto,
       networkGlobals,
       options.console as never,
-      options.timers as never
+      options.timers as never,
+      immediate
     ) as unknown as HolonomyRuntime['globals']
-    let disposed = false
     let disposing: Promise<void> | undefined
     const moduleLoader = composeRuntimeModuleLoader(
       options.moduleLoader as HolonomyRuntimeOptions['moduleLoader'],
@@ -165,6 +210,17 @@ export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Prom
         disposing ??= (async () => {
           if (disposed) return
           disposed = true
+          for (const taskId of pendingNextTicks) {
+            try {
+              eventLoop.cancelTask(taskId)
+            } catch {
+              // A fatal Event Loop failure already clears its queue; continue Runtime cleanup.
+              break
+            }
+          }
+          pendingNextTicks.clear()
+          immediate?.dispose()
+          abort?.dispose()
           await disposeQuietly(network)
           await disposeQuietly(crypto)
           await disposeQuietly(httpServer)
@@ -182,6 +238,8 @@ export const createHolonomyRuntime = async (input: HolonomyRuntimeOptions): Prom
     }
     return FREEZE(shell)
   } catch (error) {
+    immediate?.dispose()
+    abort?.dispose()
     await disposeQuietly(network)
     await disposeQuietly(crypto)
     await disposeQuietly(httpServer)

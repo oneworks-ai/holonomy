@@ -1,3 +1,4 @@
+import { assertAllocSize, fillAllocBuffer } from './buffer-alloc.js'
 import { resolveArrayBufferViewRange } from './buffer-arraybuffer.js'
 import { base64ByteLength, decodeBufferBytes, encodeBufferString, normalizeEncoding } from './encoding.js'
 import type { BufferEncoding } from './encoding.js'
@@ -73,7 +74,7 @@ export class RuntimeBuffer extends Uint8Array {
 
 export interface RuntimeBufferConstructor {
   readonly prototype: RuntimeBuffer
-  alloc(size: number): RuntimeBuffer
+  alloc(size: number, fill?: number | string | Uint8Array, encoding?: string): RuntimeBuffer
   allocUnsafe(size: number): RuntimeBuffer
   byteLength(value: string | ArrayBuffer | Uint8Array, encoding?: string): number
   concat(list: readonly Uint8Array[], totalLength?: number): RuntimeBuffer
@@ -160,9 +161,11 @@ export const Buffer = RuntimeBuffer as unknown as RuntimeBufferConstructor
 
 Object.defineProperties(Buffer, {
   alloc: {
-    value: (size: number) => {
-      assertSize(size)
-      return new RuntimeBuffer(size)
+    value: (size: number, fill?: unknown, encoding?: unknown) => {
+      assertAllocSize(size)
+      const result = new RuntimeBuffer(size)
+      if (size > 0 && fill !== undefined) fillAllocBuffer(result, fill, encoding)
+      return result
     }
   },
   allocUnsafe: {

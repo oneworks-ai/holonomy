@@ -40,27 +40,56 @@ import org.junit.runner.RunWith
 class SessionSupervisorInstrumentationTest {
     @Test
     fun capabilityNetworkRestrictedRealRequestUsesTheProductionTransport() {
-        val server = ServerSocket(REAL_NETWORK_PORT, 1, InetAddress.getByName("127.0.0.1"))
-        val serverThread = thread(name = "holonomy-real-network-e2e") {
-            server.use { socket ->
-                socket.accept().use { client ->
-                    val input = client.getInputStream().bufferedReader()
-                    while (!input.readLine().isNullOrEmpty()) Unit
-                    val body = "android-real-transport"
-                    client.getOutputStream().bufferedWriter().use { output ->
-                        output.write("HTTP/1.1 200 OK\r\n")
-                        output.write("Content-Type: text/plain\r\n")
-                        output.write("Content-Length: ${body.toByteArray().size}\r\n")
-                        output.write("Connection: close\r\n\r\n")
-                        output.write(body)
-                    }
-                }
-            }
-        }
         val fixture = capabilityNetworkFixture(CAPABILITY_NETWORK_REAL_FIXTURE_ASSET)
         val harness = SessionSupervisorInstrumentationHarness(targetContext())
         val runtimeId = harness.runtimeId("network-real")
+        val server = ServerSocket(REAL_NETWORK_PORT, 1, InetAddress.getByName("127.0.0.1"))
+        val serverFailure = java.util.concurrent.atomic.AtomicReference<Throwable?>()
+        val activeClient = java.util.concurrent.atomic.AtomicReference<java.net.Socket?>()
+        val serverThread = thread(start = false, name = "holonomy-real-network-e2e") {
+            try {
+                // One initial success, then ten header-only cancellations and recoveries.
+                repeat(21) {
+                    server.accept().use { client ->
+                        activeClient.set(client)
+                        try {
+                            // Cleanup may have closed the listener just before this
+                            // accepted socket was published; never enter a read then.
+                            if (server.isClosed) return@use
+                            client.soTimeout = 30_000
+                            val input = client.getInputStream().bufferedReader()
+                            val request = input.readLine().orEmpty()
+                            while (!input.readLine().isNullOrEmpty()) Unit
+                            val held = request.startsWith("GET /abort-body ")
+                            val body = "android-real-transport"
+                            val output = client.getOutputStream().bufferedWriter()
+                            output.write("HTTP/1.1 200 OK\r\n")
+                            output.write("Content-Type: text/plain\r\n")
+                            output.write("Content-Length: ${if (held) 1 else body.toByteArray().size}\r\n")
+                            if (held) output.write("X-Holonomy-Body: held\r\n")
+                            output.write("Connection: close\r\n\r\n")
+                            if (!held) output.write(body)
+                            output.flush()
+                            // No sleeps: cancellation must close the real socket before
+                            // the fixture accepts the next successful connection.
+                            if (held) {
+                                try {
+                                    check(input.read() == -1) { "Cancelled client sent unexpected data" }
+                                } catch (_: java.net.SocketException) {
+                                    // Both EOF and TCP reset are real cancellation closes.
+                                }
+                            }
+                        } finally {
+                            activeClient.compareAndSet(client, null)
+                        }
+                    }
+                }
+            } catch (error: Throwable) {
+                if (!server.isClosed) serverFailure.set(error)
+            }
+        }
         try {
+            serverThread.start()
             assertTrue(harness.create(
                 runtimeId,
                 capabilityNetworkRuntimeSpec(
@@ -80,13 +109,19 @@ class SessionSupervisorInstrumentationTest {
             val result = JSONObject(output.events.first { event ->
                 event.chunk.contains(CAPABILITY_NETWORK_REAL_OUTPUT_MARKER)
             }.chunk.substringAfter(CAPABILITY_NETWORK_REAL_OUTPUT_MARKER).trim())
-            assertEquals(200, result.getInt("status"))
-            assertEquals("android-real-transport", result.getString("body"))
+            assertEquals("Shared JS failures: $result", 0, result.getInt("failed"))
+            assertEquals(6, result.getInt("passed"))
+            assertEquals(6, result.getInt("total"))
         } finally {
-            harness.close()
             runCatching { server.close() }
-            serverThread.join(TimeUnit.SECONDS.toMillis(5))
-            assertFalse("Real network fixture server did not terminate", serverThread.isAlive)
+            runCatching { activeClient.getAndSet(null)?.close() }
+            try {
+                harness.close()
+            } finally {
+                serverThread.join(TimeUnit.SECONDS.toMillis(5))
+                assertFalse("Real network fixture server did not terminate", serverThread.isAlive)
+                serverFailure.get()?.let { throw AssertionError("Real network fixture failed", it) }
+            }
         }
     }
 

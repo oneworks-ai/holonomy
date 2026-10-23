@@ -9,6 +9,7 @@ import {
   hasExactKeys,
   networkSuccess,
   rejectNetworkCall,
+  sendNetworkFailure,
   sendNetworkResponse,
   sendNetworkResult,
   splitNetworkBody
@@ -34,7 +35,14 @@ export class NodeNetworkNativePort {
     const exchange = this.#calls.get(callToken)
     this.#calls.delete(callToken)
     exchange?.abort?.abort()
-    if (exchange?.reader?.callToken === callToken) exchange.reader = undefined
+    if (exchange?.finishCallToken === callToken && exchange.phase === 'pending') {
+      exchange.phase = 'terminal'
+    }
+    if (exchange?.reader?.callToken === callToken) {
+      exchange.reader = undefined
+      exchange.phase = 'terminal'
+      this.#returnUpstream(exchange)
+    }
   }
 
   closeResource(ownerCallToken, providerToken) {
@@ -65,6 +73,8 @@ export class NodeNetworkNativePort {
     if (request.operation === NODE_NETWORK_OPERATIONS.cancel) {
       if (request.binary != null) return rejectNetworkCall(sink, request.id, 'invalid_request')
       exchange.abort?.abort()
+      exchange.phase = 'terminal'
+      this.#returnUpstream(exchange)
       sendNetworkResult(sink, request.id, { cancelled: true })
       return
     }
@@ -84,6 +94,11 @@ export class NodeNetworkNativePort {
     const exchange = this.#calls.get(callToken)
     const reader = exchange?.reader
     if (reader == null || !Number.isSafeInteger(credits) || credits <= 0) return
+    if (exchange.upstream != null) {
+      reader.credits += credits
+      void this.#pumpUpstream(exchange, reader)
+      return
+    }
     for (let remaining = credits; remaining > 0; remaining -= 1) {
       const chunk = exchange.chunks[reader.index]
       if (chunk == null) {
@@ -165,6 +180,7 @@ export class NodeNetworkNativePort {
       return rejectNetworkCall(sink, request.id, 'invalid_request')
     }
     exchange.phase = 'pending'
+    exchange.finishCallToken = context.callToken
     exchange.abort = new AbortController()
     this.#calls.set(context.callToken, exchange)
     let body
@@ -179,24 +195,40 @@ export class NodeNetworkNativePort {
         signal: exchange.abort.signal,
         url: exchange.url
       })
-      if (!this.#exchanges.has(exchange.providerToken) || exchange.phase === 'closed') {
-        response.body.fill(0)
-        return rejectNetworkCall(sink, request.id, 'resource_invalid')
+      if (!this.#isCurrentFinish(exchange, context.callToken)) {
+        this.#discardResponseBody(response?.body)
+        return
       }
-      exchange.chunks = splitNetworkBody(response.body, this.#maxChunkBytes)
+      const responseBody = this.#selectResponseBody(response)
+      exchange.chunks = responseBody.chunks
+      exchange.upstream = responseBody.upstream
       exchange.phase = 'response'
-      sendNetworkResponse(sink, request.id, response, exchange.chunks.length > 0)
+      sendNetworkResponse(sink, request.id, response, responseBody.hasBody)
     } catch (error) {
-      const code = error?.code === 'aborted' ? 'cancelled' : error?.code === 'timeout' ? 'timeout' : 'unavailable'
+      if (!this.#isCurrentFinish(exchange, context.callToken)) return
+      const hostCode = error?.code
+      if (hostCode === 'response_too_large') {
+        sendNetworkFailure(sink, request.id, 'network.response_too_large')
+        return
+      }
+      const code = hostCode === 'aborted'
+        ? 'cancelled'
+        : hostCode === 'timeout'
+        ? 'timeout'
+        : hostCode === 'connection_refused'
+        ? 'connection_refused'
+        : hostCode === 'protocol_error'
+        ? 'protocol_error'
+        : 'unavailable'
       rejectNetworkCall(
         sink,
         request.id,
         code,
-        code === 'timeout' || code === 'unavailable' ? 'network' : undefined
+        code === 'timeout' || code === 'connection_refused' || code === 'unavailable' ? 'network' : undefined
       )
     } finally {
       body?.fill(0)
-      this.#calls.delete(context.callToken)
+      if (this.#calls.get(context.callToken) === exchange) this.#calls.delete(context.callToken)
     }
   }
 
@@ -204,7 +236,7 @@ export class NodeNetworkNativePort {
     if (exchange.phase !== 'response' || exchange.reader != null || request.binary != null) {
       return rejectNetworkCall(sink, request.id, 'invalid_request')
     }
-    exchange.reader = { callToken: context.callToken, id: request.id, index: 0, sequence: 0, sink }
+    exchange.reader = { callToken: context.callToken, credits: 0, id: request.id, index: 0, sequence: 0, sink }
     this.#calls.set(context.callToken, exchange)
   }
 
@@ -212,10 +244,180 @@ export class NodeNetworkNativePort {
     if (!this.#exchanges.delete(exchange.providerToken)) return
     exchange.phase = 'closed'
     exchange.abort?.abort()
+    this.#returnUpstream(exchange)
     for (const item of exchange.body ?? []) item.fill(0)
     for (const item of exchange.chunks ?? []) item.fill(0)
     if (exchange.reader != null) rejectNetworkCall(exchange.reader.sink, exchange.reader.id, 'resource_invalid')
     for (const [callToken, value] of this.#calls) if (value === exchange) this.#calls.delete(callToken)
     if (revoke) exchange.resourceSink({ providerToken: exchange.providerToken, type: 'revoke' })
+  }
+
+  #selectResponseBody(response) {
+    const body = response?.body
+    if (body instanceof Uint8Array) {
+      const chunks = splitNetworkBody(body, this.#maxChunkBytes)
+      return { chunks, hasBody: response.hasBody ?? chunks.length > 0, upstream: undefined }
+    }
+    const iterator = this.#responseIterator(body)
+    if (iterator != null) {
+      if (response.hasBody === false) {
+        void this.#returnIterator(iterator)
+        return { chunks: [], hasBody: false, upstream: undefined }
+      }
+      return { chunks: [], hasBody: true, upstream: { closed: false, iterator } }
+    }
+    if (body == null && response?.hasBody === false) {
+      return { chunks: [], hasBody: false, upstream: undefined }
+    }
+    throw Object.assign(new Error('Invalid Host response body'), { code: 'protocol_error' })
+  }
+
+  #responseIterator(body) {
+    if (body == null || typeof body !== 'object') return undefined
+    if (typeof body[Symbol.asyncIterator] === 'function') {
+      const iterator = body[Symbol.asyncIterator]()
+      return iterator != null && typeof iterator.next === 'function' ? iterator : undefined
+    }
+    if (typeof body.getReader === 'function') {
+      const reader = body.getReader()
+      if (reader == null || typeof reader.read !== 'function') return undefined
+      let released = false
+      const release = () => {
+        if (released) return
+        released = true
+        reader.releaseLock?.()
+      }
+      return {
+        next: async () => {
+          const result = await reader.read()
+          if (result?.done === true) release()
+          return result
+        },
+        return: async reason => {
+          try {
+            if (typeof reader.cancel === 'function') await reader.cancel(reason)
+            return { done: true, value: undefined }
+          } finally {
+            release()
+          }
+        }
+      }
+    }
+    if (typeof body.next === 'function') return body
+    return undefined
+  }
+
+  async #pumpUpstream(exchange, reader) {
+    if (reader.pumping) return
+    reader.pumping = true
+    try {
+      while (
+        reader.credits > 0 && exchange.reader === reader && exchange.phase === 'response' &&
+        exchange.upstream != null && !exchange.upstream.closed
+      ) {
+        reader.credits -= 1
+        let result
+        try {
+          result = await exchange.upstream.iterator.next()
+        } catch (error) {
+          if (exchange.reader !== reader || exchange.phase !== 'response') return
+          this.#finishUpstreamReader(exchange, reader, error)
+          return
+        }
+        if (exchange.reader !== reader || exchange.phase !== 'response') {
+          this.#returnUpstream(exchange)
+          return
+        }
+        if (result == null || typeof result !== 'object' || typeof result.done !== 'boolean') {
+          this.#finishUpstreamReader(exchange, reader, { code: 'protocol_error' })
+          return
+        }
+        if (result.done) {
+          exchange.upstream.closed = true
+          exchange.phase = 'terminal'
+          reader.sink({ id: reader.id, type: 'end', value: networkSuccess({ closed: true }) })
+          exchange.reader = undefined
+          this.#calls.delete(reader.callToken)
+          return
+        }
+        if (
+          !(result.value instanceof Uint8Array) || result.value.byteLength === 0 ||
+          result.value.byteLength > this.#maxChunkBytes
+        ) {
+          this.#finishUpstreamReader(exchange, reader, { code: 'protocol_error' })
+          return
+        }
+        const chunk = result.value.slice()
+        reader.sink({
+          binary: [{ data: chunk, handle: `node-network:${reader.sequence}` }],
+          id: reader.id,
+          sequence: reader.sequence++,
+          type: 'chunk',
+          value: networkSuccess({ kind: 'body' })
+        })
+      }
+    } finally {
+      reader.pumping = false
+      if (reader.credits > 0 && exchange.reader === reader && exchange.phase === 'response') {
+        void this.#pumpUpstream(exchange, reader)
+      }
+    }
+  }
+
+  #finishUpstreamReader(exchange, reader, error) {
+    const hostCode = error?.code
+    exchange.phase = 'terminal'
+    exchange.reader = undefined
+    this.#calls.delete(reader.callToken)
+    this.#returnUpstream(exchange)
+    if (hostCode === 'response_too_large') {
+      reader.sink({ id: reader.id, type: 'end', value: { error: 'network.response_too_large', ok: false } })
+      return
+    }
+    const code = hostCode === 'aborted'
+      ? 'cancelled'
+      : hostCode === 'timeout'
+      ? 'timeout'
+      : hostCode === 'connection_refused'
+      ? 'connection_refused'
+      : hostCode === 'protocol_error'
+      ? 'protocol_error'
+      : 'unavailable'
+    rejectNetworkCall(
+      reader.sink,
+      reader.id,
+      code,
+      code === 'timeout' || code === 'connection_refused' || code === 'unavailable' ? 'network' : undefined
+    )
+  }
+
+  #returnUpstream(exchange) {
+    const upstream = exchange?.upstream
+    if (upstream == null || upstream.closed) return
+    upstream.closed = true
+    void this.#returnIterator(upstream.iterator)
+  }
+
+  async #returnIterator(iterator) {
+    try {
+      await iterator.return?.()
+    } catch {
+      // A late Host cleanup failure cannot produce a second NativePort terminal.
+    }
+  }
+
+  #discardResponseBody(body) {
+    if (body instanceof Uint8Array) {
+      body.fill(0)
+      return
+    }
+    const iterator = this.#responseIterator(body)
+    if (iterator != null) void this.#returnIterator(iterator)
+  }
+
+  #isCurrentFinish(exchange, callToken) {
+    return this.#exchanges.has(exchange.providerToken) && exchange.phase === 'pending' &&
+      exchange.finishCallToken === callToken && this.#calls.get(callToken) === exchange &&
+      !exchange.abort.signal.aborted
   }
 }

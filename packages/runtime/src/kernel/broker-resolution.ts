@@ -162,13 +162,23 @@ export const createProviderResolutionAdmitterV1 = <THostContext>(input: Resoluti
   return Object.freeze({
     admitSync(request: CapabilityProviderResolutionRequestV1) {
       const admitted = prepare(request)
-      runResolutionMiddlewareSyncV1(admitted.context, resolutionMiddleware(input, admitted.context))
-      return admitted
+      try {
+        runResolutionMiddlewareSyncV1(admitted.context, resolutionMiddleware(input, admitted.context))
+        return admitted
+      } catch (error) {
+        admitted.dispose()
+        throw error
+      }
     },
     async admit(request: CapabilityProviderResolutionRequestV1) {
       const admitted = prepare(request)
-      await runResolutionMiddlewareAsyncV1(admitted.context, resolutionMiddleware(input, admitted.context))
-      return admitted
+      try {
+        await runResolutionMiddlewareAsyncV1(admitted.context, resolutionMiddleware(input, admitted.context))
+        return admitted
+      } catch (error) {
+        admitted.dispose()
+        throw error
+      }
     }
   }) satisfies CapabilityProviderResolutionAdmitterV1<THostContext>
 }

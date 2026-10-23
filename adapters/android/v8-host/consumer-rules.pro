@@ -1,0 +1,1 @@
+-keep class ai.oneworks.holonomy.v8.AndroidEngineGateNativeBinding { *; }

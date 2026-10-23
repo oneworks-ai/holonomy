@@ -37,10 +37,27 @@ fun interface LocalAbstractSessionControlTransportFactory {
 }
 
 /** Persists command/reply artifacts while leaving typed execution to the supervisor. */
-class StoredSessionCommandHandler(
+class StoredSessionCommandHandler private constructor(
     private val supervisor: AndroidRuntimeSessionSupervisor,
     private val store: AppPrivateSessionCommandStore,
+    private val mirrorReplySnapshots: Boolean,
 ) : SessionCommandHandler {
+    /** Legacy integrations without an event sink mirror the captured reply snapshots. */
+    constructor(supervisor: AndroidRuntimeSessionSupervisor, store: AppPrivateSessionCommandStore) :
+        this(supervisor, store, true)
+
+    companion object {
+        /**
+         * Use when StoredSessionSupervisorEventSink owns this store's snapshots. Command replies
+         * are point-in-time captures and must never overwrite newer lifecycle or output events.
+         */
+        @JvmStatic
+        fun withEventOwnedSnapshots(
+            supervisor: AndroidRuntimeSessionSupervisor,
+            store: AppPrivateSessionCommandStore,
+        ): StoredSessionCommandHandler = StoredSessionCommandHandler(supervisor, store, false)
+    }
+
     override fun handle(command: SessionCommandV2): CompletableFuture<SessionCommandReply> {
         val inserted = store.putCommand(command)
         if (!inserted) {
@@ -49,15 +66,21 @@ class StoredSessionCommandHandler(
         }
         return supervisor.execute(command).thenApply { reply ->
             store.putReply(reply)
-            reply.state?.let(store::putState)
-            reply.result?.let(store::putResult)
-            reply.output?.let { output -> store.putOutput(output, command.runtimeId) }
+            if (mirrorReplySnapshots) {
+                reply.state?.let(store::putState)
+                reply.result?.let(store::putResult)
+                reply.output?.let { output -> store.putOutput(output, command.runtimeId) }
+            }
             reply
         }
     }
 }
 
-/** Persists state, result, and bounded output snapshots emitted outside command completion. */
+/**
+ * Owns durable lifecycle state/results and the bounded output journal. State output cursors reflect
+ * the last lifecycle event; Status replies and the output journal provide current output cursors.
+ * An output artifact is absent until the first output event (an empty Status reply is still valid).
+ */
 class StoredSessionSupervisorEventSink(
     private val store: AppPrivateSessionCommandStore,
     private val outputLimits: StoredSessionOutputLimits = StoredSessionOutputLimits(),

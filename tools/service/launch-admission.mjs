@@ -1,6 +1,7 @@
 import { normalizeModuleGraphRoot } from '../../adapters/node/src/module-root-validation.mjs'
 
 import { serviceError } from './errors.mjs'
+import { validateNativeLaunchGraph } from './native-launch-materialization.mjs'
 import { cloneJson, requireRecord } from './validation.mjs'
 
 const PUBLIC_LAUNCH_FIELDS = Object.freeze([
@@ -9,6 +10,7 @@ const PUBLIC_LAUNCH_FIELDS = Object.freeze([
   'entryUrl',
   'env',
   'moduleRootUrl',
+  'moduleAliases',
   'modules',
   'reporter',
   'schemaVersion',
@@ -29,6 +31,15 @@ export const admitLaunchSnapshot = (value, expected) => {
   if (launch.target != null && launch.target !== expected.target) {
     throw serviceError('service.invalid_request', 'Runtime launch target does not match the request')
   }
+  if (expected.target !== 'native' && Object.hasOwn(launch, 'moduleAliases')) {
+    throw serviceError('service.invalid_request', 'Module aliases require a Native target')
+  }
+  if (
+    expected.target !== 'native' && Array.isArray(launch.modules) &&
+    launch.modules.some(module => module != null && Object.hasOwn(module, 'metadataOnly'))
+  ) {
+    throw serviceError('service.invalid_request', 'Metadata-only module rows require a Native target')
+  }
   if (launch.moduleRootUrl != null) {
     const urls = [
       expected.entryUrl,
@@ -40,5 +51,6 @@ export const admitLaunchSnapshot = (value, expected) => {
       throw serviceError('service.invalid_request', 'Runtime module root URL is invalid')
     }
   }
+  if (expected.target === 'native') validateNativeLaunchGraph(launch)
   return launch
 }

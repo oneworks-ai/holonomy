@@ -1,12 +1,14 @@
 package ai.oneworks.holonomy.e2e.session.capability
 
 import android.os.SystemClock
+import android.util.Log
 import ai.oneworks.holonomy.capability.AndroidCapabilityHost
 import ai.oneworks.holonomy.capability.AndroidDeviceObservationSource
 import ai.oneworks.holonomy.capability.AndroidDeviceValueSource
 import ai.oneworks.holonomy.e2e.session.supervisor.SessionSupervisorInstrumentationHarness
 import ai.oneworks.holonomy.host.RuntimeCapabilityResourceEventSink
 import ai.oneworks.holonomy.v86.AndroidV86AssetStore
+import ai.oneworks.holonomy.v86.AndroidV86RuntimeServicesFactory
 import ai.oneworks.holonomy.session.RuntimeId
 import ai.oneworks.holonomy.session.SessionControlOperation
 import ai.oneworks.holonomy.session.SessionIsolation
@@ -46,6 +48,7 @@ import org.junit.runner.RunWith
 class CapabilityRuntimeKernelInstrumentationTest {
     @Test
     fun publicV86ChildProcessEventsReachGuestFacade() {
+        val previousWorkers = liveV86Workers().mapTo(mutableSetOf()) { it.id }
         val available = AndroidV86AssetStore(targetContext().assets).available
         if (InstrumentationRegistry.getArguments().getString("holonomyRequireV86") == "true") {
             assertTrue("The required v86 production assets were not packaged", available)
@@ -57,38 +60,49 @@ class CapabilityRuntimeKernelInstrumentationTest {
         val runtimeId = harness.runtimeId("capability-v86-events")
         try {
             assertTrue(harness.create(runtimeId, runtimeSpec(fixture, runtimeId)).ack.accepted)
-            assertTrue(harness.start(runtimeId, V86_START_TIMEOUT_SECONDS).ack.accepted)
+            assertTrue(harness.start(runtimeId, v86Budget(fixture).startSeconds).ack.accepted)
             val output = harness.awaitOutput(
                 runtimeId,
                 "public v86 Process/Linux conformance",
-                V86_OUTPUT_TIMEOUT_SECONDS,
+                v86Budget(fixture).suiteSeconds,
             ) { snapshot ->
                 snapshot.events.any { event ->
                     event.generation == 1L &&
-                        event.chunk.contains("V86_CONFORMANCE_EVENT:process-control:timeout-abort-flow:ok")
+                        (
+                            event.chunk.contains(OUTPUT_MARKER) ||
+                                event.chunk.contains("V86_CONFORMANCE_FAILURES:")
+                        )
                 }
             }
             val trace = output.events.filter { event ->
-                event.generation == 1L && event.chunk.contains("V86_CONFORMANCE_EVENT:")
+                event.generation == 1L &&
+                    (event.chunk.contains("V86_CONFORMANCE_EVENT:") ||
+                        event.chunk.contains("V86_CONFORMANCE_FAILURES:") ||
+                        event.chunk.contains(OUTPUT_MARKER))
             }.joinToString(separator = "") { event -> event.chunk }
-            for (
-                marker in listOf(
-                    "V86_CONFORMANCE_EVENT:child:spawn:0",
-                    "V86_CONFORMANCE_EVENT:stdout:data",
-                    "V86_CONFORMANCE_EVENT:child:exit:2",
-                    "V86_CONFORMANCE_EVENT:child:close:2",
-                    "V86_CONFORMANCE_EVENT:callback:3:ok",
-                    "V86_CONFORMANCE_EVENT:scope:process-tree-shell:ok",
-                    "V86_CONFORMANCE_EVENT:network:tcp-udp:ok",
-                    "V86_CONFORMANCE_EVENT:capability:device-system:ok",
-                    "V86_CONFORMANCE_EVENT:descendant:allow-deny:ok",
-                    "V86_CONFORMANCE_EVENT:process-control:timeout-abort-flow:ok",
-                )
-            ) assertTrue("missing $marker in $trace", trace.contains(marker))
+            assertFalse("shared JavaScript conformance failed: $trace", trace.contains("V86_CONFORMANCE_FAILURES:"))
+            val completed = output.events.first { event ->
+                event.generation == 1L && event.chunk.contains(OUTPUT_MARKER)
+            }.chunk
+            val summary = JSONObject(completed.substringAfter(OUTPUT_MARKER).trim())
+                .getJSONObject("guestConformance")
+            assertEquals(0, summary.getInt("failed"))
+            assertEquals(13, summary.getInt("total"))
+            assertEquals(summary.getInt("total"), summary.getInt("passed"))
         } finally {
             network.close()
             harness.close()
+            val deadline = SystemClock.elapsedRealtime() + 5_000
+            while (SystemClock.elapsedRealtime() < deadline &&
+                liveV86Workers().any { it.id !in previousWorkers }) SystemClock.sleep(10)
+            val remaining = liveV86Workers().filter { it.id !in previousWorkers }.map { it.name }
+            assertTrue("Owned v86 workers survived Runtime disposal: $remaining", remaining.isEmpty())
+            Log.i("HolonomyConformance", "V86_TEARDOWN_NO_LIVE_WORKERS")
         }
+    }
+
+    private fun liveV86Workers(): List<Thread> = Thread.getAllStackTraces().keys.filter {
+        it.isAlive && it.name.startsWith("holonomy-v86-")
     }
 
     @Test
@@ -203,7 +217,7 @@ class CapabilityRuntimeKernelInstrumentationTest {
             assertTrue(
                 harness.start(
                     runtimeId,
-                    if (expectsV86) V86_START_TIMEOUT_SECONDS else FULL_CAPABILITY_OUTPUT_TIMEOUT_SECONDS,
+                    if (expectsV86) v86Budget(fixture).startSeconds else FULL_CAPABILITY_OUTPUT_TIMEOUT_SECONDS,
                 ).ack.accepted,
             )
             val output = harness.awaitOutput(runtimeId, "Host Realm Capability interceptor") { snapshot ->
@@ -230,7 +244,7 @@ class CapabilityRuntimeKernelInstrumentationTest {
             assertEquals(SessionRuntimePhase.CREATED, created.state?.phase)
             val started = harness.start(
                 runtimeId,
-                if (expectsV86) V86_START_TIMEOUT_SECONDS else FULL_CAPABILITY_OUTPUT_TIMEOUT_SECONDS,
+                if (expectsV86) v86Budget(fixture).startSeconds else FULL_CAPABILITY_OUTPUT_TIMEOUT_SECONDS,
             )
             assertTrue(started.ack.accepted)
             if (started.state?.phase != SessionRuntimePhase.RUNNING) {
@@ -252,7 +266,7 @@ class CapabilityRuntimeKernelInstrumentationTest {
                     harness.commandId(),
                     expectedGeneration = 1,
                 ),
-                if (expectsV86) V86_START_TIMEOUT_SECONDS else FULL_CAPABILITY_OUTPUT_TIMEOUT_SECONDS,
+                if (expectsV86) v86Budget(fixture).startSeconds else FULL_CAPABILITY_OUTPUT_TIMEOUT_SECONDS,
             )
             assertTrue(restarted.ack.accepted)
             assertEquals(2L, restarted.ack.generation)
@@ -504,7 +518,7 @@ class CapabilityRuntimeKernelInstrumentationTest {
             harness.awaitOutput(
                 runtimeId,
                 "M2.5 Android capability output",
-                if (expectsV86) V86_OUTPUT_TIMEOUT_SECONDS else FULL_CAPABILITY_OUTPUT_TIMEOUT_SECONDS,
+                if (expectsV86) v86Budget(fixture()).suiteSeconds else FULL_CAPABILITY_OUTPUT_TIMEOUT_SECONDS,
             ) { snapshot ->
             snapshot.events.any { event ->
                 event.generation == generation && event.chunk.contains(OUTPUT_MARKER)
@@ -518,6 +532,41 @@ class CapabilityRuntimeKernelInstrumentationTest {
             event.generation == generation && event.chunk.contains(OUTPUT_MARKER)
         }.chunk
         return JSONObject(chunk.substringAfter(OUTPUT_MARKER).trim())
+    }
+
+    private data class V86Budget(val startSeconds: Long, val suiteSeconds: Long)
+
+    // Test metadata is a harness bound only; production authority still comes from Policy.
+    private fun v86Budget(fixture: JSONObject): V86Budget {
+        val budget = fixture.getJSONObject("v86TestBudget")
+        val startup = budget.getLong("startupTimeoutMs")
+        val execution = budget.getLong("maxExecutionTimeMs")
+        val transport = budget.getLong("transportMarginMs")
+        val cleanup = budget.getLong("cleanupGraceMs")
+        val roots = budget.getLong("maxVmRootStarts")
+        val margin = budget.getLong("setupTeardownMarginMs")
+        assertEquals(AndroidV86RuntimeServicesFactory.DEFAULT_STARTUP_TIMEOUT_MS, startup)
+        val policy = fixture.getJSONObject("capabilityRuntime")
+            .getJSONObject("runtimeCreation").getJSONObject("configuration")
+            .getJSONObject("sandboxPolicy").getJSONObject("process")
+        assertEquals(policy.getJSONObject("limits").getLong("maxExecutionTimeMs"), execution)
+        assertTrue(execution in 1..120_000L)
+        assertEquals(5_000L, transport)
+        assertEquals(15_000L, cleanup)
+        assertEquals(12L, roots)
+        assertEquals(60_000L, margin)
+        val watchdog = startup + execution + transport
+        val suite = roots * (watchdog + cleanup) + margin
+        val start = startup + transport
+        val instrumentation = 2 * (start + suite) + margin
+        assertEquals(watchdog, budget.getLong("watchdogMs"))
+        assertEquals(suite, budget.getLong("suiteWaitMs"))
+        assertEquals(start, budget.getLong("startWaitMs"))
+        assertEquals(instrumentation, budget.getLong("instrumentationTimeoutMs"))
+        InstrumentationRegistry.getArguments().getString("timeout_msec")?.let { value ->
+            assertTrue("JUnit timeout is smaller than the v86 harness budget", value.toLong() >= instrumentation)
+        }
+        return V86Budget((start + 999) / 1_000, (suite + 999) / 1_000)
     }
 
     private fun fixture(): JSONObject = targetContext().assets.open(FIXTURE_ASSET)
@@ -701,8 +750,6 @@ class CapabilityRuntimeKernelInstrumentationTest {
 
     private companion object {
         private const val FULL_CAPABILITY_OUTPUT_TIMEOUT_SECONDS = 60L
-        private const val V86_OUTPUT_TIMEOUT_SECONDS = 240L
-        private const val V86_START_TIMEOUT_SECONDS = 360L
         private const val FIXTURE_ASSET = "runtime/capability-kernel-v1.json"
         private const val FILESYSTEM_GENERATION_FIXTURE_ASSET =
             "runtime/capability-filesystem-generation-v1.json"

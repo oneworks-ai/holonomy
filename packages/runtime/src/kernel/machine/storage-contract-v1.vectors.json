@@ -1,0 +1,388 @@
+{
+  "capability": {
+    "available": {
+      "databases": [
+        "main"
+      ],
+      "keyPrefixes": [
+        "notes/"
+      ],
+      "namespaceId": "default",
+      "operations": [
+        "storage.kv.get",
+        "storage.kv.list",
+        "storage.kv.set",
+        "storage.sqlite.query"
+      ],
+      "limits": {
+        "maxDatabaseNameBytes": 128,
+        "maxDatabaseBytes": 33554432,
+        "maxDatabases": 16,
+        "maxKeyBytes": 1024,
+        "maxKeysPerList": 1024,
+        "maxPendingOperations": 128,
+        "maxRowsPerQuery": 1024,
+        "maxSqlBytes": 65536,
+        "maxSqlInstructions": 10000000,
+        "maxTransactionStatements": 256,
+        "maxValueBytes": 1048576
+      }
+    },
+    "narrowerSatisfied": true,
+    "narrowed": {
+      "databases": [],
+      "keyPrefixes": [
+        "notes/alpha"
+      ],
+      "namespaceId": "default",
+      "operations": [
+        "storage.kv.get"
+      ],
+      "limits": {
+        "maxDatabaseNameBytes": 128,
+        "maxDatabaseBytes": 33554432,
+        "maxDatabases": 16,
+        "maxKeyBytes": 1024,
+        "maxKeysPerList": 1024,
+        "maxPendingOperations": 128,
+        "maxRowsPerQuery": 1024,
+        "maxSqlBytes": 65536,
+        "maxSqlInstructions": 10000000,
+        "maxTransactionStatements": 256,
+        "maxValueBytes": 1024
+      }
+    },
+    "required": {
+      "databases": [],
+      "keyPrefixes": [
+        "notes/alpha"
+      ],
+      "limits": {
+        "maxDatabaseNameBytes": 128,
+        "maxDatabaseBytes": 33554432,
+        "maxDatabases": 16,
+        "maxKeyBytes": 1024,
+        "maxKeysPerList": 1024,
+        "maxPendingOperations": 128,
+        "maxRowsPerQuery": 1024,
+        "maxSqlBytes": 65536,
+        "maxSqlInstructions": 10000000,
+        "maxTransactionStatements": 256,
+        "maxValueBytes": 1024
+      },
+      "namespaceId": "default",
+      "operations": [
+        "storage.kv.get"
+      ]
+    },
+    "widenedSatisfied": false
+  },
+  "invocation": {
+    "arguments": {
+      "key": "notes/alpha",
+      "namespaceId": "default",
+      "valueByteLength": 1,
+      "valueSha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+    },
+    "member": "kv.set",
+    "mode": "promise",
+    "module": "holo:storage",
+    "providerData": {
+      "storageCallToken": "native-controller:1:call:1"
+    }
+  },
+  "operation": {
+    "invalid": [
+      {
+        "schemaId": "StorageKvSetArgsV1",
+        "value": {
+          "key": "notes/alpha",
+          "namespaceId": "default",
+          "valueByteLength": 1
+        }
+      },
+      {
+        "schemaId": "StorageSqlStatementArgsV1",
+        "value": {
+          "database": "main",
+          "namespaceId": "default",
+          "statement": {
+            "sql": "SELECT 1",
+            "unknown": true
+          }
+        }
+      },
+      {
+        "schemaId": "StorageKvGetResultV1",
+        "value": {
+          "found": true,
+          "valueBase64": "!"
+        }
+      }
+    ],
+    "valid": [
+      {
+        "schemaId": "StorageKvSetArgsV1",
+        "value": {
+          "key": "notes/alpha",
+          "namespaceId": "default",
+          "valueByteLength": 1,
+          "valueSha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+        }
+      },
+      {
+        "schemaId": "StorageKvGetResultV1",
+        "value": {
+          "error": {
+            "code": "storage.not_found"
+          }
+        }
+      },
+      {
+        "schemaId": "StorageQueryResultV1",
+        "value": [
+          [
+            [
+              "value",
+              1
+            ]
+          ]
+        ]
+      }
+    ]
+  },
+  "policy": {
+    "invalid": [
+      {
+        "schemaVersion": 2,
+        "storage": {
+          "access": "sandboxed",
+          "limits": {
+            "maxDatabaseNameBytes": 128,
+            "maxDatabaseBytes": 33554432,
+            "maxDatabases": 16,
+            "maxKeyBytes": 1024,
+            "maxKeysPerList": 1024,
+            "maxPendingOperations": 128,
+            "maxRowsPerQuery": 1024,
+            "maxSqlBytes": 65536,
+            "maxSqlInstructions": 10000000,
+            "maxTransactionStatements": 256,
+            "maxValueBytes": 1048576
+          },
+          "namespaces": [
+            {
+              "databases": [
+                "main"
+              ],
+              "keyPrefixes": [
+                "notes/"
+              ],
+              "namespaceId": "default",
+              "operations": [
+                "storage.kv.get",
+                "storage.kv.list",
+                "storage.kv.set",
+                "storage.sqlite.query"
+              ]
+            }
+          ],
+          "unexpected": true
+        }
+      },
+      {
+        "schemaVersion": 2,
+        "storage": {
+          "access": "sandboxed",
+          "limits": {
+            "maxDatabaseNameBytes": 128,
+            "maxDatabaseBytes": 33554432,
+            "maxDatabases": 16,
+            "maxKeyBytes": 1024,
+            "maxKeysPerList": 1024,
+            "maxPendingOperations": 128,
+            "maxRowsPerQuery": 1024,
+            "maxSqlBytes": 65536,
+            "maxSqlInstructions": 10000001,
+            "maxTransactionStatements": 256,
+            "maxValueBytes": 1048576
+          },
+          "namespaces": [
+            {
+              "databases": [
+                "main"
+              ],
+              "keyPrefixes": [
+                "notes/"
+              ],
+              "namespaceId": "default",
+              "operations": [
+                "storage.kv.get",
+                "storage.kv.list",
+                "storage.kv.set",
+                "storage.sqlite.query"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 2,
+        "storage": {
+          "access": "sandboxed",
+          "limits": {
+            "maxDatabaseNameBytes": 128,
+            "maxDatabaseBytes": 33554432,
+            "maxDatabases": 16,
+            "maxKeyBytes": 1024,
+            "maxKeysPerList": 1024,
+            "maxPendingOperations": 128,
+            "maxRowsPerQuery": 1024,
+            "maxSqlBytes": 65536,
+            "maxSqlInstructions": 10000000,
+            "maxTransactionStatements": 256,
+            "maxValueBytes": 1048576
+          },
+          "namespaces": [
+            {
+              "databases": [
+                "main"
+              ],
+              "keyPrefixes": [
+                "bad\ud800"
+              ],
+              "namespaceId": "default",
+              "operations": [
+                "storage.kv.get",
+                "storage.kv.list",
+                "storage.kv.set",
+                "storage.sqlite.query"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "normalized": {
+      "codeGeneration": {
+        "dynamicImport": {
+          "access": "none"
+        },
+        "strings": {
+          "access": "none"
+        },
+        "wasm": {
+          "access": "none"
+        }
+      },
+      "device": {
+        "defaultAccess": "deny",
+        "maxEventsPerSecond": 1,
+        "maxQueuedEvents": 0,
+        "maxSubscriptions": 0,
+        "operations": {}
+      },
+      "diagnostics": {
+        "maxObserverCallbackMs": 1,
+        "maxQueuedEvents": 0,
+        "maxSourceReadBytes": 0,
+        "observerEvents": [],
+        "retentionMs": 0,
+        "sourceReader": "none"
+      },
+      "filesystem": {
+        "access": "none"
+      },
+      "inspector": {
+        "callFunctionOn": false,
+        "compileScript": false,
+        "evaluate": false,
+        "runScript": false,
+        "setScriptSource": false
+      },
+      "network": {
+        "access": "none"
+      },
+      "process": {
+        "access": "none"
+      },
+      "schemaVersion": 2,
+      "storage": {
+        "access": "sandboxed",
+        "limits": {
+          "maxDatabaseNameBytes": 128,
+          "maxDatabaseBytes": 33554432,
+          "maxDatabases": 16,
+          "maxKeyBytes": 1024,
+          "maxKeysPerList": 1024,
+          "maxPendingOperations": 128,
+          "maxRowsPerQuery": 1024,
+          "maxSqlBytes": 65536,
+          "maxSqlInstructions": 10000000,
+          "maxTransactionStatements": 256,
+          "maxValueBytes": 1048576
+        },
+        "namespaces": [
+          {
+            "databases": [
+              "main"
+            ],
+            "keyPrefixes": [
+              "notes/"
+            ],
+            "namespaceId": "default",
+            "operations": [
+              "storage.kv.get",
+              "storage.kv.list",
+              "storage.kv.set",
+              "storage.sqlite.query"
+            ]
+          }
+        ]
+      },
+      "systemInformation": {
+        "defaultMode": "unavailable",
+        "fields": {}
+      }
+    },
+    "digest": "227c9c396e02f409377840c2d5b3e8811ca75ffb25411dab68126144bfeb2a34"
+  },
+  "resources": {
+    "key": {
+      "display": {
+        "label": "storage KV"
+      },
+      "kind": "storageKv",
+      "namespaceId": "default",
+      "schemaVersion": 1,
+      "selector": "key",
+      "selectorDigest": "610803e4d87ffebe8ecc2cc10e24145c31005fd887e4720ae28a952f36c9d5f4",
+      "semanticId": "storage-kv:default:key:610803e4d87ffebe",
+      "semanticResourceDigest": "e28612fa78a234d294739d4a0178131b71231151ae598d58688820b3bb7567f2"
+    },
+    "prefix": {
+      "display": {
+        "label": "storage KV"
+      },
+      "kind": "storageKv",
+      "namespaceId": "default",
+      "schemaVersion": 1,
+      "selector": "prefix",
+      "selectorDigest": "3e870bfd3f20b87a4ef1e58b0b29d26459f409c05a45ca3d66143a712153aad2",
+      "semanticId": "storage-kv:default:prefix:3e870bfd3f20b87a",
+      "semanticResourceDigest": "76e04b44aaaf74b9d66018e538d91aeda34d33cfe8420752f231c81ac6e4a78a"
+    },
+    "sql": {
+      "database": "main",
+      "display": {
+        "label": "storage SQLite"
+      },
+      "kind": "storageSql",
+      "namespaceId": "default",
+      "schemaVersion": 1,
+      "semanticId": "storage-sql:default:main",
+      "semanticResourceDigest": "e16abf751d6669582154cbd05945540656e57a3c0a61e63ac89446c4a27509b8"
+    }
+  },
+  "schemaVersion": 1
+}

@@ -660,8 +660,8 @@
         ],
         "type": "object"
       },
-      "maxItems": 142,
-      "minItems": 142,
+      "maxItems": 184,
+      "minItems": 184,
       "type": "array"
     }
   },

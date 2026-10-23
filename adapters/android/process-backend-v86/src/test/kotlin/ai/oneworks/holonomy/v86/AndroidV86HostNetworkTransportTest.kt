@@ -3,6 +3,7 @@ package ai.oneworks.holonomy.v86
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -14,6 +15,27 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class AndroidV86HostNetworkTransportTest {
+    @Test
+    fun `close tolerates concurrent retirement after a values size sample`() {
+        // A weakly consistent view may shrink between size and iteration. Model
+        // that exact interleaving without depending on thread timing or sleeps.
+        val retired = object : AbstractMutableCollection<Any>() {
+            override val size: Int get() = 1
+            override fun iterator(): MutableIterator<Any> = mutableListOf<Any>().iterator()
+            override fun add(element: Any): Boolean = error("Read-only test view")
+        }
+        val handles = object : ConcurrentHashMap<Long, Any>() {
+            override val values: MutableCollection<Any> get() = retired
+        }
+        AndroidV86HostNetworkTransport().use { transport ->
+            val field = AndroidV86HostNetworkTransport::class.java.getDeclaredField("handles")
+            field.isAccessible = true
+            field.set(transport, handles)
+            transport.close()
+            transport.close()
+        }
+    }
+
     @Test
     fun `socket open consumes the trusted Backend result envelope`() {
         ServerSocket().use { server ->

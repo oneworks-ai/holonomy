@@ -466,13 +466,14 @@ class AndroidRuntimeSessionSupervisor(
                     record.outputEvents += OutputRecord(output, bytes)
                     record.outputBytes += bytes
                     trimOutput(record)
+                    // Persist in sequence allocation order, before another producer or lifecycle
+                    // transition can publish. State/result events already use this same lock.
+                    publishOutput(output)
                 }
             }
         }
         if (event == null) {
             onProcessExit(record, processHost, generation, 1, "Runtime output limit exceeded")
-        } else {
-            publishOutput(event)
         }
     }
 

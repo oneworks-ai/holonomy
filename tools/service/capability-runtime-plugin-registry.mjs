@@ -1,4 +1,4 @@
-import { normalizeRuntimePluginBundlesV1 } from '../../dist/runtime/index.js'
+import { normalizeRuntimePluginBundles } from '../../dist/runtime/index.js'
 
 import { PROCESS_TERMINAL_STATES } from './constants.mjs'
 import { serviceError } from './errors.mjs'
@@ -19,7 +19,7 @@ export const admitRuntimePluginUpdate = async (
   expectedRevision,
   idempotencyKey
 ) => {
-  const runtimePlugins = normalizeRuntimePluginBundlesV1(input)
+  const runtimePlugins = normalizeRuntimePluginBundles(input)
   const expected = requireInteger(expectedRevision, 'Plugin graph revision', { min: 0 })
   const now = context.now()
   return await context.store.transact(
@@ -27,6 +27,9 @@ export const admitRuntimePluginUpdate = async (
     draft => {
       const process = getResource(draft, 'processes', processId, 'Runtime process')
       requireExpectedGeneration(process, expectedGeneration)
+      if (process.target !== 'native' && runtimePlugins.some(bundle => bundle.schemaVersion === 2)) {
+        throw serviceError('sandbox.capability_unsupported', 'Plugin source graphs require a Native target')
+      }
       if (PROCESS_TERMINAL_STATES.has(process.state) || process.state !== 'running') {
         throw serviceError('service.conflict', 'Runtime process is not running')
       }
@@ -82,11 +85,12 @@ export const completeRuntimePluginUpdate = async (context, admitted, operationIn
       const process = getResource(draft, 'processes', admitted.id, 'Runtime process')
       const operation = getResource(draft, 'operations', operationInput.id, 'Operation')
       const pending = process.pendingPluginUpdate
-      const applied = operation.state === 'running' && process.generation === admitted.generation &&
+      const matched = operation.state === 'running' && process.generation === admitted.generation &&
         pending?.operationId === operation.id &&
         pending.pluginGraphRevision === admitted.pendingPluginUpdate.pluginGraphRevision
-      if (applied) {
-        if (succeeded) {
+      const applied = matched && process.state === 'running'
+      if (matched) {
+        if (applied && succeeded) {
           process.pluginGraphRevision = pending.pluginGraphRevision
           process.runtimePlugins = pending.runtimePlugins
         }

@@ -1,0 +1,28 @@
+[package]
+name = "holonomy-desktop-v8"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+v86-backend = ["dep:ring", "dep:base64"]
+
+[[example]]
+name = "native_v86_boot"
+required-features = ["v86-backend"]
+
+[dependencies]
+holonomy-desktop-host = { path = "../host-core" }
+v8.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+sha2.workspace = true
+url.workspace = true
+libc = "0.2"
+zeroize = "=1.9.0"
+ring = { version = "=0.17.14", optional = true }
+base64 = { version = "0.22", optional = true }
+
+[build-dependencies]
+sha2.workspace = true

@@ -6,6 +6,11 @@ export type WebHeadersInit =
   | WebHeaders
 
 const HEADER_NAME = /^[!#$%&'*+\-.^`|~\w]+$/u
+const APPLY = Reflect.apply
+const MAP_GET = Map.prototype.get
+const WEAK_MAP_GET = WeakMap.prototype.get
+const WEAK_MAP_SET = WeakMap.prototype.set
+const trustedEntries = new WeakMap<WebHeaders, Map<string, string>>()
 
 const hasInvalidHeaderValue = (value: string) => {
   for (let index = 0; index < value.length; index += 1) {
@@ -54,6 +59,7 @@ export class WebHeaders implements Iterable<[string, string]> {
   private readonly entriesMap = new Map<string, string>()
 
   constructor(init?: WebHeadersInit) {
+    APPLY(WEAK_MAP_SET, trustedEntries, [this, this.entriesMap])
     if (init == null) return
     if (init instanceof WebHeaders) {
       for (const [name, value] of init) this.entriesMap.set(name, value)
@@ -119,6 +125,14 @@ export class WebHeaders implements Iterable<[string, string]> {
   getInputMetrics() {
     return measureHeaders(this)
   }
+}
+
+/** Read a genuine Headers backing map without invoking a Guest accessor or method. */
+export const readTrustedWebHeader = (headers: unknown, name: string): string | null => {
+  const entries = APPLY(WEAK_MAP_GET, trustedEntries, [headers]) as Map<string, string> | undefined
+  if (entries == null) return null
+  const value = APPLY(MAP_GET, entries, [name]) as unknown
+  return typeof value === 'string' ? value : null
 }
 
 export const assertRequestHeaders = (headers: WebHeaders) => {

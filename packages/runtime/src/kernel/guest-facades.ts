@@ -1,4 +1,5 @@
 import type { DeviceEventKindV1 } from '@holonomyjs/capability-device/kernel/device-types'
+import { createGuestDeviceReadObserverV1 } from '@holonomyjs/capability-device/kernel/guest-device-read-observer'
 import { createGuestDeviceSubscriptionV1 } from '@holonomyjs/capability-device/kernel/guest-device-subscription'
 import { createCapabilityFsModuleOverridesV1 } from '@holonomyjs/capability-fs/kernel/guest-fs-facade'
 import { createCapabilityChildProcessOverrideV1 } from '@holonomyjs/capability-process/kernel/guest-child-process-facade'
@@ -22,6 +23,7 @@ export {
   createUnsupportedCapabilityWebSocketV1
 } from '@holonomyjs/capability-network/kernel/guest-fetch'
 export type { CapabilityGuestBridgeV1, CapabilityGuestConfigurationV1 } from './guest-facade-support.js'
+export { createCapabilityCallbackDispatcherV1 } from './guest-facade-support.js'
 /* eslint-enable perfectionist/sort-exports */
 
 const SYSTEM_MEMBERS = Object.freeze([
@@ -77,14 +79,23 @@ export const createCapabilityModuleOverridesV1 = (
     string,
     () => Promise<unknown>
   >
+  const deviceReads = createGuestDeviceReadObserverV1()
   for (const member of DEVICE_MEMBERS) {
     Object.defineProperty(deviceDefault, member, {
       enumerable: true,
-      value: () => invokeSync('holo:device', member)
+      value: () => {
+        const value = invokeSync('holo:device', member)
+        deviceReads.observe(member, value)
+        return value
+      }
     })
     Object.defineProperty(devicePromisesDefault, member, {
       enumerable: true,
-      value: () => invoke('holo:device/promises', member)
+      value: async () => {
+        const value = await invoke('holo:device/promises', member)
+        deviceReads.observe(member, value)
+        return value
+      }
     })
   }
   Object.defineProperty(devicePromisesDefault, 'getWifiIdentity', {
@@ -115,14 +126,29 @@ export const createCapabilityModuleOverridesV1 = (
         kinds: source.kinds as DeviceEventKindV1[],
         maxQueuedEvents: resourceSnapshot.maxQueuedEvents,
         onClose: () => {
-          dispose?.()
+          deviceReads.remove(controller)
+          try {
+            dispose?.()
+          } catch (error) {
+            try {
+              bridge.releaseResource?.(fields.bindingId)
+            } catch { /* Preserve the first close failure. */ }
+            throw error
+          }
           bridge.releaseResource?.(fields.bindingId)
         },
         startSequence: resourceSnapshot.startSequence
       })
-      dispose = bridge.subscribeResource?.(fields.bindingId, eventSource => {
-        controller.accept(readCapabilityResourceEventV1(eventSource))
-      })
+      deviceReads.add(controller)
+      try {
+        if (bridge.subscribeResource == null) throw new TypeError('Device resource subscription is unavailable')
+        dispose = bridge.subscribeResource(fields.bindingId, eventSource => {
+          controller.accept(readCapabilityResourceEventV1(eventSource))
+        })
+      } catch (error) {
+        await controller.resource.close().catch(() => undefined)
+        throw error
+      }
       return controller.resource
     }
   })

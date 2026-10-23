@@ -2,8 +2,14 @@ package ai.oneworks.holonomy.v86
 
 internal data class AndroidV86StdinCommand(
     val operation: String,
+    val sequence: Long,
     val bytes: ByteArray? = null,
     val callbackId: Long? = null,
+)
+
+internal data class AndroidV86StdinCompletion(
+    val callbackId: Long?,
+    val dispatchFailed: Boolean,
 )
 
 internal sealed interface AndroidV86StdinAdmission {
@@ -16,8 +22,9 @@ internal sealed interface AndroidV86StdinAdmission {
  * Serializes stdin operations issued before and after the Linux spawn event.
  *
  * Node exposes ChildProcess.stdin immediately, so a write or end can arrive before the Backend has
- * assigned a Linux PID. The queue preserves admission order across that boundary and never invokes
- * the supplied dispatcher concurrently.
+ * assigned a Linux PID. The supervisor accepts only one pending stdin frame, so the queue waits
+ * for the matching Backend ACK or error before sending the next command. The Host-owned sequence
+ * also fences duplicate and late events for writes without a JavaScript callback.
  */
 internal class AndroidV86StdinQueue(
     private val maximumBytes: Long,
@@ -29,6 +36,9 @@ internal class AndroidV86StdinQueue(
     private var ended = false
     private var processId: Int? = null
     private var ready = false
+    private var nextSequence = 1L
+    private var inFlight: AndroidV86StdinCommand? = null
+    private var dispatching = false
 
     @Synchronized
     fun write(
@@ -43,7 +53,7 @@ internal class AndroidV86StdinQueue(
         if (callbackId != null && !callbackIds.add(callbackId)) {
             return AndroidV86StdinAdmission.Rejected("argument.invalid")
         }
-        val command = AndroidV86StdinCommand("stdin", bytes.copyOf(), callbackId)
+        val command = AndroidV86StdinCommand("stdin", nextSequence++, bytes.copyOf(), callbackId)
         byteCount += bytes.size
         return admit(command, dispatch) {
             byteCount -= bytes.size
@@ -65,7 +75,7 @@ internal class AndroidV86StdinQueue(
             return AndroidV86StdinAdmission.Accepted(callbackId)
         }
         ended = true
-        return admit(AndroidV86StdinCommand("end", callbackId = callbackId), dispatch) {
+        return admit(AndroidV86StdinCommand("end", nextSequence++, callbackId = callbackId), dispatch) {
             ended = false
             callbackId?.let(callbackIds::remove)
         }
@@ -78,21 +88,37 @@ internal class AndroidV86StdinQueue(
     ): Throwable? {
         if (closed || processId != null) return IllegalStateException("stdin process is not attachable")
         processId = value
+        ready = true
         return runCatching {
-            commands.forEach { command -> dispatch(value, command) }
-            commands.clear()
-            ready = true
-        }.exceptionOrNull()
+            dispatchNext(dispatch)
+        }.exceptionOrNull().also { if (it != null) ready = false }
     }
 
     @Synchronized
-    fun acknowledge(callbackId: Long): Boolean = callbackIds.remove(callbackId)
+    fun acknowledge(
+        sequence: Long,
+        operation: String,
+        callbackId: Long?,
+        dispatch: (Int, AndroidV86StdinCommand) -> Unit,
+    ): AndroidV86StdinCompletion? {
+        val command = inFlight ?: return null
+        if (
+            closed || command.sequence != sequence || command.operation != operation ||
+            command.callbackId != callbackId
+        ) return null
+        inFlight = null
+        command.callbackId?.let(callbackIds::remove)
+        val failed = runCatching { dispatchNext(dispatch) }.isFailure
+        if (failed) ready = false
+        return AndroidV86StdinCompletion(command.callbackId, failed)
+    }
 
     @Synchronized
     fun close(): List<Long> {
         if (closed) return emptyList()
         closed = true
         ready = false
+        inFlight = null
         commands.clear()
         return callbackIds.toList().also { callbackIds.clear() }
     }
@@ -102,12 +128,8 @@ internal class AndroidV86StdinQueue(
         dispatch: (Int, AndroidV86StdinCommand) -> Unit,
         rollback: () -> Unit,
     ): AndroidV86StdinAdmission {
-        val pid = processId
-        if (!ready || pid == null) {
-            commands.addLast(command)
-            return AndroidV86StdinAdmission.Accepted()
-        }
-        return runCatching { dispatch(pid, command) }
+        commands.addLast(command)
+        return runCatching { dispatchNext(dispatch) }
             .fold(
                 onSuccess = { AndroidV86StdinAdmission.Accepted() },
                 onFailure = {
@@ -115,5 +137,25 @@ internal class AndroidV86StdinQueue(
                     AndroidV86StdinAdmission.Rejected("provider.unavailable")
                 },
             )
+    }
+
+    private fun dispatchNext(dispatch: (Int, AndroidV86StdinCommand) -> Unit) {
+        if (dispatching || closed || !ready || inFlight != null) return
+        val pid = processId ?: return
+        dispatching = true
+        try {
+            while (!closed && ready && inFlight == null && commands.isNotEmpty()) {
+                val command = commands.removeFirst()
+                inFlight = command
+                try {
+                    dispatch(pid, command)
+                } catch (error: Throwable) {
+                    if (inFlight === command) inFlight = null
+                    throw error
+                }
+            }
+        } finally {
+            dispatching = false
+        }
     }
 }

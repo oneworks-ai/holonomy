@@ -13,5 +13,7 @@ Source updates are explicit: update `alpine-source-v1.json`, run `resolve-alpine
 environment, review the complete diff, and then run two independent image builds plus `verify-image.mjs`. Do not check
 download caches, extracted root filesystems, generated initramfs images, or production credentials into the repository.
 
+If the pinned CDN URL no longer serves a locked package, `build-image.mjs` may use `HOLO_V86_SOURCE_MIRROR=<https-origin>` as a build-only source override. It keeps every locked pathname, version and SHA-256 unchanged and rejects mismatched bytes; do not edit the lock to a newer package merely to work around a missing CDN object. Node 22 may need `NODE_USE_ENV_PROXY=1` on proxied developer machines.
+
 `newc.mjs` is the single deterministic archive encoder for production builds and test-only conformance overlays. Production
 verification must reject the `/usr/bin/holo-v86-selftest` fixture even when an overlay is otherwise structurally valid.

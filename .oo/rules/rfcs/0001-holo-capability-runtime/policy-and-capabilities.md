@@ -30,6 +30,7 @@ interface SandboxPolicyV2 {
   readonly inspector: InspectorSandboxV2
   readonly diagnostics: DiagnosticsSandboxV2
   readonly process: ProcessSandboxV2
+  readonly storage: StorageSandboxV2
 }
 
 type NetworkSandboxV2 =
@@ -65,6 +66,7 @@ interface FilesystemRootV2 {
 }
 
 type FilesystemRightV2 =
+  | 'chmod'
   | 'read'
   | 'write'
   | 'list'
@@ -72,7 +74,6 @@ type FilesystemRightV2 =
   | 'delete'
   | 'move'
   | 'watch'
-
 interface FilesystemLimitsV2 {
   readonly maxOpenHandles: number
   readonly maxQueuedEvents: number
@@ -162,7 +163,6 @@ interface CapabilityRefV1 {
   readonly version: 1
   readonly constraints: Readonly<Record<string, JsonValueV1>>
 }
-
 interface CapabilityBranchV1 {
   readonly branchId: string
   readonly allOf: readonly CapabilityRefV1[]

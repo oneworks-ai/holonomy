@@ -6,6 +6,7 @@ import {
   canonicalizeShellExecutableResource
 } from '@holonomyjs/capability-process/kernel/canonical-process-resources'
 import { routeDescendantProcessInvocationV1 } from '@holonomyjs/capability-process/kernel/process-descendant-routing'
+import { routeStorageInvocationV1 } from '@holonomyjs/capability-storage/kernel/storage-invocation-routing'
 import {
   canonicalizeDeviceFieldResource,
   canonicalizeFilesystemResource,
@@ -90,7 +91,10 @@ export const routeCapabilityInvocationV1 = (input: {
       : normalizeNetworkInvocationSnapshotV1(input.arguments)
     return { argumentsValue: snapshot, preferredProviderModule: input.networkProvider, resource: snapshot.resource }
   }
-  if (input.module === 'node:fs' || input.module === 'node:fs/promises') {
+  if (
+    input.module === 'node:fs' || input.module === 'node:fs/promises' ||
+    input.module === 'host.fs' && input.member === 'directory.open'
+  ) {
     return {
       preferredProviderModule: 'host.fs',
       resource: canonicalizeFilesystemResource(input.path, String(input.path).slice(0, 256))
@@ -168,6 +172,9 @@ export const routeCapabilityInvocationV1 = (input: {
       preferredProviderModule: 'host.system',
       resource: canonicalizeSystemInformationFieldResource(field, field)
     }
+  }
+  if (input.module === 'holo:storage') {
+    return routeStorageInvocationV1(input.member, input.arguments)
   }
   if (input.module === 'holo:device' || input.module === 'holo:device/promises') {
     const operation = DEVICE_MEMBER_OPERATIONS[input.member as keyof typeof DEVICE_MEMBER_OPERATIONS]

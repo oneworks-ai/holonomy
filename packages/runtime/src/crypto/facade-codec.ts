@@ -72,7 +72,7 @@ const encodedByteLength = (value: string, encoding: CryptoInputEncoding): number
 const decodeHex = (value: string, byteLength: number): Uint8Array => {
   const output = new Uint8Array(byteLength)
   let offset = 0
-  for (let index = 0; index + 1 < value.length && offset < output.length; index += 2) {
+  for (let index = 0; index + 1 < value.length && offset < byteLength; index += 2) {
     const high = hexValue(stringCodeUnitAt(value, index))
     const low = hexValue(stringCodeUnitAt(value, index + 1))
     if (high < 0 || low < 0) break
@@ -92,11 +92,11 @@ const decodeBase64 = (value: string, byteLength: number): Uint8Array => {
     const packed = (sextets[0]! << 18) | (sextets[1]! << 12) | ((sextets[2] ?? 0) << 6) | (sextets[3] ?? 0)
     output[offset] = packed >>> 16
     offset += 1
-    if (count >= 3 && offset < output.length) {
+    if (count >= 3 && offset < byteLength) {
       output[offset] = packed >>> 8
       offset += 1
     }
-    if (count === 4 && offset < output.length) {
+    if (count === 4 && offset < byteLength) {
       output[offset] = packed
       offset += 1
     }

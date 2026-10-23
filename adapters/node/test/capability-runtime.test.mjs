@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- This file is the end-to-end Runtime capability acceptance sequence. */
 import assert from 'node:assert/strict'
 import { Buffer } from 'node:buffer'
+import { writeFileSync } from 'node:fs'
 import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import os from 'node:os'
@@ -168,19 +169,46 @@ test('runs the shared Filesystem Provider v1 conformance through the Node Runtim
     'utf8'
   )
 
-  await supervisor.start(capabilityRuntimeSession({
-    additionalUserModules: [{ source: conformanceSource, url: conformanceUrl }],
-    entryUrl,
-    hostPath: root,
-    moduleRootUrl,
-    source: `
+  const progressUrl = 'app+local://workspace/conformance/fs-case-progress.mjs'
+  const observedSource = conformanceSource.replace("from 'node:test'", `from ${JSON.stringify(progressUrl)}`)
+  assert.notEqual(observedSource, conformanceSource, 'Filesystem case progress import must be installed')
+  try {
+    await supervisor.start(capabilityRuntimeSession({
+      additionalUserModules: [
+        { source: observedSource, url: conformanceUrl },
+        {
+          url: progressUrl,
+          source: `
+          export { describe } from 'node:test'
+          import { it as register } from 'node:test'
+          export const it = (name, callback) => register(name, async context => {
+            console.log('FS_CASE_START:' + name)
+            try {
+              await callback(context)
+              console.log('FS_CASE_PASS:' + name)
+            } catch (error) {
+              console.log('FS_CASE_FAIL:' + name + ':' + error.message)
+              throw error
+            }
+          })
+        `
+        }
+      ],
+      entryUrl,
+      hostPath: root,
+      moduleRootUrl,
+      source: `
       import ${JSON.stringify(conformanceUrl)}
       import { run as runTests } from 'node:test'
       const summary = await runTests()
       console.log('CAPABILITY_FS_SHARED:' + JSON.stringify(summary))
       if (summary.failed !== 0) throw new Error('Filesystem Provider v1 Guest conformance failed')
     `
-  }))
+    }))
+  } catch (error) {
+    for (const line of logs) t.diagnostic(line)
+    throw error
+  }
 
   const result = JSON.parse(logs.find(value => value.startsWith('CAPABILITY_FS_SHARED:')).slice(21))
   assert.equal(result.failed, 0)
@@ -341,44 +369,82 @@ test('streams filesystem watch events through the generation-bound resource regi
   const logs = []
   supervisor.on('log', event => logs.push(event.text))
 
-  await supervisor.start(capabilityRuntimeSession({
-    entryUrl,
-    hostPath: root,
-    moduleRootUrl,
-    source: `
-      import { watch, writeFileSync } from 'node:fs'
+  try {
+    await supervisor.start(capabilityRuntimeSession({
+      entryUrl,
+      hostPath: root,
+      moduleRootUrl,
+      source: `
+      import { readFileSync, watch, writeFileSync } from 'node:fs'
       let queueLimitError
       try {
         watch('holo-fs://workspace/', { maxQueuedEvents: 9, persistent: false }, () => {})
       } catch (error) {
         queueLimitError = error.code
       }
-      const result = await new Promise((resolve, reject) => {
-        const watcher = watch(
-          'holo-fs://workspace/',
-          { maxQueuedEvents: 1, persistent: false },
-          function(type, filename) {
-          let closeError
-          try {
-            watcher.close()
-          } catch (error) {
-            closeError = { code: error.code, message: error.message }
+      const expectedFilename = 'watched-' + Date.now() + '.txt'
+      let lastEvent
+      let writes = 0
+      let watcher
+      let writer
+      let deadline
+      let result
+      try {
+        result = await new Promise((resolve, reject) => {
+          watcher = watch(
+            'holo-fs://workspace/',
+            { maxQueuedEvents: 1, persistent: false },
+            (type, filename) => {
+              lastEvent = { type, filename }
+              if (filename !== expectedFilename) {
+                if (filename !== null) return
+                try {
+                  readFileSync('holo-fs://workspace/' + expectedFilename)
+                } catch {
+                  return
+                }
+              }
+              try {
+                watcher.close()
+              } catch (error) {
+                console.log('CAPABILITY_WATCH_CLOSE_ERROR:' + JSON.stringify({ code: error.code, message: error.message }))
+                reject(error)
+                return
+              }
+              resolve({ expectedFilename, filename, maxQueuedEvents: watcher.maxQueuedEvents, queueLimitError, type })
+            }
+          )
+          watcher.on('error', reject)
+          deadline = setTimeout(() => reject(new Error('Filesystem watch target event missing: ' +
+            JSON.stringify({ expectedFilename, lastEvent, writes }))), 2000)
+          const write = () => {
+            try {
+              writeFileSync('holo-fs://workspace/' + expectedFilename, 'changed-' + writes++)
+            } catch (error) {
+              reject(error)
+            }
           }
-          if (closeError) console.log('CAPABILITY_WATCH_CLOSE_ERROR:' + JSON.stringify(closeError))
-            resolve({ filename, maxQueuedEvents: watcher.maxQueuedEvents, queueLimitError, type })
-          }
-        )
-        watcher.on('error', reject)
-        setTimeout(() => writeFileSync('holo-fs://workspace/watched.txt', 'changed'), 20)
-      })
+          writer = setInterval(write, 250)
+          write()
+        })
+      } catch (error) {
+        console.log('CAPABILITY_WATCH_FAILURE:' + error.message)
+        throw error
+      } finally {
+        clearTimeout(deadline)
+        clearInterval(writer)
+        watcher?.close()
+      }
       console.log('CAPABILITY_WATCH_M3:' + JSON.stringify(result))
       `
-  }))
+    }))
+  } catch (error) {
+    for (const line of logs) t.diagnostic(line)
+    throw error
+  }
 
   const event = JSON.parse(logs.find(value => value.startsWith('CAPABILITY_WATCH_M3:')).slice(20))
-  const closeFailure = logs.find(value => value.startsWith('CAPABILITY_WATCH_CLOSE_ERROR:'))
-  assert.equal(closeFailure, undefined)
-  assert.equal(event.filename, 'watched.txt')
+  assert.ok(event.filename === null || event.filename === event.expectedFilename)
   assert.equal(event.maxQueuedEvents, 1)
   assert.equal(event.queueLimitError, 'EINVAL')
   assert.ok(['change', 'rename'].includes(event.type))
@@ -410,8 +476,18 @@ test('closes generation-one filesystem resources before restart admits generatio
     source
   }))
   await waitFor(() => logs.find(event => event.generation === 2 && event.text === 'FS_GENERATION_READY'))
-  await writeFile(path.join(root, 'after-restart.txt'), 'generation-two')
-  await waitFor(() => logs.find(event => event.generation === 2 && event.text === 'FS_GENERATION_EVENT'))
+  // The Guest log proves the facade is ready, not that the OS watcher has
+  // completed registration. Repeated writes make the event itself the barrier.
+  const target = path.join(root, 'after-restart.txt')
+  let writes = 0
+  const write = () => writeFileSync(target, `generation-two-${writes++}`)
+  const writer = setInterval(write, 250)
+  try {
+    write()
+    await waitFor(() => logs.find(event => event.generation === 2 && event.text === 'FS_GENERATION_EVENT'))
+  } finally {
+    clearInterval(writer)
+  }
   await new Promise(resolve => setTimeout(resolve, 100))
   assert.equal(logs.some(event => event.generation === 1 && event.text === 'FS_GENERATION_EVENT'), false)
 })

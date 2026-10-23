@@ -2,11 +2,14 @@ import { capabilityResourceFieldsV1 } from '@holonomyjs/runtime/kernel/guest-fac
 import type { CapabilityGuestAbortSignalV1 } from '@holonomyjs/runtime/kernel/guest-facade-support'
 import type { JsonValueV1 } from '@holonomyjs/runtime/kernel/json-types'
 import {
+  fsChmodModeV1,
   fsDataV1,
   fsJsonObjectV1,
+  fsLengthV1,
   fsReadOptionsV1,
   fsStatsV1,
   fsTargetV1,
+  fsTimesV1,
   fsWriteOptionsV1,
   invalidFsValueV1
 } from './guest-fs-support.js'
@@ -30,7 +33,13 @@ export const createCapabilityFileHandleV1 = async (
   const snapshot = await promise('node:fs/promises', 'open', { flag, path: resolved.value }, resolved.fields)
   const fields = capabilityResourceFieldsV1(snapshot, 'filesystem.file-handle')
   return Object.freeze({
+    chmod: async (mode: unknown) => {
+      await promise('node:fs/promises', 'FileHandle.chmod', { mode: fsChmodModeV1(mode) }, fields)
+    },
     close: () => promise('node:fs/promises', 'FileHandle.close', {}, fields),
+    datasync: async () => {
+      await promise('node:fs/promises', 'FileHandle.datasync', {}, fields)
+    },
     readFile: (options?: unknown) => {
       const prepared = fsReadOptionsV1(options, true)
       return promise(
@@ -52,6 +61,15 @@ export const createCapabilityFileHandleV1 = async (
           fields
         )
       ),
+    sync: async () => {
+      await promise('node:fs/promises', 'FileHandle.sync', {}, fields)
+    },
+    truncate: async (len?: unknown) => {
+      await promise('node:fs/promises', 'FileHandle.truncate', { len: fsLengthV1(len) }, fields)
+    },
+    utimes: async (atime: unknown, mtime: unknown) => {
+      await promise('node:fs/promises', 'FileHandle.utimes', fsTimesV1(atime, mtime), fields)
+    },
     writeFile: (value: unknown, options?: unknown) => {
       const prepared = fsWriteOptionsV1(options, true)
       return promise(

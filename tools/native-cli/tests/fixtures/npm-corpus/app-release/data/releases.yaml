@@ -1,0 +1,10 @@
+releases:
+  - version: 1.2.0
+    path: src/core.js
+    code: const value = 12
+  - version: 1.5.0
+    path: src/sub/feature.js
+    code: const value = 15
+  - version: 2.0.0
+    path: test/core.js
+    code: const value = 20

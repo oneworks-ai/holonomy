@@ -183,6 +183,45 @@ describe('holonomy Service OpenAPI contract', () => {
     )
   })
 
+  it('admits bounded Native aliases while keeping Node and Android launch paths alias-free', () => {
+    const entryUrl = 'app://workspace/main.mjs'
+    const canonicalUrl = 'app://workspace/node_modules/.pnpm/pkg@1/node_modules/pkg/index.mjs'
+    const launch = {
+      argv: [entryUrl],
+      command: 'run',
+      entryUrl,
+      moduleAliases: [{ url: 'app://workspace/node_modules/pkg/index.mjs', canonicalUrl }],
+      moduleRootUrl: 'app://workspace/',
+      modules: [{ source: 'export {}', url: entryUrl }, { source: 'export default 1', url: canonicalUrl }],
+      schemaVersion: 2,
+      target: 'native'
+    }
+    const body = {
+      deviceId: 'native:local',
+      entryUrl,
+      inspectorMode: 'off',
+      isolation: 'runtime',
+      launch,
+      target: 'native'
+    }
+    assert.deepEqual(validateServiceRequest('ProcessStartRequest', body).launch.moduleAliases, launch.moduleAliases)
+    assert.deepEqual(admitLaunchSnapshot(launch, { entryUrl, target: 'native' }).moduleAliases, launch.moduleAliases)
+    assert.throws(
+      () =>
+        validateServiceRequest('ProcessStartRequest', {
+          ...body,
+          launch: { ...launch, moduleAliases: [{ ...launch.moduleAliases[0], nativePath: '/private' }] }
+        }),
+      error => error.code === 'service.invalid_request'
+    )
+    for (const target of ['android', 'node']) {
+      assert.throws(
+        () => admitLaunchSnapshot({ ...launch, target }, { entryUrl, target }),
+        error => error.code === 'service.invalid_request'
+      )
+    }
+  })
+
   it('has unique operation ids and component-backed mutation bodies', () => {
     const operations = Object.values(HOLONOMY_SERVICE_OPENAPI.paths)
       .flatMap(path => Object.values(path))

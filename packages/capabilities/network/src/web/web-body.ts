@@ -3,9 +3,29 @@
 import { createWebNetworkError } from './errors.js'
 import { decodeUtf8 } from './utf8.js'
 
+const APPLY = Reflect.apply
+const NATIVE_UINT8_ARRAY = Uint8Array
+const TYPED_ARRAY_PROTOTYPE = Object.getPrototypeOf(Uint8Array.prototype) as Uint8Array
+const BYTE_LENGTH = Object.getOwnPropertyDescriptor(TYPED_ARRAY_PROTOTYPE, 'byteLength')!.get!
+const TYPED_SET = TYPED_ARRAY_PROTOTYPE.set
+const copyBytes = (value: Uint8Array) => {
+  // Internal-slot access neither trusts a mutable byteLength getter nor calls
+  // a Guest conversion while accounting for a Response body.
+  const length = APPLY(BYTE_LENGTH, value, []) as number
+  const copy = new NATIVE_UINT8_ARRAY(length)
+  APPLY(TYPED_SET, copy, [value])
+  return copy
+}
+
+// The wrapper distinguishes every Guest value, including null and undefined.
+export interface WebBodyFailure {
+  readonly reason: unknown
+}
+
 export interface WebBodySource {
   cancel(reason?: string): void
   clone?(): WebBodySource
+  getAbortFailure?(): WebBodyFailure | undefined
   pull(): Promise<Uint8Array | undefined>
 }
 
@@ -19,13 +39,13 @@ class InlineBodySource implements WebBodySource {
   }
 
   clone() {
-    return new InlineBodySource(this.bytes.slice())
+    return new InlineBodySource(copyBytes(this.bytes))
   }
 
   async pull() {
     if (this.delivered) return undefined
     this.delivered = true
-    return this.bytes.slice()
+    return copyBytes(this.bytes)
   }
 }
 
@@ -82,132 +102,156 @@ export class WebBodyStream implements AsyncIterableIterator<Uint8Array> {
 
 export class WebBodyController {
   readonly stream: WebBodyStream
-  private consumed = false
-  private cancellationEpoch = 0
-  private done = false
-  private readerOwner?: symbol
-  private pulling = false
-  private terminalDelivered = false
+  #consumed = false
+  #cancellationEpoch = 0
+  #done = false
+  #readerOwner?: symbol
+  #pulling = false
+  #terminalDelivered = false
+  #source: WebBodySource | undefined
+  #onTerminal: (() => void) | undefined
 
   constructor(
-    private readonly source: WebBodySource | undefined,
-    private readonly onTerminal?: () => void
+    source: WebBodySource | undefined,
+    onTerminal?: () => void
   ) {
+    this.#source = source
+    this.#onTerminal = onTerminal
     this.stream = new WebBodyStream(this)
   }
 
   get bodyUsed() {
-    return this.consumed
+    return this.#consumed
   }
 
   get hasBody() {
-    return this.source != null
+    return this.#source != null
   }
 
   clone(onTerminal?: () => void) {
-    if (this.consumed || this.readerOwner != null) {
+    if (this.#consumed || this.#readerOwner != null) {
       throw new TypeError('Body has already been consumed or locked')
     }
-    if (this.source == null) return new WebBodyController(undefined, onTerminal)
-    if (this.source.clone == null) {
+    if (this.#source == null) return new WebBodyController(undefined, onTerminal)
+    if (this.#source.clone == null) {
       throw createWebNetworkError('network.not_supported')
     }
-    return new WebBodyController(this.source.clone(), onTerminal)
+    return new WebBodyController(this.#source.clone(), onTerminal)
   }
 
   acquireReader() {
-    if (this.readerOwner != null) throw new TypeError('Body stream is already locked')
+    if (this.#readerOwner != null) throw new TypeError('Body stream is already locked')
     const owner = Symbol('body-reader')
-    this.readerOwner = owner
+    this.#readerOwner = owner
     return owner
   }
 
   releaseReader(owner: symbol) {
-    if (this.readerOwner !== owner) throw new TypeError('Reader does not own this body stream')
-    if (this.pulling) throw new TypeError('Cannot release a reader with a pending read')
-    this.readerOwner = undefined
+    if (this.#readerOwner !== owner) throw new TypeError('Reader does not own this body stream')
+    if (this.#pulling) throw new TypeError('Cannot release a reader with a pending read')
+    this.#readerOwner = undefined
   }
 
   async next(owner?: symbol): Promise<IteratorResult<Uint8Array, undefined>> {
-    this.assertReader(owner)
-    if (this.done) return { done: true, value: undefined }
-    if (this.source == null) {
-      this.done = true
-      this.finish()
+    return this.#next(owner)
+  }
+
+  async #next(owner?: symbol): Promise<IteratorResult<Uint8Array, undefined>> {
+    this.#assertReader(owner)
+    if (this.#done) return { done: true, value: undefined }
+    if (this.#source == null) {
+      this.#done = true
+      this.#finish()
       return { done: true, value: undefined }
     }
-    if (this.pulling) throw new TypeError('Body is already being read')
-    this.consumed = true
-    this.pulling = true
-    const cancellationEpoch = this.cancellationEpoch
+    if (this.#pulling) throw new TypeError('Body is already being read')
+    this.#consumed = true
+    this.#pulling = true
+    const cancellationEpoch = this.#cancellationEpoch
     try {
       let value: Uint8Array | undefined
       try {
-        value = await this.source.pull()
+        value = await this.#source.pull()
       } catch (error) {
-        this.finish()
-        if (!this.isPullCurrent(cancellationEpoch)) throw createWebNetworkError('network.cancelled')
+        this.#finish()
+        const abortFailure = this.#source.getAbortFailure?.()
+        if (abortFailure != null) throw abortFailure.reason
+        if (!this.#isPullCurrent(cancellationEpoch)) throw createWebNetworkError('network.cancelled')
         throw error
       }
-      if (!this.isPullCurrent(cancellationEpoch)) {
-        this.finish()
+      const abortFailure = this.#source.getAbortFailure?.()
+      if (abortFailure != null) {
+        this.#finish()
+        throw abortFailure.reason
+      }
+      if (!this.#isPullCurrent(cancellationEpoch)) {
+        this.#finish()
         throw createWebNetworkError('network.cancelled')
       }
       if (value == null) {
-        this.done = true
-        this.finish()
+        this.#done = true
+        this.#finish()
         return { done: true, value: undefined }
       }
       return { done: false, value }
     } finally {
-      this.pulling = false
+      this.#pulling = false
     }
   }
 
   cancel(reason?: string, owner?: symbol) {
-    this.assertReader(owner, true)
-    if (this.done) return
-    this.cancellationEpoch += 1
-    this.consumed = this.source != null
-    this.done = true
+    this.#cancel(reason, owner)
+  }
+
+  #cancel(reason?: string, owner?: symbol) {
+    this.#assertReader(owner, true)
+    if (this.#done) return
+    if (this.#source?.getAbortFailure?.() != null) {
+      this.#finish()
+      return
+    }
+    this.#cancellationEpoch += 1
+    this.#consumed = this.#source != null
+    this.#done = true
     try {
-      this.source?.cancel(reason)
+      this.#source?.cancel(reason)
     } finally {
-      this.finish()
+      this.#finish()
     }
   }
 
   cancelFromStream(reason?: string) {
-    if (this.readerOwner != null) throw new TypeError('Cannot cancel a locked body stream')
-    this.cancel(reason)
+    if (this.#readerOwner != null) throw new TypeError('Cannot cancel a locked body stream')
+    this.#cancel(reason)
   }
 
   async bytes(maxBytes: number) {
-    if (this.consumed || this.readerOwner != null) {
+    if (this.#consumed || this.#readerOwner != null) {
       throw new TypeError('Body has already been consumed or locked')
     }
-    if (this.source == null) {
-      this.done = true
-      this.finish()
-      return new Uint8Array()
+    if (this.#source == null) {
+      this.#done = true
+      this.#finish()
+      return new NATIVE_UINT8_ARRAY()
     }
     const chunks: Uint8Array[] = []
     let total = 0
     for (;;) {
-      const result = await this.next()
+      const result = await this.#next()
       if (result.done) break
-      total += result.value.byteLength
+      const chunk = copyBytes(result.value)
+      total += APPLY(BYTE_LENGTH, chunk, []) as number
       if (total > maxBytes) {
-        this.cancel('response_too_large')
+        this.#cancel('response_too_large')
         throw createWebNetworkError('network.response_too_large')
       }
-      chunks.push(result.value)
+      chunks.push(chunk)
     }
-    const joined = new Uint8Array(total)
+    const joined = new NATIVE_UINT8_ARRAY(total)
     let offset = 0
     for (const chunk of chunks) {
-      joined.set(chunk, offset)
-      offset += chunk.byteLength
+      APPLY(TYPED_SET, joined, [chunk, offset])
+      offset += APPLY(BYTE_LENGTH, chunk, []) as number
     }
     return joined
   }
@@ -216,25 +260,25 @@ export class WebBodyController {
     return decodeUtf8(await this.bytes(maxBytes))
   }
 
-  private assertReader(owner: symbol | undefined, allowForced = false) {
+  #assertReader(owner: symbol | undefined, allowForced = false) {
     if (allowForced && owner == null) return
-    if (this.readerOwner != null && this.readerOwner !== owner) {
+    if (this.#readerOwner != null && this.#readerOwner !== owner) {
       throw new TypeError('Body stream is locked')
     }
-    if (this.readerOwner == null && owner != null) {
+    if (this.#readerOwner == null && owner != null) {
       throw new TypeError('Reader lock has been released')
     }
   }
 
-  private isPullCurrent(cancellationEpoch: number) {
-    return !this.done && this.cancellationEpoch === cancellationEpoch
+  #isPullCurrent(cancellationEpoch: number) {
+    return !this.#done && this.#cancellationEpoch === cancellationEpoch
   }
 
-  private finish() {
-    if (this.terminalDelivered) return
-    this.terminalDelivered = true
+  #finish() {
+    if (this.#terminalDelivered) return
+    this.#terminalDelivered = true
     try {
-      this.onTerminal?.()
+      this.#onTerminal?.()
     } catch {
       // Capability cleanup cannot replace the already selected body terminal.
     }

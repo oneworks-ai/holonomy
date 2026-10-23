@@ -11,6 +11,9 @@ import ai.oneworks.holonomy.host.RuntimeNativeEventSink
 import ai.oneworks.holonomy.host.RuntimeNativeHost
 import ai.oneworks.holonomy.host.RuntimeNativeResourceEventSink
 import ai.oneworks.holonomy.host.RuntimeOutputStream
+import java.nio.file.Files
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -21,6 +24,164 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AndroidRuntimeSessionSupervisorTest {
+    @Test
+    fun `late reply preserves current output state and result across generations`() {
+        withStoredSupervisor { f ->
+            f.start()
+            f.output("old")
+            f.engine.context.processHost.exit(0)
+            f.codec.beforeReply = {
+                f.restart("restart")
+                f.output("new-a")
+                f.output("new-b")
+                f.engine.context.processHost.exit(7)
+            }
+            val reply = f.status("captured")
+            assertEquals(1L, reply.result?.generation)
+            assertEquals(2L, f.store.readState(f.id)?.generation)
+            assertEquals(2L, f.store.readResult(f.id)?.generation)
+            assertEquals(7, f.store.readResult(f.id)?.exitCode)
+            val output = f.store.readOutput(f.id)!!
+            assertEquals(2L, output.firstAvailableSequence)
+            assertEquals(4L, output.nextSequence)
+            assertEquals(listOf("new-a", "new-b"), output.events.map { it.chunk })
+            assertEquals(reply, f.store.readReply(reply.ack.commandId))
+            f.restart("continue")
+            f.output("continued")
+            assertEquals(listOf(3L, 4L), f.store.readOutput(f.id)?.events?.map { it.sequence })
+        }
+    }
+
+    @Test
+    fun `late status preserves same generation output and terminal state`() {
+        withStoredSupervisor { f ->
+            f.start()
+            f.output("one")
+            f.codec.beforeReply = {
+                f.output("two")
+                f.engine.context.processHost.exit(0)
+            }
+            val reply = f.status("captured")
+            assertEquals(SessionRuntimePhase.RUNNING, reply.state?.phase)
+            assertEquals(2L, reply.output?.nextSequence)
+            assertEquals(SessionRuntimePhase.COMPLETED, f.store.readState(f.id)?.phase)
+            assertEquals(3L, f.store.readOutput(f.id)?.nextSequence)
+            assertEquals(0, f.store.readResult(f.id)?.exitCode)
+        }
+    }
+
+    @Test
+    fun `event owned handler has empty status replies and durable lifecycle events`() {
+        withStoredSupervisor { f ->
+            assertEquals(SessionRuntimePhase.CREATED, f.store.readState(f.id)?.phase)
+            val empty = f.status("empty")
+            assertEquals(1L, empty.output?.nextSequence)
+            assertTrue(empty.output!!.events.isEmpty())
+            val publicCodec = JsonSessionControlCodec()
+            assertEquals(empty, publicCodec.decodeReply(publicCodec.encodeReply(empty)))
+            assertEquals(null, f.store.readOutput(f.id))
+            f.start()
+            assertEquals(SessionRuntimePhase.RUNNING, f.store.readState(f.id)?.phase)
+            f.handle(StopRuntimeCommand(f.id, CommandId("stop")))
+            assertEquals(SessionRuntimePhase.STOPPED, f.store.readState(f.id)?.phase)
+            assertEquals(143, f.store.readResult(f.id)?.exitCode)
+            f.restart("restart")
+            assertEquals(2L, f.store.readState(f.id)?.generation)
+            f.handle(CancelRuntimeCommand(f.id, CommandId("cancel")))
+            assertEquals(SessionRuntimePhase.CANCELED, f.store.readState(f.id)?.phase)
+            assertEquals(124, f.store.readResult(f.id)?.exitCode)
+            f.handle(DisposeRuntimeCommand(f.id, CommandId("dispose")))
+            assertEquals(SessionRuntimePhase.DISPOSED, f.store.readState(f.id)?.phase)
+        }
+    }
+
+    @Test
+    fun `same generation output continues after late reply and replay without status repair`() {
+        withStoredSupervisor { f ->
+            f.start()
+            f.output("one")
+            f.codec.beforeReply = { f.output("two") }
+            val captured = f.status("captured")
+            assertEquals(2L, captured.output?.nextSequence)
+            assertEquals(3L, f.store.readOutput(f.id)?.nextSequence)
+            // Durable state is the last lifecycle event, not a per-output checkpoint.
+            assertEquals(1L, f.store.readState(f.id)?.nextOutputSequence)
+            f.output("three")
+            assertEquals(listOf(2L, 3L), f.store.readOutput(f.id)?.events?.map { it.sequence })
+            assertEquals(captured, f.status("captured"))
+            assertEquals(4L, f.store.readOutput(f.id)?.nextSequence)
+            assertEquals(4L, f.status("fresh").output?.nextSequence)
+            assertEquals(1L, f.store.readState(f.id)?.nextOutputSequence)
+        }
+    }
+
+    @Test
+    fun `failed start and supervisor close are persisted by the event owner`() {
+        val failedStart = CompletableFuture<Unit>()
+        failedStart.completeExceptionally(IllegalStateException("engine boundary failure"))
+        withStoredSupervisor(startGate = failedStart) { f ->
+            val reply = f.start()
+            assertEquals(SessionRuntimePhase.FAILED, reply.state?.phase)
+            assertEquals(reply.state, f.store.readState(f.id))
+            assertEquals(reply.result, f.store.readResult(f.id))
+            f.supervisor.close()
+            assertEquals(SessionRuntimePhase.DISPOSED, f.store.readState(f.id)?.phase)
+        }
+    }
+
+    @Test
+    fun `legacy two argument handler still mirrors captured snapshots`() {
+        withStoredSupervisor(legacy = true) { f ->
+            f.start()
+            f.output("one")
+            f.codec.beforeReply = {
+                f.output("two")
+                f.engine.context.processHost.exit(0)
+            }
+            val reply = f.status("captured")
+            assertEquals(reply.state, f.store.readState(f.id))
+            assertEquals(reply.output, f.store.readOutput(f.id))
+        }
+    }
+
+    @Test
+    fun `concurrent output producers publish in sequence allocation order`() {
+        val firstEntered = CountDownLatch(1)
+        val releaseFirst = CountDownLatch(1)
+        val secondEntered = CountDownLatch(1)
+        withStoredSupervisor(wrapSink = { stored ->
+            object : SessionSupervisorEventSink by stored {
+                override fun onOutput(event: SessionOutputEvent) {
+                    if (event.sequence == 1L) {
+                        firstEntered.countDown()
+                        check(releaseFirst.await(2, TimeUnit.SECONDS))
+                    } else secondEntered.countDown()
+                    stored.onOutput(event)
+                }
+            }
+        }) { f ->
+            f.start()
+            val first = Thread { f.output("stdout") }
+            val second = Thread { f.engine.context.processHost.networkDiagnostic("network") }
+            first.start()
+            assertTrue(firstEntered.await(2, TimeUnit.SECONDS))
+            second.start()
+            try {
+                val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
+                while (second.state != Thread.State.BLOCKED && secondEntered.count != 0L && System.nanoTime() < deadline) Thread.yield()
+                assertTrue(second.state == Thread.State.BLOCKED || secondEntered.count == 0L)
+            } finally {
+                releaseFirst.countDown()
+                first.join(2000)
+                second.join(2000)
+            }
+            assertFalse(first.isAlive)
+            assertFalse(second.isAlive)
+            assertEquals(listOf(1L, 2L), f.store.readOutput(f.id)?.events?.map { it.sequence })
+            assertEquals(3L, f.store.readOutput(f.id)?.nextSequence)
+        }
+    }
+
     @Test
     fun `isolated process is schema valid but stably unsupported`() {
         val fixture = SupervisorFixture()
@@ -523,4 +684,70 @@ private class RecordingNativeHost : RuntimeNativeHost {
     override fun close() {
         closeCount.incrementAndGet()
     }
+}
+
+private class StoredSupervisorFixture(
+    directory: java.io.File,
+    legacy: Boolean,
+    startGate: CompletableFuture<Unit>?,
+    wrapSink: (StoredSessionSupervisorEventSink) -> SessionSupervisorEventSink,
+) : AutoCloseable {
+    val id = RuntimeId("runtime")
+    val codec = ReplyHookCodec()
+    val store = AppPrivateSessionCommandStore(directory, codec)
+    private val factory = RecordingRuntimeFactory(startGate)
+    val supervisor = AndroidRuntimeSessionSupervisor(
+        factory, RecordingNativeHostFactory(),
+        wrapSink(StoredSessionSupervisorEventSink(store, StoredSessionOutputLimits(maxEvents = 2, maxBytes = 64))),
+    )
+    // Match the concrete Service factory; keep the legacy constructor independently covered.
+    private val handler = if (legacy) StoredSessionCommandHandler(supervisor, store)
+        else StoredSessionCommandHandler.withEventOwnedSnapshots(supervisor, store)
+    val engine get() = factory.engines.last()
+    init { handle(testCreateCommand("runtime", "create")) }
+    fun handle(command: SessionCommandV2) = handler.handle(command).await()
+    fun start() = handle(StartRuntimeCommand(id, CommandId("start")))
+    fun restart(command: String) = handle(RestartRuntimeCommand(id, CommandId(command)))
+    fun output(chunk: String) = engine.context.processHost.write(RuntimeOutputStream.STDOUT, chunk)
+    fun status(command: String) = handle(StatusRuntimeCommand(id, CommandId(command)))
+    override fun close() = supervisor.close()
+}
+
+private fun withStoredSupervisor(
+    legacy: Boolean = false,
+    startGate: CompletableFuture<Unit>? = null,
+    wrapSink: (StoredSessionSupervisorEventSink) -> SessionSupervisorEventSink = { it },
+    action: (StoredSupervisorFixture) -> Unit,
+) {
+    val directory = Files.createTempDirectory("holonomy-stored-supervisor").toFile()
+    try { StoredSupervisorFixture(directory, legacy, startGate, wrapSink).use(action) }
+    finally { directory.deleteRecursively() }
+}
+
+private class ReplyHookCodec : SessionControlCodec {
+    private val values = ConcurrentHashMap<String, Any>()
+    private val sequence = AtomicInteger()
+    var beforeReply: (() -> Unit)? = null
+    private fun encode(value: Any): ByteArray {
+        val key = "value-${sequence.incrementAndGet()}"
+        values[key] = value
+        return key.toByteArray()
+    }
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> decode(bytes: ByteArray): T = values.getValue(bytes.toString(Charsets.UTF_8)) as T
+    override fun encodeCommand(command: SessionCommandV2) = encode(command)
+    override fun decodeCommand(bytes: ByteArray): SessionCommandV2 = decode(bytes)
+    override fun encodeReply(reply: SessionCommandReply): ByteArray {
+        val hook = beforeReply
+        beforeReply = null
+        hook?.invoke()
+        return encode(reply)
+    }
+    override fun decodeReply(bytes: ByteArray): SessionCommandReply = decode(bytes)
+    override fun encodeState(state: SessionRuntimeSnapshot) = encode(state)
+    override fun decodeState(bytes: ByteArray): SessionRuntimeSnapshot = decode(bytes)
+    override fun encodeResult(result: SessionExecutionResult) = encode(result)
+    override fun decodeResult(bytes: ByteArray): SessionExecutionResult = decode(bytes)
+    override fun encodeOutput(output: SessionOutputSnapshot) = encode(output)
+    override fun decodeOutput(bytes: ByteArray): SessionOutputSnapshot = decode(bytes)
 }

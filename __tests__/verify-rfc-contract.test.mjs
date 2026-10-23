@@ -68,6 +68,47 @@ test('rejects closed operations missing their Registry row', async () => {
 })
 
 test.each([
+  ['mode', 'promise', 'sync', /Registry semantic signature differs/],
+  ['known operation', 'filesystem.directory.sync', 'filesystem.file.sync', /Registry semantic signature differs/],
+  ['schema owner', 'FsDirectorySyncArgsV1', 'FsUnknownDirectoryArgsV1', /Registry schema has no normative owner/]
+])('rejects FS metadata Registry drift in %s', async (_field, before, after, pattern) => {
+  await expectFailure(async root => {
+    const path = join(root, '0001-holo-capability-runtime/filesystem-metadata-and-durability.md')
+    const source = await readFile(path, 'utf8')
+    const lines = source.split('\n')
+    const index = lines.findIndex(line => line.startsWith('| host.fs/directory.sync'))
+    expect(index).toBeGreaterThanOrEqual(0)
+    expect(lines[index]).toContain(before)
+    lines[index] = lines[index].replace(before, after)
+    await writeFile(path, lines.join('\n'))
+  }, pattern)
+})
+
+test('rejects widening exact Linux metadata readback to the ordinary Guest Stats type', async () => {
+  await expectFailure(async root => {
+    const path = join(root, '0001-holo-capability-runtime/filesystem-metadata-and-durability.md')
+    const source = await readFile(path, 'utf8')
+    await writeFile(path, source.replace('  | FsExactMetadataResultV1', '  | VirtualStatsV1'))
+  }, /missing required normative/)
+})
+
+test('rejects replacing the separate chmod right with a write right', async () => {
+  await expectFailure(async root => {
+    const path = join(root, '0001-holo-capability-runtime/filesystem-mode.md')
+    const source = await readFile(path, 'utf8')
+    await writeFile(path, source.replace('filesystem.metadata.chmod / chmod', 'filesystem.metadata.chmod / write'))
+  }, /Registry semantic signature differs/)
+})
+
+test('rejects dropping the pinned target kind from Linux chmod readback', async () => {
+  await expectFailure(async root => {
+    const path = join(root, '0001-holo-capability-runtime/filesystem-mode.md')
+    const source = await readFile(path, 'utf8')
+    await writeFile(path, source.replace("  readonly expectedKind?: 'file' | 'directory'\n", ''))
+  }, /missing required normative/)
+})
+
+test.each([
   ['Node', 'ERR_HOLO_NOT_REAL', /Node error outside closed union/],
   ['internal', 'provider.not_real', /internal error outside closed union/],
   ['admission', 'runtime.binding_not_real', /admission error outside closed union/]

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   CapabilityContractError,
+  NODE_NATIVE_ENGINE_PROBE_V1,
   OBSERVER_EVENTS_V1,
   STOCK_NODE_ENGINE_PROBE_V1,
   compileRuntimeObserverAdmissionV1,
@@ -52,6 +53,15 @@ describe('engine hook and runtime observer machine contracts', () => {
         schemaVersion: 2
       })
     ).toThrow(CapabilityContractError)
+  })
+
+  it('accepts the separately proven Node Native Hook descriptor', () => {
+    expect(normalizeEngineHookCapabilityProbeV1(NODE_NATIVE_ENGINE_PROBE_V1))
+      .toEqual(NODE_NATIVE_ENGINE_PROBE_V1)
+    expect(NODE_NATIVE_ENGINE_PROBE_V1.strings.perCompilationCallback).toBe(true)
+    expect(NODE_NATIVE_ENGINE_PROBE_V1.wasm.perCompilationCallback).toBe(true)
+    expect(NODE_NATIVE_ENGINE_PROBE_V1.metadata.source).toBe('available')
+    expect(NODE_NATIVE_ENGINE_PROBE_V1.provenance.metadata).toBe('behavioralProbe')
   })
 
   it('keeps Engine Gate metadata honest and decisions product-neutral', () => {

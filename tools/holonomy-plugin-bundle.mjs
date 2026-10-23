@@ -17,6 +17,7 @@ const TRUSTED_RUNTIME_LIBRARIES = new Set([
   '@holonomyjs/plugin-permission',
   'cordis'
 ])
+export const isTrustedRuntimePluginLibrary = specifier => TRUSTED_RUNTIME_LIBRARIES.has(specifier)
 
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 const canonicalJson = value => {
@@ -29,7 +30,7 @@ const canonicalJson = value => {
   return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`
 }
 
-const dependencies = source => {
+export const findHoloPluginDependencies = source => {
   const ast = parse(source, { ecmaVersion: 'latest', sourceType: 'module' })
   const output = []
   const stack = [ast]
@@ -136,8 +137,8 @@ const collectFiles = (instanceId, root, entryFile) => {
     if (relative.startsWith('../')) throw new Error('Holo plugin module escapes its source root')
     const url = `holo-plugins:///${instanceId}/${relative}`
     files.set(file, Object.freeze({ sha256: sha256(bytes), source, url }))
-    for (const specifier of dependencies(source)) {
-      if (TRUSTED_RUNTIME_LIBRARIES.has(specifier)) continue
+    for (const specifier of findHoloPluginDependencies(source)) {
+      if (isTrustedRuntimePluginLibrary(specifier)) continue
       if (!specifier.startsWith('.')) throw new Error(`Unsupported Holo plugin import: ${specifier}`)
       pending.push(safeFile(root, path.resolve(path.dirname(file), specifier)))
     }
@@ -145,32 +146,37 @@ const collectFiles = (instanceId, root, entryFile) => {
   return Object.freeze([...files.values()].sort((left, right) => left.url.localeCompare(right.url)))
 }
 
+export const createRuntimePluginBundle = (entry, resolved, configSchema, files) => {
+  const rootUrl = `holo-plugins:///${entry.id}/`
+  const relativeEntry = path.relative(resolved.root, resolved.entryFile).split(path.sep).join('/')
+  const bundle = {
+    config: entry.config,
+    ...(configSchema === undefined ? {} : { configSchema }),
+    entryUrl: `${rootUrl}${relativeEntry}`,
+    exportName: entry.exportName,
+    files,
+    instanceId: entry.id,
+    rootUrl,
+    schemaVersion: 1
+  }
+  const bundleSha256 = sha256(canonicalJson({
+    ...bundle,
+    files: files.map(file => ({ sha256: file.sha256, url: file.url }))
+  }))
+  if (entry.integrity != null && entry.integrity !== bundleSha256) {
+    throw new Error(`Holo plugin integrity mismatch: ${entry.id}`)
+  }
+  return Object.freeze({ ...bundle, bundleSha256 })
+}
+
 export const prepareHolonomyRuntimePlugins = (input, options = {}) => {
   const loaded = readHoloPluginConfig(input, options)
   const allowedAbsoluteRoots = (options.allowedAbsoluteRoots ?? []).map(root => path.resolve(root))
   const bundles = loaded.plugins.filter(entry => entry.enabled).map(entry => {
     const resolved = resolveSource(entry, loaded.configPath, allowedAbsoluteRoots)
-    validateHoloPluginOptions(resolved.configSchema, entry.config)
+    const configSchema = validateHoloPluginOptions(resolved.configSchema, entry.config)
     const files = collectFiles(entry.id, resolved.root, resolved.entryFile)
-    const rootUrl = `holo-plugins:///${entry.id}/`
-    const relativeEntry = path.relative(resolved.root, resolved.entryFile).split(path.sep).join('/')
-    const bundle = {
-      config: entry.config,
-      entryUrl: `${rootUrl}${relativeEntry}`,
-      exportName: entry.exportName,
-      files,
-      instanceId: entry.id,
-      rootUrl,
-      schemaVersion: 1
-    }
-    const bundleSha256 = sha256(canonicalJson({
-      ...bundle,
-      files: files.map(file => ({ sha256: file.sha256, url: file.url }))
-    }))
-    if (entry.integrity != null && entry.integrity !== bundleSha256) {
-      throw new Error(`Holo plugin integrity mismatch: ${entry.id}`)
-    }
-    return Object.freeze({ ...bundle, bundleSha256 })
+    return createRuntimePluginBundle(entry, resolved, configSchema, files)
   })
   return Object.freeze({ bundles: Object.freeze(bundles), configPath: loaded.configPath })
 }

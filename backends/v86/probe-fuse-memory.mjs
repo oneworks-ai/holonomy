@@ -3,6 +3,14 @@ import { Buffer } from 'node:buffer'
 import { V86FuseBridgeV1 } from '../../adapters/node/src/capability-process-v86-fuse.mjs'
 
 const fsError = (errno, message) => Object.assign(new Error(message), { errno })
+const fixtureMetadata = size => ({
+  kind: 'file',
+  size,
+  mode: 0o100644,
+  atimeNs: '0',
+  mtimeNs: '0',
+  ctimeNs: '0'
+})
 
 export const createV86FuseMemoryProbeV1 = () => {
   const files = new Map([['/workspace/input.txt', Buffer.from('HOST_TO_GUEST')]])
@@ -19,7 +27,7 @@ export const createV86FuseMemoryProbeV1 = () => {
     if (input.operation === 'lookup' || input.operation === 'getattr') {
       const value = files.get(input.path)
       if (value == null) throw fsError(2, 'File not found')
-      return { kind: 'file', size: value.byteLength }
+      return fixtureMetadata(value.byteLength)
     }
     if (input.operation === 'open') {
       if (!files.has(input.path)) throw fsError(2, 'File not found')
@@ -28,7 +36,7 @@ export const createV86FuseMemoryProbeV1 = () => {
     }
     if (input.operation === 'create') {
       files.set(input.path, Buffer.alloc(0))
-      return { kind: 'file', size: 0 }
+      return fixtureMetadata(0)
     }
     if (input.operation === 'read') {
       const value = files.get(input.path)

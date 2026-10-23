@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -7,7 +8,14 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const buildRoot = resolve(root, '.build')
 
-const run = spawnSync('pnpm', ['exec', 'tsc', '-p', 'tsconfig.build.json'], {
+let compiler
+try {
+  compiler = createRequire(import.meta.url).resolve('typescript/bin/tsc')
+} catch {
+  console.error('TypeScript is not installed. Run pnpm install before building.')
+  process.exit(1)
+}
+const run = spawnSync(process.execPath, [compiler, '-p', 'tsconfig.build.json'], {
   cwd: root,
   encoding: 'utf8',
   stdio: 'inherit'
@@ -30,6 +38,7 @@ const packages = [
   ['packages/capabilities/fs', 'packages/capabilities/fs/src'],
   ['packages/capabilities/network', 'packages/capabilities/network/src'],
   ['packages/capabilities/process', 'packages/capabilities/process/src'],
+  ['packages/capabilities/storage', 'packages/capabilities/storage/src'],
   ['packages/capabilities/system', 'packages/capabilities/system/src'],
   ['packages/plugins/audit', 'packages/plugins/audit/src'],
   ['packages/plugins/permission', 'packages/plugins/permission/src']

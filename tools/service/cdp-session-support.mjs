@@ -95,11 +95,22 @@ export class CdpRequestIds {
   }
 }
 
+export const createInspectorSessionV1 = (sessions, fields, onClose) => ({
+  ...fields,
+  close: () => {
+    if (!sessions.delete(fields.id)) return
+    try {
+      onClose?.()
+    } catch { /* Closing one subscriber cannot retain another. */ }
+  }
+})
+
 export const safeSessionSink = (sessions, session, message) => {
   try {
     session.sink(message)
   } catch {
-    sessions.delete(session.id)
+    if (session.close != null) session.close()
+    else sessions.delete(session.id)
   }
 }
 

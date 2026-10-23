@@ -49,19 +49,26 @@ export class CapabilityFsFacadeCallsV1 {
     signal?: CapabilityGuestAbortSignalV1
   ): void {
     const accepted = fsFunctionV1(done)
+    const deliver = (...values: unknown[]) => {
+      const callback = () => {
+        accepted(...values)
+      }
+      if (this.#bridge.enqueueCallback) this.#bridge.enqueueCallback(callback)
+      else callback()
+    }
     void this.#bridge.invoke(createCapabilityRequestV1(module, member, 'callback', args, fields), signal).then(
       terminal => {
         let value: unknown
         try {
           value = readCapabilityTerminalV1(terminal)
         } catch (error) {
-          accepted(error)
+          deliver(error)
           return
         }
-        if (result) accepted(null, value)
-        else accepted(null)
+        if (result) deliver(null, value)
+        else deliver(null)
       },
-      error => accepted(error)
+      error => deliver(error)
     )
   }
 

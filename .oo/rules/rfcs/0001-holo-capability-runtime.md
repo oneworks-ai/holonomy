@@ -44,11 +44,14 @@
 - [里程碑与分层验收](0001-holo-capability-runtime/milestones.md)：规范性附录 G。
 - [`node:fs` Sandbox v1](0001-holo-capability-runtime/filesystem-schema-v1.md)：规范性附录 H。
 - [`node:fs` Operation Registry](0001-holo-capability-runtime/filesystem-operation-registry.md)：规范性附录 H.1。
+- [FS Metadata 与 Durability](0001-holo-capability-runtime/filesystem-metadata-and-durability.md)：规范性附录 H.2。
+- [Filesystem Mode](0001-holo-capability-runtime/filesystem-mode.md)：规范性附录 H.3。
 - [公共基础合同类型](0001-holo-capability-runtime/core-contract-types.md)：规范性附录 I。
 - [`node:child_process` 与可选 Linux Backend](0001-holo-capability-runtime/process-and-linux-backend.md)：规范性附录 J。
 - [`node:child_process` Operation Registry](0001-holo-capability-runtime/process-operation-registry.md)：规范性附录 J.1。
 - [ChildProcess Resource 与 stdio Protocol](0001-holo-capability-runtime/process-resource-protocol.md)：规范性附录 J.2。
 - [Cordis Runtime Plugin、资源包与 Watch](0001-holo-capability-runtime/runtime-plugins-and-watch.md)：规范性附录 K。
+- [Storage Policy 与 Operation Registry](0001-holo-capability-runtime/storage-policy-and-registry.md)：规范性附录 L。
 
 ## 1. 摘要
 

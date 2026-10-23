@@ -14,6 +14,7 @@ const UNION_OWNERS = {
   NodeGuestErrorCodeV1: `${chapter}/error-contract-v1.md`,
   ProcessOperationV1: `${chapter}/process-operation-registry.md`,
   RuntimeAdmissionCodeV1: `${chapter}/error-contract-v1.md`,
+  StorageOperationV1: `${chapter}/storage-policy-and-registry.md`,
   SystemInformationOperationV1: `${chapter}/system-operation-registry.md`
 }
 
@@ -22,7 +23,18 @@ const REGISTRY_TABLES = {
     owner: `${chapter}/filesystem-operation-registry.md`,
     columns: ['Module/member', 'Mode', 'Args / result', 'Operation/right', 'callback'],
     rows: 36,
-    sha256: 'c24add10e06d3986f91201f6a03f53a8d388af48cdec6d1cef815ed7d8e053a5'
+    sha256: 'c24add10e06d3986f91201f6a03f53a8d388af48cdec6d1cef815ed7d8e053a5',
+    additions: [{
+      owner: `${chapter}/filesystem-metadata-and-durability.md`,
+      columns: ['Module/member', 'Mode', 'Args / result', 'Operation/right', 'callback'],
+      rows: 24,
+      sha256: '5f4c447479c103d92c9f1d8a77ca892b1933a7066fda5fcc48a7415cfb523433'
+    }, {
+      owner: `${chapter}/filesystem-mode.md`,
+      columns: ['Module/member', 'Mode', 'Args / result', 'Operation/right', 'callback'],
+      rows: 7,
+      sha256: 'a540230688d44d85572ab08a0c8a2b68b1ced85f187e17f11c7a53bacc7b5a1c'
+    }]
   },
   NetworkOperationV1: {
     owner: `${chapter}/network-operation-registry.md`,
@@ -45,6 +57,12 @@ const REGISTRY_TABLES = {
     rows: 17,
     sha256: '6dd0480d974f078c94504d48811fdaf8255dd10e02d8dacba2fb53194cb50de7'
   },
+  StorageOperationV1: {
+    owner: `${chapter}/storage-policy-and-registry.md`,
+    columns: ['Member', 'Operation', 'Capability', 'Args', 'Result', 'Resource'],
+    rows: 7,
+    sha256: '6cc77c79ba0bfe441bd9504a4f6ec0605a9e3456b78f54946426d780e0c7c20d'
+  },
   SystemInformationOperationV1: {
     owner: `${chapter}/system-operation-registry.md`,
     columns: ['Module/member', 'Operation', 'Capability', 'unavailable'],
@@ -64,6 +82,13 @@ const ERROR_TABLES = {
 }
 
 const REQUIRED_NORMATIVE_SNIPPETS = {
+  [`${chapter}/filesystem-mode.md`]: [
+    "interface FsChmodReadbackArgsV1 extends FsChmodArgsV1 {\n  readonly readback: true\n  readonly expectedKind?: 'file' | 'directory'\n}"
+  ],
+  [`${chapter}/filesystem-metadata-and-durability.md`]: [
+    "readonly resourceType: 'filesystem.directory-handle'",
+    'type FsMutationResultV1 =\n  | Readonly<Record<string, never>>\n  | FsExactMetadataResultV1'
+  ],
   [`${chapter}/process-and-linux-backend.md`]: [
     "readonly invocation: 'program'",
     'readonly argvDigest: string',
@@ -155,7 +180,7 @@ function checkClosedLiterals(allSource, sourceFile, failures) {
   checkLiteralFamily(
     allSource,
     operations,
-    /(?<!host\.)\b(?:device|system|filesystem|network|process)(?:\.[a-z0-9-]+){2,}\b/g,
+    /(?<!host\.)\b(?:device|system|filesystem|network|process|storage)(?:\.[a-z0-9-]+){2,}\b/g,
     'operation',
     failures
   )
@@ -212,29 +237,33 @@ function checkClosedLiterals(allSource, sourceFile, failures) {
 
 function checkRegistryTables(sources, unions, failures) {
   for (const [unionName, descriptor] of Object.entries(REGISTRY_TABLES)) {
-    const table = firstTable(sources.get(descriptor.owner) ?? '')
-    if (table.columns.join('\n') !== descriptor.columns.join('\n')) {
-      failures.push(`${descriptor.owner}: Registry columns differ from machine descriptor`)
-    }
-    if (table.rows.length !== descriptor.rows) {
-      failures.push(`${descriptor.owner}: Registry row count differs from machine descriptor`)
-    }
-    if (table.signature !== descriptor.sha256) {
-      failures.push(`${descriptor.owner}: Registry semantic signature differs from machine descriptor`)
+    const rows = []
+    for (const section of [descriptor, ...(descriptor.additions ?? [])]) {
+      const table = firstTable(sources.get(section.owner) ?? '')
+      if (table.columns.join('\n') !== section.columns.join('\n')) {
+        failures.push(`${section.owner}: Registry columns differ from machine descriptor`)
+      }
+      if (table.rows.length !== section.rows) {
+        failures.push(`${section.owner}: Registry row count differs from machine descriptor`)
+      }
+      if (table.signature !== section.sha256) {
+        failures.push(`${section.owner}: Registry semantic signature differs from machine descriptor`)
+      }
+      rows.push(...table.rows)
     }
     for (const operation of unions.get(unionName)) {
-      if (!table.rows.some(row => row.some(cell => cell === operation || cell.startsWith(`${operation} /`)))) {
+      if (!rows.some(row => row.some(cell => cell === operation || cell.startsWith(`${operation} /`)))) {
         failures.push(`${descriptor.owner}: missing Registry row for ${operation}`)
       }
     }
-    if (unionName === 'ProcessOperationV1') {
+    if (unionName === 'ProcessOperationV1' || unionName === 'FilesystemOperationV1') {
       const declarations = new Set()
       for (const statement of unions.sourceFile?.statements ?? []) {
         if ('name' in statement && statement.name && ts.isIdentifier(statement.name)) {
           declarations.add(statement.name.text)
         }
       }
-      const identifiers = table.rows.flat().flatMap(cell => cell.match(/\b[A-Z][A-Za-z0-9]*(?:V1|V2)\b/g) ?? [])
+      const identifiers = rows.flat().flatMap(cell => cell.match(/\b[A-Z][A-Za-z0-9]*(?:V1|V2)\b/g) ?? [])
       for (const identifier of new Set(identifiers)) {
         if (!declarations.has(identifier)) {
           failures.push(`${descriptor.owner}: Registry schema has no normative owner: ${identifier}`)

@@ -16,6 +16,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "oneworks-holonomy-android"
 include(":host-core")
+include(":crypto-host")
+include(":storage-host")
+include(":runtime-host")
 include(":capability-host")
 include(":v8-host")
 include(":network-host")

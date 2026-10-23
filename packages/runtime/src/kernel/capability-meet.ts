@@ -1,3 +1,4 @@
+import { meetStorageCapabilityConstraintsV1 } from '@holonomyjs/capability-storage/kernel/storage-capability-constraints'
 import { DEVICE_PRECISION_V1, SYSTEM_PRECISION_V1, normalizeCapabilityConstraintsV1 } from './capability-constraints.js'
 import type { NormalizedCapabilityConstraintsV1 } from './capability-constraints.js'
 import type { JsonValueV1 } from './json-types.js'
@@ -114,6 +115,9 @@ export const meetCapabilityConstraintsV1 = (
   const left = normalizeCapabilityConstraintsV1(name, leftValue)
   const right = normalizeCapabilityConstraintsV1(name, rightValue)
   if (name === 'host.fs') return meetFs(left, right)
+  if (name === 'host.storage') {
+    return meetStorageCapabilityConstraintsV1(left, right) as NormalizedCapabilityConstraintsV1 | null
+  }
   if (name === 'host.network.http' || name === 'host.network.mock') return meetNetwork(left, right)
   if (name === 'host.process.network') return meetProcessNetwork(left, right)
   if (name === 'host.process.execute') {

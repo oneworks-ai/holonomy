@@ -29,6 +29,17 @@ export const CAPABILITY_RUNTIME_START_SCHEMA = Object.freeze({
       pattern: '^[\\w:.-]+$',
       type: 'string'
     },
+    initialObserverIds: {
+      items: {
+        maxLength: 160,
+        minLength: 1,
+        pattern: '^[\\w:.-]+$',
+        type: 'string'
+      },
+      maxItems: 64,
+      type: 'array',
+      uniqueItems: true
+    },
     processProfileId: {
       description: 'Logical id from the private Host Process profile manifest; native paths are never accepted here',
       maxLength: 128,
@@ -103,10 +114,25 @@ export const SERVICE_REQUEST_SCHEMAS = {
             type: 'object'
           },
           moduleRootUrl: { maxLength: 4_096, minLength: 1, type: 'string' },
+          moduleAliases: {
+            description: 'Native only: exact logical URL to staged canonical module URL mappings',
+            items: {
+              additionalProperties: false,
+              properties: {
+                canonicalUrl: { maxLength: 4_096, minLength: 1, type: 'string' },
+                url: { maxLength: 4_096, minLength: 1, type: 'string' }
+              },
+              required: ['canonicalUrl', 'url'],
+              type: 'object'
+            },
+            maxItems: 512,
+            type: 'array'
+          },
           modules: {
             items: {
               additionalProperties: false,
               properties: {
+                metadataOnly: { const: true },
                 source: { maxLength: 8 * 1024 * 1024, type: 'string' },
                 url: { maxLength: 4_096, minLength: 1, type: 'string' }
               },
@@ -119,14 +145,14 @@ export const SERVICE_REQUEST_SCHEMAS = {
           },
           reporter: { enum: ['json', 'tap'] },
           schemaVersion: { const: 2 },
-          target: { enum: ['android', 'node'] }
+          target: { enum: ['android', 'node', 'native'] }
         },
         required: ['entryUrl', 'moduleRootUrl', 'modules', 'schemaVersion', 'target'],
         type: 'object'
       },
       runtimePlugins: RUNTIME_PLUGIN_BUNDLES_SCHEMA,
       sandboxPolicy: SANDBOX_POLICY_SCHEMA,
-      target: { enum: ['android', 'node'] }
+      target: { enum: ['android', 'node', 'native'] }
     },
     required: ['deviceId', 'entryUrl', 'inspectorMode', 'isolation', 'launch', 'target'],
     type: 'object'

@@ -4,7 +4,10 @@ export type EventLoopTaskId = number
 
 export type EventLoopTimerId = number
 
+export type EventLoopWakeupPhase = 'next-tick' | 'event-loop'
+
 export type EventLoopTaskKind =
+  | 'immediate'
   | 'macrotask'
   | 'native-completion'
   | 'next-tick'
@@ -29,7 +32,7 @@ export interface HostEventLoopPort {
    * Arms the next host wakeup at an absolute monotonic deadline. `null`
    * cancels a previously armed wakeup.
    */
-  requestWakeup(deadlineMs: number | null): void
+  requestWakeup(deadlineMs: number | null, phase?: EventLoopWakeupPhase): void
 
   /** Runs the engine-owned Promise microtask checkpoint to completion. */
   checkpointMicrotasks(): void

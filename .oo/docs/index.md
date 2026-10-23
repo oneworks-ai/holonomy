@@ -6,7 +6,7 @@ Holonomy 是面向原生宿主的平台中立 Node-like JavaScript Runtime。开
 
 ## 从这里开始
 
-- 第一次运行代码：[Node 快速开始](./getting-started/run-on-node.md)或 [Android 快速开始](./getting-started/run-on-android.md)
+- 第一次运行代码：[独立 Native holo](./platforms/native/index.md)、[Node 快速开始](./getting-started/run-on-node.md)或 [Android 快速开始](./getting-started/run-on-android.md)
 - 先判断能否满足需求：[支持矩阵](./capabilities/support-matrix.md)
 - 管理后台进程：[受管进程指南](./guides/manage-processes.md)
 - 启动与清理 AVD：[管理 Android 模拟器](./guides/manage-emulators.md)

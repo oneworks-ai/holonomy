@@ -13,6 +13,7 @@ import {
   INVOCATION_SNAPSHOT_CAPABILITY_V1_SCHEMA,
   OPERATION_REGISTRY_V1,
   OPERATION_SCHEMA_OWNER_REGISTRY_V1,
+  STORAGE_LIMIT_MAXIMA_V2,
   admitRuntimeCreationV1,
   bindInvocationResource,
   buildNetworkInvocationSnapshotV1,
@@ -23,11 +24,15 @@ import {
   canonicalizeOpaqueHandleResource,
   canonicalizeProgramExecutableResource,
   canonicalizeShellExecutableResource,
+  canonicalizeStorageKvResourceV1,
+  canonicalizeStorageSqlResourceV1,
   canonicalizeSystemInformationFieldResource,
   compileDeviceProviderDescriptorV1,
   compileHostSystemProjectionV1,
   compileRuntimeContextEnvelopeV1,
   compileSandboxPolicyV2,
+  createStorageInvocationV1,
+  meetStorageCapabilityConstraintsV1,
   normalizeDeviceSummaryV1,
   normalizeEngineGateDecisionV1,
   normalizeEngineGateRequestMetadataV1,
@@ -36,7 +41,8 @@ import {
   normalizeNetworkRedirectInvocationV1,
   normalizeResolvedResourceChallengeV1,
   normalizeRuntimeObserverEventV1,
-  selectCapabilityBranchV1
+  selectCapabilityBranchV1,
+  storageCapabilitySatisfiesV1
 } from '../dist/capability-runtime/index.js'
 import { CAPABILITY_VECTOR_LIMITS, policyVectors } from './capability-contract-base-artifacts.mjs'
 import {
@@ -55,6 +61,7 @@ import {
   deviceDescriptorInput,
   runtimeCreationInput
 } from './capability-contract-runtime-fixtures.mjs'
+import { storageContractVectors } from './capability-contract-storage-artifacts.mjs'
 import { operationContractVectors } from './capability-operation-contract-artifacts.mjs'
 
 const testDigest = label => canonicalDigest(digestInput(label))
@@ -111,6 +118,18 @@ export const capabilityContractArtifacts = root => {
     ['facade-delivery-registry-v1.json', FACADE_DELIVERY_REGISTRY_V1],
     ['capability-definition-registry-v1.json', CAPABILITY_DEFINITION_REGISTRY_V1],
     ['capability-error-map-v1.json', CAPABILITY_ERROR_MAP_V1],
+    [
+      'storage-contract-v1.vectors.json',
+      storageContractVectors({
+        STORAGE_LIMIT_MAXIMA_V2,
+        canonicalizeStorageKvResourceV1,
+        canonicalizeStorageSqlResourceV1,
+        compileSandboxPolicyV2,
+        createStorageInvocationV1,
+        meetStorageCapabilityConstraintsV1,
+        storageCapabilitySatisfiesV1
+      })
+    ],
     [
       'sandbox-policy-v2.vectors.json',
       policyVectors({

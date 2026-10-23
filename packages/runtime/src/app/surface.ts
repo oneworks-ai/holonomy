@@ -15,7 +15,7 @@ import { createRuntimeRecord, defineRuntimeData, freezeRuntimeValue, getRuntimeO
 
 import type { InstalledCryptoRuntime } from '../crypto/index.js'
 import type { InstalledRuntimeConsole } from '../runtime-console/index.js'
-import type { RuntimeTimers } from '../timers/index.js'
+import type { RuntimeImmediate, RuntimeTimers } from '../timers/index.js'
 
 const KEYS = Object.keys
 
@@ -23,7 +23,8 @@ export const createRuntimeGlobals = (
   crypto?: InstalledCryptoRuntime,
   network?: Record<string, object>,
   console?: InstalledRuntimeConsole,
-  timers?: RuntimeTimers
+  timers?: RuntimeTimers,
+  immediate?: RuntimeImmediate
 ) => {
   const globals = createRuntimeRecord() as Record<string, object>
   const streams = createWebStreamsGlobals()
@@ -50,6 +51,10 @@ export const createRuntimeGlobals = (
     defineRuntimeData(globals, 'clearTimeout', timers.globals.clearTimeout)
     defineRuntimeData(globals, 'setInterval', timers.globals.setInterval)
     defineRuntimeData(globals, 'setTimeout', timers.globals.setTimeout)
+  }
+  if (immediate != null) {
+    defineRuntimeData(globals, 'clearImmediate', immediate.globals.clearImmediate)
+    defineRuntimeData(globals, 'setImmediate', immediate.globals.setImmediate)
   }
   return freezeRuntimeValue(globals)
 }

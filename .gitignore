@@ -1,4 +1,6 @@
 node_modules/
+target/
+adapters/desktop/v8-host/generated/
 dist/
 coverage/
 .vite/
@@ -8,4 +10,7 @@ cache/
 adapters/android/.gradle/
 adapters/android/.kotlin/
 adapters/android/**/build/
+adapters/android/**/.cxx/
 adapters/android/local.properties
+adapters/node/native/engine-gate/build/
+adapters/node/native/filesystem-openat/build/

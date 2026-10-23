@@ -44,6 +44,7 @@ export const runtimePluginBundleDigestV1 = (
 ): string =>
   canonicalDigest({
     config: bundle.config,
+    ...(bundle.configSchema === undefined ? {} : { configSchema: bundle.configSchema }),
     entryUrl: bundle.entryUrl,
     exportName: bundle.exportName,
     files: bundle.files.map(file => ({ sha256: file.sha256, url: file.url })),
@@ -62,7 +63,17 @@ export const normalizeRuntimePluginBundlesV1 = (
   const bundles = value.map(item => {
     const input = exact(
       item,
-      ['bundleSha256', 'config', 'entryUrl', 'exportName', 'files', 'instanceId', 'rootUrl', 'schemaVersion'],
+      [
+        'bundleSha256',
+        'config',
+        'configSchema',
+        'entryUrl',
+        'exportName',
+        'files',
+        'instanceId',
+        'rootUrl',
+        'schemaVersion'
+      ],
       'Bundle'
     )
     if (
@@ -106,8 +117,18 @@ export const normalizeRuntimePluginBundlesV1 = (
       }) satisfies RuntimePluginFileV1
     }))
     if (!urls.has(definition!.entryUrl)) throw new TypeError('Runtime plugin entry file is absent')
+    const configSchema = input.configSchema === undefined
+      ? undefined
+      : cloneRuntimePluginJsonV1(input.configSchema)
+    if (
+      configSchema !== undefined && (
+        (configSchema === null || typeof configSchema !== 'object') && typeof configSchema !== 'boolean' ||
+        Array.isArray(configSchema) || encodeUtf8(JSON.stringify(configSchema)).byteLength > 1024 * 1024
+      )
+    ) throw new TypeError('Runtime plugin config Schema is invalid or oversized')
     const normalized = Object.freeze({
       ...definition!,
+      ...(configSchema === undefined ? {} : { configSchema }),
       files,
       rootUrl: rootUrl as `holo-plugins:///${string}/`,
       schemaVersion: 1 as const

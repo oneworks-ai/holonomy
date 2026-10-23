@@ -78,7 +78,10 @@ export const createInstalledV86ProcessBackendRuntimeV1 = (value, options = {}) =
   const installation = normalizeNodeProcessBackendInstallationV1(value)
   const capability = new NodeV86CapabilityBrokerV1(options.capabilityBridge?.domains ?? [])
   const filesystem = new NodeV86FilesystemBrokerV1()
-  const fuse = new V86FuseBridgeV1(input => filesystem.dispatch(input))
+  let releaseResource
+  const fuse = new V86FuseBridgeV1(input => filesystem.dispatch(input), {
+    releaseFileHandle: token => releaseResource?.(token)
+  })
   const network = new NodeV86ProcessNetworkBrokerV1()
   const execution = new NodeV86ProcessExecutionBrokerV1()
   const backend = createV86ProcessBackendV1({
@@ -95,9 +98,10 @@ export const createInstalledV86ProcessBackendRuntimeV1 = (value, options = {}) =
   let bound = false
   return Object.freeze({
     backend,
-    bind(invoke) {
-      if (bound || typeof invoke !== 'function') return invalid()
+    bind(invoke, release) {
+      if (bound || typeof invoke !== 'function' || typeof release !== 'function') return invalid()
       bound = true
+      releaseResource = release
       filesystem.bind(invoke)
       capability.bind(invoke)
       network.bind(invoke)

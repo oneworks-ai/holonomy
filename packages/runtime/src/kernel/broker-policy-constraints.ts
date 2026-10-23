@@ -1,9 +1,36 @@
+/* eslint-disable max-lines -- Capability constraint materialization keeps one closed Policy owner. */
+import { materializeStorageConstraintsV1 } from '@holonomyjs/capability-storage/kernel/storage-materialization'
+import type { StorageOperationV1 } from '@holonomyjs/capability-storage/kernel/storage-types'
 import type { MaterializationInputV1 } from './broker-policy-types.js'
 import { canonicalizeFilesystemResource } from './canonical-resources.js'
+import { CapabilityInvocationError } from './errors.js'
 import type { JsonValueV1 } from './json-types.js'
 import type { BuiltInCapabilityNameV1 } from './operation-types.js'
 
-const fsRights = (operation: string, args: unknown): readonly string[] => {
+const fsRights = (operation: string, args: unknown, availableRights: readonly string[] = []): readonly string[] => {
+  if (operation === 'filesystem.metadata.access') {
+    const mode = (args as { mode?: unknown }).mode
+    if (!Number.isInteger(mode) || (mode as number) < 0 || (mode as number) > 7) {
+      throw new CapabilityInvocationError('argument.invalid', operation)
+    }
+    if (mode === 0) return ['read']
+    const reading = (mode as number) & 4
+      ? availableRights.filter(right => right === 'read' || right === 'list')
+      : []
+    return [
+      ...new Set([
+        ...reading,
+        ...((mode as number) & 2 ? ['write'] : []),
+        ...((mode as number) & 1 ? ['list'] : []),
+        ...(reading.length === 0 && (mode as number) & 4 ? ['read'] : [])
+      ])
+    ]
+  }
+  if (operation === 'filesystem.metadata.chmod') return ['chmod']
+  if (operation === 'filesystem.metadata.utimes' || operation === 'filesystem.file.truncate') return ['write']
+  if (operation === 'filesystem.file.sync' || operation === 'filesystem.file.datasync') return []
+  if (operation === 'filesystem.directory.open') return ['list']
+  if (operation === 'filesystem.directory.sync' || operation === 'filesystem.directory.close') return []
   if (operation === 'filesystem.file.read' || operation.startsWith('filesystem.metadata.')) return ['read']
   if (operation === 'filesystem.file.write') return ['write']
   if (operation === 'filesystem.directory.read') return ['list']
@@ -13,8 +40,30 @@ const fsRights = (operation: string, args: unknown): readonly string[] => {
   if (operation === 'filesystem.watch.subscribe' || operation === 'filesystem.watch.close') return ['watch']
   if (operation === 'filesystem.file.open') {
     const flag = (args as { flag?: unknown }).flag
+    if (flag != null && typeof flag === 'object' && !Array.isArray(flag)) {
+      const portable = flag as {
+        kind?: unknown
+        access?: unknown
+        create?: unknown
+        exclusive?: unknown
+        truncate?: unknown
+        append?: unknown
+      }
+      if (
+        portable.kind !== 'portable-open-v1' ||
+        !['read', 'write', 'readWrite'].includes(portable.access as string) ||
+        portable.exclusive === true && portable.create !== true ||
+        portable.access === 'read' && (portable.truncate === true || portable.append === true)
+      ) throw new CapabilityInvocationError('argument.invalid', operation)
+      return portable.access === 'read'
+        ? portable.create === true ? ['read', 'write'] : ['read']
+        : portable.access === 'write'
+        ? ['write']
+        : ['read', 'write']
+    }
     if (typeof flag === 'string' && flag.includes('+')) return ['read', 'write']
-    return typeof flag === 'string' && flag.startsWith('r') ? ['read'] : ['write']
+    if (typeof flag === 'string') return flag.startsWith('r') ? ['read'] : ['write']
+    throw new CapabilityInvocationError('argument.invalid', operation)
   }
   return ['read']
 }
@@ -24,7 +73,7 @@ const fsConstraints = (input: MaterializationInputV1, available: boolean) => {
   if (policy.access !== 'sandboxed' || input.resource.kind !== 'filesystem') return null
   const resource = input.resource
   const root = policy.roots.find(item => item.rootId === resource.rootId)
-  const rights = fsRights(input.descriptor.operation, input.arguments.value)
+  const rights = fsRights(input.descriptor.operation, input.arguments.value, root?.rights ?? [])
   if (root == null || !rights.every(right => root.rights.includes(right as never))) return null
   let pathPrefixSegments = resource.pathSegments
   if (input.descriptor.operation === 'filesystem.entry.rename') {
@@ -32,7 +81,13 @@ const fsConstraints = (input: MaterializationInputV1, available: boolean) => {
       (input.arguments.value as { to?: unknown }).to,
       'rename destination'
     )
-    if (destination.rootId !== resource.rootId) return null
+    if (destination.rootId !== resource.rootId) {
+      throw new CapabilityInvocationError(
+        'resource.cross_root',
+        input.descriptor.operation,
+        resource.semanticResourceDigest
+      )
+    }
     let shared = 0
     while (
       shared < destination.pathSegments.length && shared < resource.pathSegments.length &&
@@ -163,5 +218,15 @@ export const materializeCapabilityConstraintsV1 = (
   if (name.startsWith('host.device.')) return deviceConstraints(input)
   if (name.startsWith('host.system.')) return systemConstraints(input)
   if (name.startsWith('host.process.')) return processConstraints(input, name)
+  if (name === 'host.storage') {
+    if (input.resource.kind !== 'storageKv' && input.resource.kind !== 'storageSql') return null
+    return materializeStorageConstraintsV1({
+      arguments: input.arguments.value,
+      available,
+      operation: input.descriptor.operation as StorageOperationV1,
+      policy: input.policy.storage,
+      resource: input.resource
+    }) as unknown as Readonly<Record<string, JsonValueV1>> | null
+  }
   return null
 }

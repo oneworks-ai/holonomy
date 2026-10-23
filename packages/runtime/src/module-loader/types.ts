@@ -1,5 +1,7 @@
 export type ModuleResolutionMode = 'import' | 'require'
 
+export type ModuleReadPurpose = 'module' | 'packageMetadata'
+
 export type PlannedModuleFormat =
   | 'commonjs'
   | 'json'
@@ -20,10 +22,15 @@ export type ModuleDependencyInterop =
 export interface HostModuleSource {
   bytes: Uint8Array
   sha256: string
+  /** Host-verified physical module identity when the requested URL is an alias. */
+  canonicalUrl?: string
+  /** Trusted Host restriction: these bytes may be consumed only as package metadata. */
+  metadataOnly?: true
 }
 
 export interface HostModuleReadLoaderFacade {
   createPlan(entrySpecifier: string, options?: CreateModulePlanOptions): Promise<never>
+  createSourceClosure(entrySpecifier: string, options: CreateModuleSourceClosureOptions): Promise<never>
   load(canonicalUrl: string): Promise<never>
   resolve(
     specifier: string,
@@ -35,6 +42,7 @@ export interface HostModuleReadLoaderFacade {
 export interface HostModuleReadContext {
   /** A deterministic rejection facade for forbidden loader reentry, including after `await`. */
   readonly loader: HostModuleReadLoaderFacade
+  readonly purpose: ModuleReadPurpose
 }
 
 export interface SyntheticNodeModuleDefinition {
@@ -72,6 +80,8 @@ export const DEFAULT_HOLONOMY_MODULE_LOADER_LIMITS: Readonly<HolonomyModuleLoade
 })
 
 export interface HolonomyModuleLoaderOptions {
+  /** Immutable trusted Host graph mode; ordinary execution leaves dynamic imports lazy. */
+  captureDynamicImports?: boolean
   /** Absolute hierarchical root; its scheme is host-defined (for example `memory://device/bundle/`). */
   rootUrl: string
   /** Optional trusted digest manifest keyed by canonical module URL. */
@@ -89,10 +99,49 @@ export interface CreateModulePlanOptions {
   parentUrl?: string
 }
 
+export interface CreateModuleSourceClosureOptions extends CreateModulePlanOptions {
+  /** Trusted Host classification of reserved node:/holo: names and bare Node builtins. */
+  isExternalModule(specifier: string): boolean
+}
+
+/** A verified positive read, including package.json metadata and resolve-only targets. */
+export interface ModuleSourceClosureRead {
+  readonly url: string
+  readonly byteLength: number
+  readonly sha256: string
+  /** Exact copied Host bytes; base64 keeps this snapshot immutable across the JS/Host boundary. */
+  readonly bytesBase64: string
+  /** Present only for a Host-restricted package metadata read. */
+  readonly metadataOnly?: true
+}
+
+export interface ModuleSourceClosureAlias {
+  readonly url: string
+  readonly canonicalUrl: string
+}
+
+export interface ModuleSourceClosureExternalReference {
+  readonly parentUrl: string
+  readonly specifier: string
+  readonly url: string
+  readonly kind: ModuleDependencyKind | 'entry'
+}
+
+/** Non-executable input to a Host that performs its own final engine admission. */
+export interface ModuleSourceClosure {
+  readonly kind: 'source-closure'
+  readonly entryUrl: string
+  readonly rootUrl: string
+  /** Positive Host reads whose requested URL differs from its canonical identity. */
+  readonly aliases: readonly ModuleSourceClosureAlias[]
+  readonly reads: readonly ModuleSourceClosureRead[]
+  readonly externalReferences: readonly ModuleSourceClosureExternalReference[]
+}
+
 export interface ModuleDependency {
   interop: ModuleDependencyInterop | null
   kind: ModuleDependencyKind
-  /** `null` identifies a runtime-resolved non-literal dynamic import. */
+  /** `null` identifies a dynamic import deferred until runtime, including a literal specifier. */
   resolvedUrl: string | null
   /** `null` identifies a runtime-resolved non-literal dynamic import. */
   specifier: string | null

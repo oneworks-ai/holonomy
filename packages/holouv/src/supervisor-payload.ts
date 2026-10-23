@@ -1,7 +1,9 @@
 import type { ProcessBackendSpawnRequestV1 } from '@holonomyjs/capability-process'
 
-const encoder = new TextEncoder()
-const decoder = new TextDecoder('utf-8', { fatal: true })
+// Host V8 installs Web text primitives before using this protocol. Avoid
+// constructing them during module evaluation in its initially bare Context.
+const encodeString = (value: string): Uint8Array => new TextEncoder().encode(value)
+const decodeString = (value: Uint8Array): string => new TextDecoder('utf-8', { fatal: true }).decode(value)
 
 const invalid = (): never => {
   throw new TypeError('Invalid HoloUV supervisor payload')
@@ -28,7 +30,7 @@ const writer = () => {
     },
     string(value: string) {
       if (typeof value !== 'string' || value.includes('\0')) return invalid()
-      const bytes = encoder.encode(value)
+      const bytes = encodeString(value)
       const length = new Uint8Array(4)
       new DataView(length.buffer).setUint32(0, bytes.byteLength)
       parts.push(length, bytes)
@@ -57,6 +59,14 @@ export interface HoloUvEnvironmentConfigurationV1 {
   readonly execGateTimeoutMs: number
   readonly hosts: readonly HoloUvEnvironmentHostV1[]
   readonly version: 1
+}
+
+export interface HoloUvEnvironmentConfigurationV2 {
+  readonly execGateTimeoutMs: number
+  readonly hosts: readonly HoloUvEnvironmentHostV1[]
+  readonly maxProcessTreeDepth: number
+  readonly maxTotalProcesses: number
+  readonly version: 2
 }
 
 const ipv4 = (value: string): boolean => {
@@ -103,6 +113,46 @@ export const encodeHoloUvEnvironmentConfigurationV1 = (
   return output.finish()
 }
 
+// Private Host-to-supervisor configuration. V2 is required by the Guest gate:
+// an older Host must fail at CONFIGURE instead of silently dropping tree quotas.
+export const encodeHoloUvEnvironmentConfigurationV2 = (
+  value: HoloUvEnvironmentConfigurationV2
+): Uint8Array => {
+  if (
+    value == null || typeof value !== 'object' || value.version !== 2 || !Array.isArray(value.hosts) ||
+    value.hosts.length > 256 || !Number.isInteger(value.execGateTimeoutMs) ||
+    value.execGateTimeoutMs < 1 || value.execGateTimeoutMs > 120_000 ||
+    !Number.isInteger(value.maxTotalProcesses) || value.maxTotalProcesses < 1 ||
+    value.maxTotalProcesses > 100_000 || !Number.isInteger(value.maxProcessTreeDepth) ||
+    value.maxProcessTreeDepth < 1 || value.maxProcessTreeDepth > 32
+  ) return invalid()
+  const hosts = value.hosts.map(item => {
+    if (
+      item == null || typeof item !== 'object' || Object.keys(item).length !== 2 ||
+      !Object.hasOwn(item, 'address') || !Object.hasOwn(item, 'hostname') ||
+      typeof item.address !== 'string' || typeof item.hostname !== 'string' ||
+      !ipv4(item.address) || !hostname(item.hostname)
+    ) return invalid()
+    return Object.freeze({ address: item.address, hostname: item.hostname })
+  })
+  hosts.sort((left, right) => left.hostname.localeCompare(right.hostname))
+  if (
+    new Set(hosts.map(item => item.hostname)).size !== hosts.length ||
+    new Set(hosts.map(item => item.address)).size !== hosts.length
+  ) return invalid()
+  const output = writer()
+  output.bytes(Uint8Array.of(2, 0))
+  output.u16(hosts.length)
+  output.u32(value.execGateTimeoutMs)
+  output.u32(value.maxTotalProcesses)
+  output.u32(value.maxProcessTreeDepth)
+  for (const host of hosts) {
+    output.string(host.address)
+    output.string(host.hostname)
+  }
+  return output.finish()
+}
+
 const reader = (value: Uint8Array) => {
   if (!(value instanceof Uint8Array)) return invalid()
   const bytes = Uint8Array.from(value)
@@ -137,11 +187,11 @@ const reader = (value: Uint8Array) => {
       offset += length
       let output: string
       try {
-        output = decoder.decode(source)
+        output = decodeString(source)
       } catch {
         return invalid()
       }
-      const encoded = Uint8Array.from(encoder.encode(output))
+      const encoded = encodeString(output)
       if (
         output.includes('\0') || encoded.byteLength !== source.byteLength ||
         !encoded.every((byte, index) => byte === source[index])
@@ -194,7 +244,7 @@ export const encodeHoloUvCapabilityResponseV1 = (value: HoloUvCapabilityResponse
   }
   const text = value.ok ? value.json : value.error
   if (
-    typeof text !== 'string' || text.includes('\0') || encoder.encode(text).byteLength > 256 * 1024 ||
+    typeof text !== 'string' || text.includes('\0') || encodeString(text).byteLength > 256 * 1024 ||
     !value.ok && !/^[a-z][a-z\d_.-]{0,63}$/u.test(text)
   ) return invalid()
   if (value.ok) {

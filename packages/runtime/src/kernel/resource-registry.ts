@@ -17,7 +17,7 @@ export interface CapabilityResourceRecordV1 {
   references: number
 }
 
-const facade = (value: unknown) => {
+export const resourceFacadeBindingV1 = (value: unknown) => {
   if (value == null || typeof value !== 'object' || Array.isArray(value)) return undefined
   const candidate = value as Record<string, unknown>
   const binding = candidate.binding
@@ -62,6 +62,21 @@ export class CapabilityResourceRegistryV1 {
     return record
   }
 
+  eventDescriptor(
+    bindingId: string
+  ): Readonly<{ eventSchemaId: string; providerModule: string; resourceType: string }> {
+    const record = this.get(bindingId)
+    const { eventSchemaId, resourceType, subscribe } = record.publication
+    if (subscribe == null || eventSchemaId == null) {
+      throw new CapabilityInvocationError('resource.invalid', 'runtime.resource.subscribe', bindingId)
+    }
+    return Object.freeze({
+      eventSchemaId,
+      providerModule: record.providerModule,
+      resourceType
+    })
+  }
+
   publish(
     value: unknown,
     publications: readonly CapabilityProviderResourcePublicationV1[] | undefined,
@@ -69,7 +84,7 @@ export class CapabilityResourceRegistryV1 {
     selection: CapabilitySelectionV1,
     inheritedBindingId?: string
   ): void {
-    const resultFacade = facade(value)
+    const resultFacade = resourceFacadeBindingV1(value)
     if (resultFacade != null && resultFacade.generation !== this.#identity.generation) {
       capabilityFailure('provider.protocol_error', 'runtime.resource', resultFacade.bindingId)
     }

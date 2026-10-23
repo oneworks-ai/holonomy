@@ -5,7 +5,12 @@ import {
 } from '@holonomyjs/runtime/kernel/guest-facade-support'
 import type { FsGuestResourceCallsV1 } from './guest-fs-resources.js'
 import { fsAbortSignalV1, fsObjectV1, fsTargetV1 } from './guest-fs-support.js'
-import { fsWatchErrorV1, fsWatchOptionsSnapshotV1, fsWatchQueueLimitV1 } from './guest-fs-watch-support.js'
+import {
+  fsWatchErrorV1,
+  fsWatchOptionsSnapshotV1,
+  fsWatchProviderErrorV1,
+  fsWatchQueueLimitV1
+} from './guest-fs-watch-support.js'
 
 export const createCapabilityFsWatchIteratorV1 = (
   bridge: CapabilityGuestBridgeV1,
@@ -49,7 +54,7 @@ export const createCapabilityFsWatchIteratorV1 = (
     const tuple = Array.isArray(event.tuple) ? event.tuple : []
     if (event.event === 'error') {
       terminal = true
-      failure = tuple[0] instanceof Error ? tuple[0] : Object.assign(new Error('Filesystem watch failed'), tuple[0])
+      failure = fsWatchProviderErrorV1(tuple[0])
       dispose?.()
       removeAbort()
       while (waiting.length > 0) waiting.shift()!.reject(failure)

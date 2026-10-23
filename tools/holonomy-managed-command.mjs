@@ -1,7 +1,9 @@
+/* eslint-disable max-lines -- managed process command keeps launch, follow and interruption in one flow. */
 import { randomUUID } from 'node:crypto'
 
 import { openHolonomyDevTools } from './holonomy-devtools-launcher.mjs'
 import { prepareHolonomyLaunchSnapshot } from './holonomy-launch-snapshot.mjs'
+import { getHolonomyNativeSourceContext } from './holonomy-native-launch-snapshot.mjs'
 import { startHolonomyPluginWatch } from './holonomy-plugin-watch.mjs'
 import { createHolonomyServiceClient } from './service/service-client.mjs'
 import { ensureHolonomyServiceProcess } from './service/service-process.mjs'
@@ -55,6 +57,11 @@ const refreshAndSelectDevice = async (client, options) => {
   if (options.target === 'node') {
     const local = devices.find(device => device.id === 'node:local' && device.state === 'online')
     if (local == null) throw new Error('The local Node Holonomy host is unavailable')
+    return local
+  }
+  if (options.target === 'native') {
+    const local = devices.find(device => device.id === 'native:local' && device.state === 'online')
+    if (local == null) throw new Error('The local Native Holonomy host is unavailable')
     return local
   }
   const online = devices.filter(device => device.platform === 'android' && device.state === 'online')
@@ -130,10 +137,9 @@ export const openProcessInspector = async (client, process, options, dependencie
   return inspector
 }
 
-export const runHolonomyRuntimeCommand = async (parsed, io, dependencies = {}) => {
+const runPreparedHolonomyRuntimeCommand = async (parsed, io, dependencies, snapshot, nativeContext) => {
   const client = await createClient(parsed.options, dependencies)
   const device = await refreshAndSelectDevice(client, parsed.options)
-  const snapshot = (dependencies.prepareLaunch ?? prepareHolonomyLaunchSnapshot)(parsed.command, parsed.options)
   const admitted = await client.launchProcess({
     ...(snapshot.capabilityRuntime == null ? {} : { capabilityRuntime: snapshot.capabilityRuntime }),
     deviceId: device.id,
@@ -168,7 +174,11 @@ export const runHolonomyRuntimeCommand = async (parsed, io, dependencies = {}) =
       ? (dependencies.startPluginWatch ?? startHolonomyPluginWatch)({
         client,
         configPath: snapshot.pluginConfigPath,
-        dependencies: { ...dependencies, waitForOperation },
+        dependencies: {
+          ...dependencies,
+          waitForOperation,
+          ...(nativeContext == null ? {} : { prepareRuntimePlugins: nativeContext.preparePlugins })
+        },
         io,
         pluginRoots: parsed.options.pluginRoots,
         process: current,
@@ -196,4 +206,18 @@ export const runHolonomyRuntimeCommand = async (parsed, io, dependencies = {}) =
   if (interrupted) return dependencies.signal?.reason === 'SIGINT' ? 130 : 143
   const code = current.exit?.code ?? (current.state === 'exited' ? 0 : 1)
   return parsed.options.allowFailures ? 0 : code
+}
+
+export const runHolonomyRuntimeCommand = async (parsed, io, dependencies = {}) => {
+  const snapshot = await (dependencies.prepareLaunch ?? prepareHolonomyLaunchSnapshot)(
+    parsed.command,
+    parsed.options,
+    dependencies
+  )
+  const nativeContext = getHolonomyNativeSourceContext(snapshot)
+  try {
+    return await runPreparedHolonomyRuntimeCommand(parsed, io, dependencies, snapshot, nativeContext)
+  } finally {
+    await nativeContext?.reader.close()
+  }
 }

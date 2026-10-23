@@ -17,7 +17,7 @@ type JsonScalarOrArrayV1 = JsonScalarV1 | readonly JsonScalarV1[]
 
 ```ts
 type InvocationModeV1 = 'sync' | 'callback' | 'promise'
-
+type EmptyArgsV1 = Readonly<Record<string, never>>
 type OperationCapabilityRefV1 = Readonly<
   { name: BuiltInCapabilityNameV1; version: 1 }
 >

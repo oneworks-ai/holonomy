@@ -12,6 +12,7 @@ export const DEFAULT_NETWORK_CHUNK_BYTES = 64 * 1024
 export const MAX_NETWORK_CHUNK_BYTES = 8 * 1024 * 1024
 
 export const networkSuccess = value => ({ ok: true, value })
+export const networkFailure = error => ({ error, ok: false })
 export const sendNetworkResult = (sink, id, value, resources) =>
   sink({
     id,
@@ -19,6 +20,7 @@ export const sendNetworkResult = (sink, id, value, resources) =>
     type: 'result',
     value: networkSuccess(value)
   })
+export const sendNetworkFailure = (sink, id, error) => sink({ id, type: 'result', value: networkFailure(error) })
 export const sendNetworkResponse = (sink, id, response, hasBody) =>
   sendNetworkResult(sink, id, {
     hasBody,

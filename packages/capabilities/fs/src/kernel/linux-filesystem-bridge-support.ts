@@ -67,24 +67,45 @@ export const requireLinuxFilesystemRight = (mount: ProcessMountPolicyV2, right: 
 
 export const linuxOpenFlag = (
   flags: number
-): Readonly<{ flag: string; rights: readonly ('read' | 'write')[] }> => {
+): Readonly<{
+  flag: Readonly<{
+    kind: 'portable-open-v1'
+    access: 'read' | 'write' | 'readWrite'
+    create: boolean
+    exclusive: boolean
+    truncate: boolean
+    append: boolean
+  }>
+  rights: readonly ('read' | 'write')[]
+}> => {
   if (!Number.isInteger(flags) || flags < 0) throw linuxFilesystemFailure('Unsupported Linux open flags', 22)
   const access = flags & 3
   const create = (flags & 0x40) !== 0
   const exclusive = (flags & 0x80) !== 0
   const truncate = (flags & 0x200) !== 0
   const append = (flags & 0x400) !== 0
-  if (access === 3 || exclusive && !create || truncate && access === 0 || append && access === 0) {
+  // O_NOCTTY, O_NONBLOCK, O_LARGEFILE and O_CLOEXEC have no additional
+  // regular-file Provider effect; every other bit needs an exact implementation.
+  const allowed = 3 | 0x40 | 0x80 | 0x200 | 0x400 | 0x100 | 0x800 | 0x8000 | 0x80000
+  if (
+    (flags & ~allowed) !== 0 || access === 3 || exclusive && !create ||
+    access === 0 && (truncate || append)
+  ) {
     throw linuxFilesystemFailure('Unsupported Linux open flags', 22)
   }
-  const rights: readonly ('read' | 'write')[] = access === 0 ? ['read'] : access === 1 ? ['write'] : ['read', 'write']
-  const flag = append
-    ? access === 2 ? exclusive ? 'ax+' : 'a+' : exclusive ? 'ax' : 'a'
-    : create || truncate
-    ? access === 2 ? exclusive ? 'wx+' : 'w+' : exclusive ? 'wx' : 'w'
-    : access === 0
-    ? 'r'
-    : 'r+'
+  const rights: readonly ('read' | 'write')[] = access === 0
+    ? create ? ['read', 'write'] : ['read']
+    : access === 1
+    ? ['write']
+    : ['read', 'write']
+  const flag = Object.freeze({
+    kind: 'portable-open-v1' as const,
+    access: access === 0 ? 'read' as const : access === 1 ? 'write' as const : 'readWrite' as const,
+    create,
+    exclusive,
+    truncate,
+    append
+  })
   return Object.freeze({ flag, rights })
 }
 

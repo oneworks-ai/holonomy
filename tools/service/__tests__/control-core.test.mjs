@@ -11,80 +11,44 @@ import { serviceError } from '../errors.mjs'
 import { ControlRegistry } from '../registry.mjs'
 import { ServiceLogStore } from '../service-log-store.mjs'
 import { AtomicServiceStateStore } from '../state-store.mjs'
+import { createHarness, waitForOperation } from './control-core-fixture.mjs'
+
 import { restrictedSandboxPolicy } from './sandbox-fixture.mjs'
 
-const waitForOperation = async (core, id) => {
-  for (let turn = 0; turn < 2_000; turn += 1) {
-    const operation = core.get('operations', id, 'Operation')
-    if (['cancelled', 'failed', 'succeeded'].includes(operation.state)) return operation
-    await new Promise(resolve => setTimeout(resolve, 1))
-  }
-  const operation = core.get('operations', id, 'Operation')
-  throw new Error(`Operation did not settle: ${
-    JSON.stringify({
-      operation,
-      process: core.get('processes', operation.target.id, 'Runtime process')
-    })
-  }`)
-}
-
-const createHarness = async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'holonomy-service-core-'))
-  const calls = []
-  const startInputs = []
-  const terminalListeners = new Map()
-  const adbPort = createAdbPort({
-    applyNetworkRules: async input => calls.push(`rules:${input.networkRules.ruleRevision}`),
-    applyRuntimePlugins: async input => calls.push(`plugins:${input.revision}:${input.runtimePlugins.length}`),
-    closeInspector: async input => calls.push(`close-inspector:${input.inspector.id}`),
-    listDevices:
-      async () => [{ id: 'android:emulator-5554', kind: 'emulator', serial: 'emulator-5554', state: 'online' }],
-    openInspector: async input => ({
-      discoveryUrl: `http://127.0.0.1:9229/${input.process.generation}`,
-      localPort: 9_229,
-      targetSession: input.process.generation
-    }),
-    readLogs: async input =>
-      input.after >= 1
-        ? { cursor: input.after, events: [] }
-        : { cursor: 1, events: [{ chunk: 'ready', sequence: 1, stream: 'stdout' }] },
-    removeNetworkRules: async input => calls.push(`remove-rules:${input.networkRules.ruleRevision}`),
-    removeProcess: async input => calls.push(`remove:${input.process.generation}`),
-    startProcess: async input => {
-      calls.push(`start:${input.process.generation}`)
-      startInputs.push(input)
-      return { waitingForDebugger: input.process.inspectorMode === 'break' }
-    },
-    stopProcess: async input => calls.push(`stop:${input.process.generation}`),
-    subscribeProcess: ({ onTerminal, process }) => {
-      const key = `${process.id}:${process.generation}`
-      terminalListeners.set(key, onTerminal)
-      return () => terminalListeners.delete(key)
+describe('post-spawn publication rollback', () => {
+  it.each([false, true])('stops a started generation and retains failed cleanup evidence (%s)', async failStop => {
+    const outputPump = {
+      open: async () => {},
+      close: async () => {},
+      stop: async () => {},
+      start: async () => {
+        throw new Error('publication failed')
+      },
+      captureStartupFailure: async () => {},
+      page: async () => ({ cursor: 0, events: [] }),
+      remove: async () => {}
+    }
+    const test = await createHarness({ failStop, outputPump })
+    try {
+      const started = await test.core.startProcess({
+        deviceId: 'android:emulator-5554',
+        entryUrl: 'app+local://workspace/entry.mjs',
+        inspectorMode: 'off',
+        isolation: 'runtime',
+        launch: { modules: [] },
+        target: 'android'
+      }, 'rollback-start')
+      const operation = await waitForOperation(test.core, started.value.operation.id)
+      assert.equal(operation.state, 'failed')
+      assert.ok(test.calls.includes('stop:1'))
+      const current = test.core.get('processes', started.value.process.id, 'Runtime process')
+      assert.equal(current.state, 'failed')
+      assert.equal(current.cleanupPending === true, failStop)
+    } finally {
+      await test.close()
     }
   })
-  const core = new HolonomyControlCore({
-    adbPort,
-    logStore: new ServiceLogStore({ directory: join(directory, 'logs') }),
-    store: new AtomicServiceStateStore({ directory })
-  })
-  await core.open()
-  await core.refreshDevices()
-  return {
-    calls,
-    close: async () => {
-      await core.close()
-      await rm(directory, { force: true, recursive: true })
-    },
-    core,
-    startInputs,
-    terminal(process, event) {
-      terminalListeners.get(`${process.id}:${process.generation}`)?.({
-        generation: process.generation,
-        ...event
-      })
-    }
-  }
-}
+})
 
 describe('holonomyControlCore', () => {
   it('rejects sensitive and oversized network rules before process or adapter admission', async () => {

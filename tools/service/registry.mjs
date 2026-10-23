@@ -6,8 +6,11 @@ import { admitNetworkRules, admitNetworkRulesRemove, completeNetworkRules } from
 import { updateOperation } from './operation-registry.mjs'
 import { updateProcessCleanupPending } from './process-cleanup-registry.mjs'
 import { admitProcessAction, admitProcessStart, beginRestart, updateProcess } from './process-registry.mjs'
+import { completeProcessRemovalCleanup, readProcessRemovalCleanups } from './process-removal-cleanup.mjs'
 import { removeProcess } from './process-removal.mjs'
+import { completeProcessResume } from './process-resume-registry.mjs'
 import { finalizeProcessSandbox } from './process-sandbox-registry.mjs'
+import { completeProcessStop } from './process-stop-registry.mjs'
 import { getResource, listResources } from './registry-helpers.mjs'
 import { pruneRegistryRetention } from './retention.mjs'
 import { cloneJson } from './validation.mjs'
@@ -50,6 +53,14 @@ export class ControlRegistry {
 
   async beginRestart(id, expectedGeneration, operationId) {
     return await beginRestart(this.#context, id, expectedGeneration, operationId)
+  }
+
+  async completeProcessResume(process, operation, succeeded, cleanupPending = false) {
+    return await completeProcessResume(this.#context, process, operation, succeeded, cleanupPending)
+  }
+
+  async completeProcessStop(process, operationId, outcome = 'stopped') {
+    return await completeProcessStop(this.#context, process, operationId, outcome)
   }
 
   async finalizeProcessSandbox(id, expectedGeneration, input) {
@@ -124,7 +135,13 @@ export class ControlRegistry {
     )
   }
 
-  async pruneRetention() {
-    return await pruneRegistryRetention(this.#context)
+  async pruneRetention(options) {
+    return await pruneRegistryRetention(this.#context, options)
+  }
+  pendingRemovalCleanups() {
+    return readProcessRemovalCleanups(this.#context.store.getSnapshot())
+  }
+  async completeRemovalCleanup(id, generation) {
+    return await completeProcessRemovalCleanup(this.#context, id, generation)
   }
 }

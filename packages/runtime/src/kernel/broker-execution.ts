@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- synchronous and asynchronous Broker frames share terminal and settlement invariants. */
+import type { BrokerFrameLeaseV1 } from './broker-frame-lease.js'
 import { invokeCapabilityProviderAsyncV1, invokeCapabilityProviderSyncV1 } from './broker-provider-invocation.js'
 import type { CapabilityProviderResolutionAdmitterV1 } from './broker-resolution-types.js'
 import type {
@@ -39,29 +41,49 @@ const providerResult = <T>(
   return terminal.result
 }
 
-const syncProvider = <T>(input: ExecutionInputV1<T>): TrustedInvocationValueV1 => {
+const syncProvider = <T>(input: ExecutionInputV1<T>, lease: BrokerFrameLeaseV1): TrustedInvocationValueV1 => {
   if (input.provider.execution !== 'sync') return fail(input, 'runtime.async_required')
   let terminal: CapabilityProviderTerminalV1 | Promise<CapabilityProviderTerminalV1>
   try {
-    terminal = invokeCapabilityProviderSyncV1(input)
+    terminal = invokeCapabilityProviderSyncV1(input, (task, terminalResult) => {
+      const observed = terminalResult
+        ? task.then(value => {
+          input.ownsTerminal(value as CapabilityProviderTerminalV1)
+          return value
+        })
+        : task
+      lease.track(observed)
+    })
   } catch (error) {
     if (error instanceof CapabilityInvocationError) throw error
     return fail(input, 'provider.unavailable')
   }
-  if (terminal instanceof Promise) return fail(input, 'runtime.async_required')
+  if (terminal instanceof Promise) {
+    void lease.track(terminal).then(value => input.ownsTerminal(value), () => undefined).catch(() => undefined)
+    return fail(input, 'runtime.async_required')
+  }
   return providerResult(input, terminal)
 }
 
 export const executeCapabilitySyncV1 = <THostContext>(
-  input: ExecutionInputV1<THostContext>
+  input: ExecutionInputV1<THostContext>,
+  lease: BrokerFrameLeaseV1
 ): TrustedInvocationValueV1 => {
   if (input.middleware.some(item => item.execution !== 'sync')) return fail(input, 'runtime.async_required')
   const dispatch = (index: number): TrustedInvocationValueV1 => {
     const registration = input.middleware[index]
-    if (registration == null) return syncProvider(input)
+    if (registration == null) return syncProvider(input, lease)
     let called = false
+    let violation: CapabilityInvocationError | undefined
     const next = () => {
-      if (called) return fail(input, 'middleware.failed')
+      if (called) {
+        violation ??= new CapabilityInvocationError(
+          'middleware.failed',
+          input.context.operation,
+          input.context.resource.requested.semanticResourceDigest
+        )
+        throw violation
+      }
       called = true
       return dispatch(index + 1)
     }
@@ -72,7 +94,11 @@ export const executeCapabilitySyncV1 = <THostContext>(
       if (error instanceof CapabilityInvocationError) throw error
       return fail(input, 'middleware.failed')
     }
-    if (value instanceof Promise) return fail(input, 'runtime.async_required')
+    if (violation != null) throw violation
+    if (value instanceof Promise) {
+      lease.track(value)
+      return fail(input, 'runtime.async_required')
+    }
     if (!isTrustedInvocationValueV1(value, 'result')) return fail(input, 'middleware.invalid_result')
     return value
   }
@@ -100,6 +126,7 @@ const race = async <T, THostContext>(
           )
       )
     input.context.signal.addEventListener('abort', abort, { once: true })
+    if (input.context.signal.aborted) abort()
     if (timeoutMs != null) {
       timeout = setTimeout(() => {
         const error = new CapabilityInvocationError(
@@ -120,10 +147,19 @@ const race = async <T, THostContext>(
   }
 }
 
-const asyncProvider = async <T>(input: ExecutionInputV1<T>): Promise<TrustedInvocationValueV1> => {
+const asyncProvider = async <T>(
+  input: ExecutionInputV1<T>,
+  lease: BrokerFrameLeaseV1
+): Promise<TrustedInvocationValueV1> => {
   try {
     if (input.context.signal.aborted) return abortFailure(input)
-    const invocation = invokeCapabilityProviderAsyncV1(input)
+    // Host task checkpoint: all same-turn middleware Promise reactions finish
+    // before actual I/O starts. Already started Provider work cannot be rolled back.
+    const invocation = lease.track(new Promise<void>(resolve => setTimeout(resolve, 0)).then(() => {
+      if (lease.closed || input.context.signal.aborted) return abortFailure(input)
+      return invokeCapabilityProviderAsyncV1(input)
+    }))
+    void invocation.then(terminal => input.ownsTerminal(terminal), () => undefined).catch(() => undefined)
     const terminal = await race(
       input,
       Promise.resolve(invocation),
@@ -139,31 +175,62 @@ const asyncProvider = async <T>(input: ExecutionInputV1<T>): Promise<TrustedInvo
 }
 
 export const executeCapabilityAsyncV1 = async <THostContext>(
-  input: ExecutionInputV1<THostContext>
+  input: ExecutionInputV1<THostContext>,
+  lease: BrokerFrameLeaseV1
 ): Promise<TrustedInvocationValueV1> => {
+  let poisoned: CapabilityInvocationError | undefined
+  const poison = () => {
+    poisoned ??= new CapabilityInvocationError(
+      'middleware.failed',
+      input.context.operation,
+      input.context.resource.requested.semanticResourceDigest
+    )
+    input.abort(poisoned)
+    return poisoned
+  }
   const dispatch = async (index: number): Promise<TrustedInvocationValueV1> => {
-    if (input.context.signal.aborted) return abortFailure(input)
+    if (lease.closed || input.context.signal.aborted) return abortFailure(input)
     const registration = input.middleware[index]
-    if (registration == null) return await asyncProvider(input)
+    if (registration == null) return await asyncProvider(input, lease)
     let called = false
-    const next = async () => {
-      if (called) return fail(input, 'middleware.failed')
+    let frameClosed = false
+    const next = () => {
+      if (called || frameClosed || lease.closed) {
+        const rejected = Promise.reject(poison()) as Promise<TrustedInvocationValueV1>
+        void rejected.catch(() => undefined)
+        return rejected
+      }
       called = true
-      return await dispatch(index + 1)
+      const child = start(index + 1)
+      void child.catch(() => undefined)
+      return child
     }
     try {
+      const raw = lease.track(Promise.resolve(registration.middleware(input.context, next)))
       const value = await race(
         input,
-        Promise.resolve(registration.middleware(input.context, next)),
+        raw,
         'middleware.timeout',
         registration.timeoutMs
       )
+      if (poisoned != null) throw poisoned
       if (!isTrustedInvocationValueV1(value, 'result')) return fail(input, 'middleware.invalid_result')
       return value
     } catch (error) {
-      if (error instanceof CapabilityInvocationError) throw error
-      return fail(input, 'middleware.failed')
+      const terminal = error instanceof CapabilityInvocationError
+        ? error
+        : new CapabilityInvocationError(
+          'middleware.failed',
+          input.context.operation,
+          input.context.resource.requested.semanticResourceDigest
+        )
+      input.abort(terminal)
+      throw terminal
+    } finally {
+      frameClosed = true
     }
   }
-  return await dispatch(0)
+  const start = (index: number): Promise<TrustedInvocationValueV1> =>
+    lease.track(Promise.resolve().then(() => dispatch(index)))
+  return await start(0)
 }

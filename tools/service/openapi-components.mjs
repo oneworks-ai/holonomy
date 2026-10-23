@@ -10,7 +10,7 @@ export const OPENAPI_COMPONENTS = {
       properties: {
         id: { type: 'string' },
         kind: { enum: ['emulator', 'local', 'physical', 'unknown'] },
-        platform: { enum: ['android', 'node'] },
+        platform: { enum: ['android', 'node', 'native'] },
         serial: { type: 'string' },
         state: { enum: ['disconnected', 'offline', 'online', 'unauthorized', 'unknown'] }
       },
@@ -125,7 +125,7 @@ export const OPENAPI_COMPONENTS = {
         sandboxPolicyDigest: { pattern: '^[0-9a-f]{64}$', type: 'string' },
         sandboxPolicyState: { enum: ['effective', 'pending'] },
         sessionId: { type: 'string' },
-        target: { enum: ['android', 'node'] },
+        target: { enum: ['android', 'node', 'native'] },
         updatedAt: { minimum: 0, type: 'integer' },
         state: {
           enum: [

@@ -5,6 +5,21 @@ plugins {
 
 val repositoryRoot = rootProject.projectDir.resolve("../..").canonicalFile
 val generatedRuntimeAssets = layout.buildDirectory.dir("generated/runtimeAssets")
+val generatedConformanceAssets = layout.buildDirectory.dir("generated/conformanceAssets")
+val prepareConformanceAssets by tasks.registering(Copy::class) {
+    from(repositoryRoot.resolve("conformance/capabilities/crypto-v1.test.mjs"))
+    into(generatedConformanceAssets.map { it.dir("conformance") })
+}
+val prepareStorageConformanceAssets by tasks.registering(Exec::class) {
+    workingDir(repositoryRoot)
+    commandLine("node", layout.projectDirectory.file("tools/generate-storage-fixture.mjs").asFile.absolutePath,
+        generatedConformanceAssets.get().file("conformance/storage-kv-fixture.json").asFile.absolutePath)
+    inputs.file(layout.projectDirectory.file("tools/generate-storage-fixture.mjs"))
+    inputs.file(repositoryRoot.resolve("conformance/capabilities/storage-kv-v1.test.mjs"))
+    inputs.dir(repositoryRoot.resolve("packages/capabilities/storage/dist"))
+    inputs.file(repositoryRoot.resolve("tools/service/capability-runtime-preparation.mjs"))
+    outputs.file(generatedConformanceAssets.map { it.file("conformance/storage-kv-fixture.json") })
+}
 val v86AssetRoot = providers.gradleProperty("holonomy.v86.assetsDir")
     .orElse(providers.environmentVariable("HOLO_V86_ANDROID_ASSET_ROOT"))
     .orElse(providers.environmentVariable("HOLO_V86_PROBE_ASSET_ROOT"))
@@ -24,7 +39,7 @@ val prepareRuntimeAssets by tasks.registering(Exec::class) {
     inputs.dir(repositoryRoot.resolve("dist"))
     inputs.dir(repositoryRoot.resolve("packages/runtime/dist"))
     inputs.dir(repositoryRoot.resolve("packages/runtime/src"))
-    listOf("device", "fs", "network", "process", "system").forEach { capability ->
+    listOf("device", "fs", "network", "process", "storage", "system").forEach { capability ->
         inputs.dir(repositoryRoot.resolve("packages/capabilities/$capability/dist"))
         inputs.dir(repositoryRoot.resolve("packages/capabilities/$capability/src"))
     }
@@ -33,6 +48,8 @@ val prepareRuntimeAssets by tasks.registering(Exec::class) {
         inputs.dir(repositoryRoot.resolve("packages/plugins/$plugin/src"))
     }
     inputs.dir(layout.projectDirectory.dir("src/runtimeBootstrap"))
+    inputs.dir(repositoryRoot.resolve("adapters/android/runtime-host/src/runtimeBootstrap"))
+    inputs.dir(repositoryRoot.resolve("adapters/android/runtime-host/tools"))
     inputs.dir(layout.projectDirectory.dir("src/runtimeFixtures"))
     inputs.dir(layout.projectDirectory.dir("src/backendProbe"))
     inputs.dir(repositoryRoot.resolve("conformance/capabilities"))
@@ -68,6 +85,7 @@ android {
     }
 
     sourceSets.getByName("main").assets.srcDir(generatedRuntimeAssets)
+    sourceSets.getByName("androidTest").assets.srcDir(generatedConformanceAssets)
     sourceSets.getByName("main").assets.srcDir(
         repositoryRoot.resolve("packages/runtime/src/kernel/machine"),
     )
@@ -84,9 +102,12 @@ kotlin {
 
 tasks.configureEach {
     if (name == "preBuild") dependsOn(prepareRuntimeAssets)
+    if (name == "mergeDebugAndroidTestAssets") dependsOn(prepareConformanceAssets, prepareStorageConformanceAssets)
 }
 
 dependencies {
+    implementation(project(":crypto-host"))
+    implementation(project(":storage-host"))
     implementation(project(":capability-host"))
     implementation(project(":v8-host"))
     implementation(project(":network-host"))

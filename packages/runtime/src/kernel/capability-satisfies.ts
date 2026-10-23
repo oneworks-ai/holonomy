@@ -1,3 +1,4 @@
+import { storageCapabilitySatisfiesV1 } from '@holonomyjs/capability-storage/kernel/storage-capability-constraints'
 import { DEVICE_PRECISION_V1, SYSTEM_PRECISION_V1, normalizeCapabilityConstraintsV1 } from './capability-constraints.js'
 import type { NormalizedCapabilityConstraintsV1 } from './capability-constraints.js'
 import type { JsonValueV1 } from './json-types.js'
@@ -75,6 +76,7 @@ export const capabilitySatisfiesV1 = (
   const available = normalizeCapabilityConstraintsV1(name, availableValue)
   const required = normalizeCapabilityConstraintsV1(name, requiredValue)
   if (name === 'host.fs') return satisfiesFs(available, required)
+  if (name === 'host.storage') return storageCapabilitySatisfiesV1(available, required)
   if (name === 'host.network.http' || name === 'host.network.mock') {
     return satisfiesNetwork(available, required)
   }

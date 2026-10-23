@@ -121,7 +121,10 @@ const invalid = (): never => {
 const exact = (value: unknown, keys: readonly string[]): Record<string, unknown> => {
   if (value == null || typeof value !== 'object' || Array.isArray(value)) return invalid()
   const input = value as Record<string, unknown>
-  if (Object.keys(input).some(key => !keys.includes(key))) return invalid()
+  if (
+    keys.some(key => !Object.hasOwn(input, key)) ||
+    Object.keys(input).some(key => !keys.includes(key))
+  ) return invalid()
   return input
 }
 

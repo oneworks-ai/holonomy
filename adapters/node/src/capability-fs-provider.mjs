@@ -4,7 +4,13 @@ import { CapabilityInvocationError } from '../../../dist/capability-runtime/inde
 import { NodeFilesystemPathOperationsV1 } from './capability-fs-path-operations.mjs'
 import { NodeFilesystemPathsV1 } from './capability-fs-paths.mjs'
 import { NodeFilesystemResourcesV1 } from './capability-fs-resources.mjs'
-import { filesystemSymlinkMode, mapProviderError, rightFor, selectedFilesystemRoot } from './capability-fs-support.mjs'
+import {
+  filesystemSymlinkMode,
+  mapProviderError,
+  rightFor,
+  selectedFilesystemRoot,
+  selectedFilesystemRootConstraint
+} from './capability-fs-support.mjs'
 
 export class NodeFilesystemProviderV1 {
   execution = 'sync'
@@ -19,7 +25,34 @@ export class NodeFilesystemProviderV1 {
     this.#operations = new NodeFilesystemPathOperationsV1(this.#paths, this.#resources)
   }
 
+  close() {
+    this.#paths.close()
+  }
+
+  #assertSource(context) {
+    const linux = context.source?.kind === 'linuxProcess'
+    if (
+      context.operation !== 'filesystem.metadata.chmod' &&
+      context.arguments != null && typeof context.arguments === 'object' &&
+      Object.hasOwn(context.arguments, 'expectedKind')
+    ) throw new CapabilityInvocationError('argument.invalid', context.operation)
+    if (
+      ['filesystem.directory.open', 'filesystem.directory.sync', 'filesystem.directory.close'].includes(
+          context.operation
+        ) && !linux ||
+      (context.operation === 'filesystem.metadata.utimes' ||
+          context.operation === 'filesystem.metadata.chmod' ||
+          context.operation === 'filesystem.file.truncate') &&
+        context.arguments?.readback === true && !linux ||
+      context.operation === 'filesystem.metadata.utimes' &&
+        [context.arguments?.atime?.kind, context.arguments?.mtime?.kind].some(kind => kind !== 'set') && !linux
+    ) {
+      throw new CapabilityInvocationError('capability.denied', context.operation)
+    }
+  }
+
   invoke(context, authority) {
+    this.#assertSource(context)
     const resource = context.resource.requested
     if (resource.kind !== 'filesystem') {
       throw new CapabilityInvocationError('resource.invalid', context.operation)
@@ -27,9 +60,12 @@ export class NodeFilesystemProviderV1 {
     if (context.resource.inheritedBindingId == null) {
       throw new CapabilityInvocationError('provider.protocol_error', context.operation)
     }
-    const required = rightFor(context, resource)
+    const required = rightFor(context, resource, authority)
     const rights = Array.isArray(required) ? required : [required]
-    if (!rights.every(right => selectedFilesystemRoot(authority, resource, right))) {
+    if (
+      selectedFilesystemRootConstraint(authority, resource, rights) == null ||
+      !rights.every(right => selectedFilesystemRoot(authority, resource, right))
+    ) {
       throw new CapabilityInvocationError(
         'capability.denied',
         context.operation,
@@ -44,14 +80,18 @@ export class NodeFilesystemProviderV1 {
   }
 
   preflight(context, authority) {
+    this.#assertSource(context)
     const resource = context.resource.requested
     if (context.resource.inheritedBindingId != null) return undefined
     if (resource.kind !== 'filesystem') {
       throw new CapabilityInvocationError('resource.invalid', context.operation)
     }
-    const required = rightFor(context, resource)
+    const required = rightFor(context, resource, authority)
     const rights = Array.isArray(required) ? required : [required]
-    if (!rights.every(right => selectedFilesystemRoot(authority, resource, right))) {
+    if (
+      selectedFilesystemRootConstraint(authority, resource, rights) == null ||
+      !rights.every(right => selectedFilesystemRoot(authority, resource, right))
+    ) {
       throw new CapabilityInvocationError('capability.denied', context.operation, resource.semanticResourceDigest)
     }
     try {
@@ -78,7 +118,8 @@ export class NodeFilesystemProviderV1 {
                     destinationAuthority: authorities[1],
                     destinationResource: destination.resolved
                   }),
-                target: source.target
+                target: source.target,
+                targetEvidence: source.evidence
               }
             )
           } catch (error) {

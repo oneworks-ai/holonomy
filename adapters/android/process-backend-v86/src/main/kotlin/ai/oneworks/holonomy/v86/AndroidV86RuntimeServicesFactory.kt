@@ -28,7 +28,7 @@ class AndroidV86RuntimeServicesFactory(
     private val networkTransportFactory: (() -> AndroidV86NetworkTransport)? = null,
     private val capabilityDomains: Set<String> = emptySet(),
     private val backendDiagnostics: Boolean = false,
-    private val backendStartupTimeoutMs: Long = 300_000L,
+    private val backendStartupTimeoutMs: Long = DEFAULT_STARTUP_TIMEOUT_MS,
 ) : RuntimeCapabilityServicesFactory {
     private val context = applicationContext.applicationContext
 
@@ -64,11 +64,16 @@ class AndroidV86RuntimeServicesFactory(
         val backendConfiguration = profile.getJSONObject("backend").also { backend ->
             require(backend.getString("backendId") == BACKEND_ID)
         }.getJSONObject("configuration")
+        val environment = profile.getJSONObject("environment")
+        val allowedScopes = environment.getJSONArray("allowedScopes")
+        require(
+            environment.getString("defaultScope") == "processTree" &&
+                allowedScopes.length() == 1 && allowedScopes.getString(0) == "processTree",
+        ) { "Android v86 requires one root per processTree environment" }
         val assets = AndroidV86AssetStore(context.assets)
         assets.requireBackend(backendConfiguration, profile)
         AndroidV86ProcessBackendFeature.enable()
         val sink = AtomicReference<AndroidV86ProcessEventSink>()
-        val environment = profile.getJSONObject("environment")
         val baseBackendConfiguration = JSONObject()
                 .put("generation", generation)
                 .put("memoryBytes", backendConfiguration.getInt("memoryBytes"))
@@ -218,6 +223,7 @@ class AndroidV86RuntimeServicesFactory(
         (0 until length()).map { index -> getJSONObject(index) }
 
     companion object {
+        const val DEFAULT_STARTUP_TIMEOUT_MS = 300_000L
         const val BACKEND_ID = "experimental.v86-v1"
     }
 }

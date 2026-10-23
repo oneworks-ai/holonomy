@@ -71,23 +71,25 @@ export const parseHolonomyArgs = input => {
     } else if (argument?.startsWith('-')) throw new Error(`Unknown option: ${argument}`)
     else options.entries.push(argument)
   }
-  if (options.target !== 'android' && options.target !== 'node') {
-    throw new Error('--target android|node is required')
+  if (options.target !== 'android' && options.target !== 'node' && options.target !== 'native') {
+    throw new Error('--target android|node|native is required')
   }
   if (options.isolation !== 'runtime' && options.isolation !== 'isolatedProcess') {
     throw new Error('--isolation must be runtime or isolatedProcess')
   }
-  if (options.target === 'node' && options.isolation !== 'runtime') {
+  if (options.target !== 'android' && options.isolation !== 'runtime') {
     throw new Error('--isolation isolatedProcess is supported only by Android')
   }
   if (options.config === '') throw new Error('--config requires one JSON file')
   if (options.capabilityRuntime === '') throw new Error('--capability-runtime requires one JSON file')
   if (options.pluginRoots.includes('')) throw new Error('--plugin-root requires one directory')
-  if (command !== 'run' && (options.config != null || options.watch || options.pluginRoots.length > 0)) {
-    throw new Error('Runtime plugins are supported only by holonomy run')
+  if (command !== 'run' && options.watch) {
+    throw new Error('--watch is supported only by holonomy run')
   }
   if (options.watch && options.detach) throw new Error('--watch cannot be combined with --detach')
-  if (options.watch && options.target !== 'node') throw new Error('--watch is supported by Node/Desktop Runtime only')
+  if (options.watch && options.target === 'android') {
+    throw new Error('--watch is supported by Node/Desktop Runtime only')
+  }
   if (options.watch && options.config == null) options.config = 'holo.config.json'
   if (typeof options.openapi !== 'string' || options.openapi === '') throw new Error('--openapi requires auto or a URL')
   if (options.openapi !== 'auto') {

@@ -6,13 +6,19 @@ export interface RuntimeProcessSnapshot {
   readonly execPath: string
   readonly pid: number
   readonly platform: string
-  readonly versions: Readonly<{ node: string }>
+  readonly versions: Readonly<Record<string, string>>
 }
 
 export interface RuntimeProcessControl {
   /** Requests generic process termination. The host owns isolate teardown after the current callback unwinds. */
   exit(code: number): void
 }
+
+/** Trusted local scheduling only; callback and arguments never cross a Host transport. */
+export type RuntimeNextTickScheduler = (
+  callback: (...args: unknown[]) => unknown,
+  ...args: unknown[]
+) => void
 
 export interface RuntimeStdioProvider {
   /** Receives text or bytes directly; hosts must not add base64 transport. */
@@ -55,6 +61,7 @@ export interface NodeCoreCompatOptions {
   readonly os: RuntimeOsSnapshot
   readonly stdio: RuntimeStdioProvider
   readonly processControl?: RuntimeProcessControl
+  readonly nextTick?: RuntimeNextTickScheduler
   /** Maximum bytes per write; defaults to 1 MiB and may be lowered to the host limit. */
   readonly maxStdioChunkBytes?: number
   /** Defaults to app://runtime/ and is accepted by fileURLToPath. */

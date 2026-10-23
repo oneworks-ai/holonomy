@@ -55,7 +55,7 @@ const context = {
 
 describe('capability definition and selection v1', () => {
   it('has one closed definition for every built-in capability', () => {
-    expect(CAPABILITY_DEFINITION_REGISTRY_V1).toHaveLength(21)
+    expect(CAPABILITY_DEFINITION_REGISTRY_V1).toHaveLength(22)
     expect(new Set(CAPABILITY_DEFINITION_REGISTRY_V1.map(item => item.name)).size)
       .toBe(CAPABILITY_DEFINITION_REGISTRY_V1.length)
   })

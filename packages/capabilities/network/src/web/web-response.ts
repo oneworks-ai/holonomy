@@ -1,10 +1,11 @@
+/* eslint-disable max-lines -- Response branding and bounded body admission share one private owner. */
+
 import { createWebNetworkError } from './errors.js'
 import { cloneBodyBytes } from './request-validation.js'
-import { createInlineBody } from './web-body.js'
-import { WebHeaders } from './web-headers.js'
+import { WebBodyController, createInlineBody } from './web-body.js'
+import { WebHeaders, readTrustedWebHeader } from './web-headers.js'
 
 import type { WebBodyInit, WebNetworkCapabilityAdmissionV1, WebNetworkCapabilityHooksV1 } from './types.js'
-import type { WebBodyController } from './web-body.js'
 import type { WebHeadersInit } from './web-headers.js'
 
 export interface WebResponseInit {
@@ -27,6 +28,35 @@ export interface WebNetworkResponseInit extends WebResponseInit {
 
 const STATUS_TEXT_INVALID = /[\r\n\0]/u
 const NULL_BODY_STATUSES = new Set([204, 205, 304])
+const APPLY = Reflect.apply
+const OBJECT_CREATE = Object.create
+const OBJECT_FREEZE = Object.freeze
+const OBJECT_KEYS = Object.keys
+const NUMBER_IS_SAFE_INTEGER = Number.isSafeInteger
+const MATH_MIN = Math.min
+const STRING_INDEX_OF = String.prototype.indexOf
+const STRING_SLICE = String.prototype.slice
+const STRING_TRIM = String.prototype.trim
+const STRING_TO_LOWER_CASE = String.prototype.toLowerCase
+const WEAK_MAP_GET = WeakMap.prototype.get
+const WEAK_MAP_SET = WeakMap.prototype.set
+const BODY_BYTES = WebBodyController.prototype.bytes
+const BODY_CANCEL = WebBodyController.prototype.cancel
+const BODY_CLONE = WebBodyController.prototype.clone
+const trustedWasmResponses = new WeakMap<
+  WebResponse,
+  Readonly<{
+    body: WebBodyController
+    capability?: WebNetworkResponseInit['capability']
+    headers: WebHeaders
+    maxBodyBytes: number
+    redirected: boolean
+    status: number
+    statusText: string
+    url: string
+  }>
+>()
+const trustedNetworkResponse = Symbol('trusted network response')
 
 export class WebResponse {
   readonly headers: WebHeaders
@@ -55,11 +85,11 @@ export class WebResponse {
     const bytes = cloneBodyBytes(body)
     this.bodyController = createInlineBody(bytes)
     this.maxBodyBytes = bytes?.byteLength ?? 0
+    WebResponse.#rememberWasmResponse(this)
   }
 
-  static fromNetwork(init: WebNetworkResponseInit) {
-    const response = Object.create(WebResponse.prototype) as WebResponse
-    Object.assign(response, {
+  static fromNetwork(init: WebNetworkResponseInit, trusted?: symbol) {
+    const fields = {
       bodyController: init.body,
       ...(init.capability == null ? {} : { capability: init.capability }),
       headers: new WebHeaders(init.headers),
@@ -69,7 +99,13 @@ export class WebResponse {
       statusText: init.statusText ?? '',
       type: 'basic',
       url: init.url
-    })
+    }
+    const descriptors = OBJECT_CREATE(null) as PropertyDescriptorMap
+    for (const name of OBJECT_KEYS(fields) as (keyof typeof fields)[]) {
+      descriptors[name] = { configurable: true, enumerable: true, value: fields[name], writable: true }
+    }
+    const response = OBJECT_CREATE(WebResponse.prototype, descriptors) as WebResponse
+    if (trusted === trustedNetworkResponse) WebResponse.#rememberWasmResponse(response)
     return response
   }
 
@@ -124,22 +160,38 @@ export class WebResponse {
   }
 
   clone() {
-    const admission = this.capability?.hooks.cloneResponse(this.capability.admission)
-    const capability = this.capability == null || admission == null
+    const trusted = APPLY(WEAK_MAP_GET, trustedWasmResponses, [this]) as
+      | ReturnType<typeof trustedWasmResponses.get>
+      | undefined
+    const sourceCapability = trusted?.capability ?? this.capability
+    const admission = sourceCapability?.hooks.cloneResponse(sourceCapability.admission)
+    const capability = sourceCapability == null || admission == null
       ? undefined
-      : { admission, hooks: this.capability.hooks, metadata: this.capability.metadata }
-    return WebResponse.fromNetwork({
-      body: this.bodyController.clone(
+      : { admission, hooks: sourceCapability.hooks, metadata: sourceCapability.metadata }
+    let body: WebBodyController | undefined
+    try {
+      body = APPLY(BODY_CLONE, trusted?.body ?? this.bodyController, [
         capability == null ? undefined : () => capability.hooks.releaseResponse(capability.admission)
-      ),
-      headers: this.headers,
-      maxBodyBytes: this.maxBodyBytes,
-      redirected: this.redirected,
-      status: this.status,
-      statusText: this.statusText,
-      url: this.url,
-      ...(capability == null ? {} : { capability })
-    })
+      ]) as WebBodyController
+      return APPLY(FROM_NETWORK, WebResponse, [{
+        body,
+        headers: trusted?.headers ?? this.headers,
+        maxBodyBytes: trusted?.maxBodyBytes ?? this.maxBodyBytes,
+        redirected: trusted?.redirected ?? this.redirected,
+        status: trusted?.status ?? this.status,
+        statusText: trusted?.statusText ?? this.statusText,
+        url: trusted?.url ?? this.url,
+        ...(capability == null ? {} : { capability })
+      }, trusted == null ? undefined : trustedNetworkResponse]) as WebResponse
+    } catch (error) {
+      try {
+        if (body == null) capability?.hooks.releaseResponse(capability.admission)
+        else APPLY(BODY_CANCEL, body, ['clone_failed'])
+      } catch {
+        // Cleanup must not replace the selected clone failure.
+      }
+      throw error
+    }
   }
 
   dispose() {
@@ -162,4 +214,77 @@ export class WebResponse {
       metadata: this.capability.metadata
     }, member)
   }
+
+  static #rememberWasmResponse(response: WebResponse) {
+    APPLY(WEAK_MAP_SET, trustedWasmResponses, [
+      response,
+      OBJECT_FREEZE({
+        body: response.bodyController,
+        ...(response.capability == null
+          ? {}
+          : { capability: OBJECT_FREEZE({ ...response.capability }) }),
+        headers: response.headers,
+        maxBodyBytes: response.maxBodyBytes,
+        redirected: response.redirected,
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url
+      })
+    ])
+  }
 }
+
+// Capture the internal factory before Guest code can replace the public static
+// method and observe the private trust token passed by Fetch or clone().
+const FROM_NETWORK = WebResponse.fromNetwork
+
+/** Adapter-only bounded reader for genuine Runtime Responses. */
+export const readWasmStreamingResponse = async (input: unknown, maximumBytes: number) => {
+  const state = APPLY(WEAK_MAP_GET, trustedWasmResponses, [input]) as
+    | ReturnType<typeof trustedWasmResponses.get>
+    | undefined
+  if (state == null) throw new TypeError('WebAssembly streaming source must resolve to a Response')
+  const cancel = (reason: string) => {
+    try {
+      APPLY(BODY_CANCEL, state.body, [reason])
+    } catch {
+      // Preserve the selected response or body error if the stream is locked.
+    }
+  }
+  const mime = readTrustedWebHeader(state.headers, 'content-type')
+  const separator = mime == null ? -1 : APPLY(STRING_INDEX_OF, mime, [';']) as number
+  const essence = mime == null
+    ? null
+    : APPLY(
+      STRING_TO_LOWER_CASE,
+      APPLY(STRING_TRIM, separator < 0 ? mime : APPLY(STRING_SLICE, mime, [0, separator]), []),
+      []
+    ) as string
+  if (
+    state.status < 200 || state.status > 299 ||
+    essence !== 'application/wasm'
+  ) {
+    cancel('invalid_wasm_response')
+    throw new TypeError('WebAssembly streaming response must be successful application/wasm')
+  }
+  if (!NUMBER_IS_SAFE_INTEGER(maximumBytes) || maximumBytes < 0) {
+    throw new TypeError('Invalid WebAssembly source limit')
+  }
+  try {
+    if (state.capability != null) {
+      await state.capability.hooks.authorizeResponse({
+        admission: state.capability.admission,
+        metadata: state.capability.metadata
+      }, 'Response.bytes')
+    }
+    return await APPLY(BODY_BYTES, state.body, [MATH_MIN(state.maxBodyBytes, maximumBytes)]) as Uint8Array
+  } catch (error) {
+    cancel('wasm_response_read_failed')
+    throw error
+  }
+}
+
+/** Only the Fetch runtime can mark a network Response as a trusted source. */
+export const createTrustedNetworkResponse = (init: WebNetworkResponseInit) => (
+  APPLY(FROM_NETWORK, WebResponse, [init, trustedNetworkResponse]) as WebResponse
+)

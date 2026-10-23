@@ -2,6 +2,7 @@ import { DEVICE_OPERATION_REGISTRY_V1 } from '@holonomyjs/capability-device/kern
 import { FILESYSTEM_OPERATION_REGISTRY_V1 } from '@holonomyjs/capability-fs/kernel/filesystem-registry'
 import { NETWORK_OPERATION_REGISTRY_V1 } from '@holonomyjs/capability-network/kernel/network-registry'
 import { PROCESS_OPERATION_REGISTRY_V1 } from '@holonomyjs/capability-process/kernel/process-registry'
+import { STORAGE_OPERATION_REGISTRY_V1 } from '@holonomyjs/capability-storage/kernel/storage-registry'
 import { SYSTEM_OPERATION_REGISTRY_V1 } from '@holonomyjs/capability-system/kernel/system-registry'
 import type { OperationDescriptorV1 } from './operation-types.js'
 
@@ -10,6 +11,7 @@ export const OPERATION_REGISTRY_V1: readonly OperationDescriptorV1[] = Object.fr
   ...FILESYSTEM_OPERATION_REGISTRY_V1,
   ...NETWORK_OPERATION_REGISTRY_V1,
   ...PROCESS_OPERATION_REGISTRY_V1,
+  ...STORAGE_OPERATION_REGISTRY_V1,
   ...SYSTEM_OPERATION_REGISTRY_V1
 ])
 

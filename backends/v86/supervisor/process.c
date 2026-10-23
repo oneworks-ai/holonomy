@@ -95,6 +95,8 @@ static void child_close_pipes(int pipes[3][2]) {
 static pid_t launch_child(
     const struct holo_spawn_request *request,
     int pipes[3][2],
+    uint32_t max_total_processes,
+    uint32_t max_process_tree_depth,
     struct holo_exec_gate *gate
 ) {
     int sockets[2] = { -1, -1 };
@@ -109,7 +111,9 @@ static pid_t launch_child(
     }
     if (pid != 0) {
         close_fd(&sockets[1]);
-        if (holo_exec_gate_prepare_parent(sockets[0], pid, gate) != 0) {
+        if (holo_exec_gate_prepare_parent(
+            sockets[0], pid, max_total_processes, max_process_tree_depth, gate
+        ) != 0) {
             close_fd(&sockets[0]);
             kill(pid, SIGKILL);
             waitpid(pid, NULL, 0);
@@ -150,7 +154,10 @@ int holo_process_spawn(struct holo_process_table *table, int control_fd, const s
     struct holo_process *process = allocate_process(table);
     int pipes[3][2] = { { -1, -1 }, { -1, -1 }, { -1, -1 } };
     pid_t pid;
-    if (process == NULL || holo_parse_spawn(frame, &request) != 0) {
+    if (
+        process == NULL || table->max_total_processes == 0 ||
+        table->max_process_tree_depth == 0 || holo_parse_spawn(frame, &request) != 0
+    ) {
         return holo_write_error(control_fd, frame->request_id, 0, "spawn.invalid");
     }
     if (
@@ -167,7 +174,13 @@ int holo_process_spawn(struct holo_process_table *table, int control_fd, const s
     process->stdout_fd = -1;
     process->stderr_fd = -1;
     holo_exec_gate_init(&process->exec_gate);
-    pid = launch_child(&request, pipes, &process->exec_gate);
+    pid = launch_child(
+        &request,
+        pipes,
+        table->max_total_processes,
+        table->max_process_tree_depth,
+        &process->exec_gate
+    );
     if (pid < 0) {
         close_pipes(pipes);
         holo_spawn_request_free(&request);

@@ -10,9 +10,11 @@ import ai.oneworks.holonomy.v8.RuntimeEngineFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertArrayEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -21,6 +23,7 @@ class NativePortTransportInstrumentationTest {
     @Test
     fun testNativeTransportSnapshotsProviderBinaryAndClosesHostOnce() {
         val closeCount = AtomicInteger()
+        val inputSnapshot = AtomicReference<ByteArray>()
         val nativeHost = object : RuntimeNativeHost {
             override fun dispatch(
                 requestId: String,
@@ -30,6 +33,7 @@ class NativePortTransportInstrumentationTest {
                 sink: RuntimeNativeEventSink,
                 resourceSink: RuntimeNativeResourceEventSink,
             ) {
+                inputSnapshot.set(binary.single().data.copyOf())
                 val data = byteArrayOf(1, 2, 3)
                 val output = mutableListOf(RuntimeNativeBinary("snapshot:0", data))
                 sink.emit(
@@ -50,12 +54,28 @@ class NativePortTransportInstrumentationTest {
         val engine = RuntimeEngineFactory.create(runtimeAssets(), nativeHost)
         try {
             engine.start().get(INSTRUMENTATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            engine.evaluate("__oneworksHolonomy.exerciseNativeBinarySnapshot()")
-                .get(INSTRUMENTATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            val state = awaitRuntimeState(engine, "native binary snapshot") {
-                it.optJSONObject("nativeBinary")?.optString("phase") == "resolved"
+            engine.evaluate("""
+                globalThis.__bufferPoisonCallbacks = 0;
+                globalThis.__typedBufferPrototype = Object.getPrototypeOf(Uint8Array.prototype);
+                globalThis.__typedBufferDescriptor = Object.getOwnPropertyDescriptor(__typedBufferPrototype, 'buffer');
+                Object.defineProperty(__typedBufferPrototype, 'buffer', { configurable: true, get() {
+                  __bufferPoisonCallbacks++; throw new Error('Native binary getter executed');
+                }});
+            """.trimIndent()).get(INSTRUMENTATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            try {
+                engine.evaluate("__oneworksHolonomy.exerciseNativeBinarySnapshot(new Uint8Array([7]))")
+                    .get(INSTRUMENTATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                val state = awaitRuntimeState(engine, "native binary snapshot") {
+                    it.optJSONObject("nativeBinary")?.optString("phase") == "resolved"
+                }
+                assertEquals("[1,2,3]", state.getJSONObject("nativeBinary").getJSONArray("bytes").toString())
+                assertArrayEquals(byteArrayOf(7), inputSnapshot.get())
+                assertEquals("0", engine.evaluate("__bufferPoisonCallbacks")
+                    .get(INSTRUMENTATION_TIMEOUT_SECONDS, TimeUnit.SECONDS).value)
+            } finally {
+                engine.evaluate("Object.defineProperty(__typedBufferPrototype, 'buffer', __typedBufferDescriptor)")
+                    .get(INSTRUMENTATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             }
-            assertEquals("[1,2,3]", state.getJSONObject("nativeBinary").getJSONArray("bytes").toString())
             engine.evaluate("__oneworksHolonomy.dispose()")
                 .get(INSTRUMENTATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             awaitRuntimeState(engine, "native host disposal") { it.optString("phase") == "disposed" }

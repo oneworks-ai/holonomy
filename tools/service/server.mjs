@@ -2,11 +2,13 @@ import { createServer as createHttpServer } from 'node:http'
 import { createServer as createHttpsServer } from 'node:https'
 import { isAbsolute, join } from 'node:path'
 
+import { normalizeCapabilityObserverRegistryV1 } from './capability-runtime-observers.mjs'
 import { handleInspectorUpgrade } from './cdp-websocket-server.mjs'
 import { HolonomyControlCore } from './control-core.mjs'
 import { serviceError } from './errors.mjs'
 import { admitRequestHost, validateHttpConfiguration } from './http-utils.mjs'
 import { DurableMutationCoordinator } from './mutation-coordinator.mjs'
+import { createNativeRuntimeAdapter } from './native-target-adapter.mjs'
 import { createNodeRuntimeAdapter } from './node-target-adapter.mjs'
 import { createOptionalAndroidRuntimeAdapter } from './optional-android-target-adapter.mjs'
 import { createServiceRequestHandler } from './router.mjs'
@@ -49,12 +51,25 @@ export const createHolonomyService = options => {
     now: options.now,
     retentionMs: options.retentionMs
   })
+  const observerRegistry = normalizeCapabilityObserverRegistryV1(options.capabilityObserverRegistry)
   const adapterDispatcher = options.adapterDispatcher ?? createTargetAdapterDispatcher({
     android: options.adbPort ?? createOptionalAndroidRuntimeAdapter({
       emulatorStateFile: options.stateDirectory == null ? undefined : join(options.stateDirectory, 'emulators.json'),
       leaseStateFile: options.stateDirectory == null ? undefined : join(options.stateDirectory, 'adb-leases.json')
     }),
-    node: options.nodeAdapter ?? createNodeRuntimeAdapter()
+    node: options.nodeAdapter ?? createNodeRuntimeAdapter({
+      engineGate: options.capabilityEngineGate,
+      observerBindings: [...observerRegistry.values()],
+      observerHostCaps: options.capabilityObserverHostCaps,
+      sourceReaderHostCaps: options.capabilityEngineSourceReaderHostCaps
+    }),
+    native: options.nativeAdapter ?? (options.nativeExecutablePath == null
+      ? undefined
+      : createNativeRuntimeAdapter({
+        executablePath: options.nativeExecutablePath,
+        deviceProvider: options.nativeDeviceProvider,
+        stateDirectory: options.stateDirectory
+      }))
   })
   const mutationCoordinator = options.mutationCoordinator ?? new DurableMutationCoordinator({
     file: options.stateDirectory == null ? undefined : join(options.stateDirectory, 'mutations.json'),
@@ -68,9 +83,17 @@ export const createHolonomyService = options => {
   const core = options.core ?? new HolonomyControlCore({
     adapterDispatcher,
     capabilityMiddlewareRegistry: options.capabilityMiddlewareRegistry,
+    capabilityEngineSourceReaderHostCaps: options.capabilityEngineSourceReaderHostCaps,
+    capabilityObserverHostCaps: options.capabilityObserverHostCaps,
+    capabilityObserverRegistry: options.capabilityObserverRegistry,
+    capabilityEngineGate: options.capabilityEngineGate,
     capabilityProcessBackendInstallations: options.capabilityProcessBackendInstallations,
     capabilityProcessBackendRegistry: options.capabilityProcessBackendRegistry,
     capabilityProcessProfiles: options.capabilityProcessProfiles,
+    nativeDeviceProvider: options.nativeDeviceProvider,
+    nativeDiagnosticSourceReader: options.nativeDiagnosticSourceReader,
+    nativeDiagnosticAudit: options.nativeDiagnosticAudit,
+    nativeObserverProfiles: options.nativeObserverProfiles,
     capabilityRuntimeManager: options.capabilityRuntimeManager,
     fixtureManager: options.fixtureManager,
     inspectorProxy: options.inspectorProxy,

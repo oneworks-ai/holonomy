@@ -3063,6 +3063,7 @@
                       "rights": {
                         "items": {
                           "enum": [
+                            "chmod",
                             "create",
                             "delete",
                             "list",
@@ -3072,7 +3073,7 @@
                             "write"
                           ]
                         },
-                        "maxItems": 7,
+                        "maxItems": 8,
                         "minItems": 1,
                         "type": "array",
                         "uniqueItems": true
@@ -3609,6 +3610,174 @@
         },
         "schemaVersion": {
           "const": 2
+        },
+        "storage": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "none"
+                }
+              },
+              "required": [
+                "access"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "access": {
+                  "const": "sandboxed"
+                },
+                "limits": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "maxDatabaseNameBytes": {
+                      "maximum": 128,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxDatabaseBytes": {
+                      "maximum": 33554432,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxDatabases": {
+                      "maximum": 16,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxKeyBytes": {
+                      "maximum": 1024,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxKeysPerList": {
+                      "maximum": 1024,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxPendingOperations": {
+                      "maximum": 128,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxRowsPerQuery": {
+                      "maximum": 1024,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxSqlBytes": {
+                      "maximum": 65536,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxSqlInstructions": {
+                      "maximum": 10000000,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxTransactionStatements": {
+                      "maximum": 256,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "maxValueBytes": {
+                      "maximum": 1048576,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "maxDatabaseNameBytes",
+                    "maxDatabaseBytes",
+                    "maxDatabases",
+                    "maxKeyBytes",
+                    "maxKeysPerList",
+                    "maxPendingOperations",
+                    "maxRowsPerQuery",
+                    "maxSqlBytes",
+                    "maxSqlInstructions",
+                    "maxTransactionStatements",
+                    "maxValueBytes"
+                  ],
+                  "type": "object"
+                },
+                "namespaces": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "databases": {
+                        "items": {
+                          "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+                          "type": "string",
+                          "maxLength": 128,
+                          "minLength": 1
+                        },
+                        "maxItems": 64,
+                        "minItems": 0,
+                        "type": "array",
+                        "uniqueItems": true
+                      },
+                      "keyPrefixes": {
+                        "items": {
+                          "pattern": "^(?:[^\\uD800-\\uDFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF])*$",
+                          "type": "string",
+                          "maxLength": 1024,
+                          "minLength": 0
+                        },
+                        "maxItems": 64,
+                        "minItems": 0,
+                        "type": "array",
+                        "uniqueItems": true
+                      },
+                      "namespaceId": {
+                        "maxLength": 128,
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                        "type": "string"
+                      },
+                      "operations": {
+                        "items": {
+                          "enum": [
+                            "storage.kv.delete",
+                            "storage.kv.get",
+                            "storage.kv.list",
+                            "storage.kv.set",
+                            "storage.sqlite.execute",
+                            "storage.sqlite.query",
+                            "storage.sqlite.transaction"
+                          ]
+                        },
+                        "maxItems": 7,
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      }
+                    },
+                    "required": [
+                      "databases",
+                      "keyPrefixes",
+                      "namespaceId",
+                      "operations"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 64,
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "access",
+                "limits",
+                "namespaces"
+              ],
+              "type": "object"
+            }
+          ]
         },
         "systemInformation": {
           "additionalProperties": false,

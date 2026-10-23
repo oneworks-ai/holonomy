@@ -7,6 +7,7 @@ import process from 'node:process'
 
 import { NodeProcessBackendRegistryV1 } from '../../../../adapters/node/src/capability-process-backend.mjs'
 import { createV86ProcessBackendV1 } from '../../../../adapters/node/src/capability-process-v86-backend.mjs'
+import { v86TestBudget } from '../../../../conformance/capabilities/process-v86-watchdog.mjs'
 import {
   createSystemProjectionFixture,
   systemInformationPolicy
@@ -20,7 +21,13 @@ const FILESYSTEM_GENERATION_ENTRY_URL = 'fixture+session://runtime/filesystem-ge
 const NETWORK_CONTINUATION_ENTRY_URL = 'fixture+session://runtime/capability-network-continuation-v1.mjs'
 const NETWORK_PRIVATE_DENY_ENTRY_URL = 'fixture+session://runtime/capability-network-private-deny-v1.mjs'
 const NETWORK_REAL_ENTRY_URL = 'fixture+session://runtime/capability-network-real-v1.mjs'
+const NETWORK_ABORT_CONFORMANCE_URL = 'fixture+session://runtime/conformance/network-abort-android.test.mjs'
 const PROCESS_CONFORMANCE_URL = 'fixture+session://runtime/conformance/process-v86.test.mjs'
+const PROCESS_WATCHDOG_URL = 'fixture+session://runtime/conformance/process-v86-watchdog.mjs'
+const processWatchdogSource = readFileSync(
+  new URL('../../../../conformance/capabilities/process-v86-watchdog.mjs', import.meta.url),
+  'utf8'
+)
 const SYSTEM_CONFORMANCE_URL = 'fixture+session://runtime/conformance/system-projection.test.mjs'
 const MOCK_ORIGIN = 'https://mock.example'
 const MOCK_URL = `${MOCK_ORIGIN}/profile`
@@ -44,6 +51,10 @@ const filesystemConformanceSource = readFileSync(
 )
 const systemConformanceSource = readFileSync(
   new URL('../../../../conformance/capabilities/system-projection.test.mjs', import.meta.url),
+  'utf8'
+)
+const networkAbortConformanceSource = readFileSync(
+  new URL('../../../../conformance/capabilities/network-abort-android.test.mjs', import.meta.url),
   'utf8'
 )
 const systemProjection = createSystemProjectionFixture({ platform: 'android', type: 'Android' })
@@ -74,7 +85,7 @@ const processPolicy = !V86_ENABLED
     ].map(executableId => Object.freeze({ argumentBytes: 4_096, executableId }))),
     limits: Object.freeze({
       maxConcurrentProcesses: 1,
-      maxExecutionTimeMs: 120_000,
+      maxExecutionTimeMs: v86TestBudget.maxExecutionTimeMs,
       maxOpenPipes: 3,
       maxProcessTreeDepth: 2,
       maxStderrBytes: 4_096,
@@ -517,6 +528,12 @@ const source = `
     wifi: getWifiState()
   }
   const guestSummary = await runTests()
+  if (guestSummary.failed !== 0) {
+    console.log('V86_CONFORMANCE_FAILURES:' + JSON.stringify(
+      guestSummary.results.filter(result => result.status === 'failed')
+        .map(result => ({ name: result.name, failure: result.failure?.message }))
+    ))
+  }
   if (guestSummary.failed !== 0) throw new Error('Guest capability conformance failed')
   const guestConformance = {
     failed: guestSummary.failed,
@@ -587,11 +604,18 @@ const networkPrivateDenySource = `
 `
 
 const networkRealSource = `
-  const response = await fetch('${REAL_ORIGIN}/real')
+  import { registerNetworkAbortTests } from '${NETWORK_ABORT_CONFORMANCE_URL}'
+  import { run as runTests } from 'node:test'
+  registerNetworkAbortTests({ origin: '${REAL_ORIGIN}' })
+  const summary = await runTests()
   console.log('M3_NETWORK_REAL_ANDROID:' + JSON.stringify({
-    body: await response.text(),
-    status: response.status
+    failed: summary.failed,
+    passed: summary.passed,
+    total: summary.total,
+    failures: summary.results.filter(result => result.status === 'failed')
+      .map(result => ({ name: result.name, failure: result.failure?.message }))
   }))
+  if (summary.failed !== 0) throw new Error('Guest network Abort conformance failed')
 `
 
 const filesystemGenerationSource = `
@@ -656,7 +680,7 @@ const v86Profile = () => ({
     }
   },
   defaultShellExecutableId: 'holo-v86-shell',
-  environment: { allowedScopes: ['runtime', 'processTree'], defaultScope: 'runtime' },
+  environment: { allowedScopes: ['processTree'], defaultScope: 'processTree' },
   executables: [
     ['holo-v86-shell', '/bin/sh'],
     ['holo-v86-cat', '/bin/cat'],
@@ -689,7 +713,10 @@ export const generateCapabilityKernelFixture = async () => {
     { source: systemConformanceSource, url: SYSTEM_CONFORMANCE_URL },
     ...(processConformanceSource == null
       ? []
-      : [{ source: processConformanceSource, url: PROCESS_CONFORMANCE_URL }])
+      : [
+        { source: processConformanceSource, url: PROCESS_CONFORMANCE_URL },
+        { source: processWatchdogSource, url: PROCESS_WATCHDOG_URL }
+      ])
   ]
   const launch = {
     entryUrl: ENTRY_URL,
@@ -744,7 +771,15 @@ export const generateCapabilityKernelFixture = async () => {
   })
   return Object.freeze({
     bytes: Buffer.from(
-      `${JSON.stringify({ capabilityRuntime, entryUrl: ENTRY_URL, modules, processId: PROCESS_ID })}\n`
+      `${
+        JSON.stringify({
+          capabilityRuntime,
+          entryUrl: ENTRY_URL,
+          modules,
+          processId: PROCESS_ID,
+          ...(V86_ENABLED ? { v86TestBudget } : {})
+        })
+      }\n`
     ),
     path: 'runtime/capability-kernel-v1.json',
     source: 'generated:service-capability-runtime-manager-v1'
@@ -754,6 +789,7 @@ export const generateCapabilityKernelFixture = async () => {
 const generateNetworkFixture = async ({
   applicationId,
   applicationName,
+  additionalModules = [],
   entryUrl,
   legacySandboxPolicy,
   path,
@@ -761,7 +797,7 @@ const generateNetworkFixture = async ({
   sandboxPolicy,
   source
 }) => {
-  const modules = [{ source, url: entryUrl }]
+  const modules = [{ source, url: entryUrl }, ...additionalModules]
   const launch = {
     entryUrl,
     moduleRootUrl: 'fixture+session://runtime/',
@@ -846,6 +882,7 @@ export const generateCapabilityNetworkPrivateDenyFixture = () =>
 
 export const generateCapabilityNetworkRealFixture = () =>
   generateNetworkFixture({
+    additionalModules: [{ source: networkAbortConformanceSource, url: NETWORK_ABORT_CONFORMANCE_URL }],
     applicationId: 'android.network.real.fixture',
     applicationName: 'Android Network Real Fixture',
     entryUrl: NETWORK_REAL_ENTRY_URL,

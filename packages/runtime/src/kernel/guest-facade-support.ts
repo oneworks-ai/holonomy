@@ -12,18 +12,47 @@ export interface CapabilityGuestConfigurationV1 {
     readonly arch: string
     readonly argv: readonly string[]
     readonly platform: string
-    readonly versions: Readonly<{ readonly node: string }>
+    readonly versions: Readonly<Record<string, string>>
   }>
-  readonly processControl?: Readonly<{ exit(code: number): void }>
+  readonly processControl?: Readonly<{
+    exit(code: number): void
+    /** Trusted local queue; callback and arguments must not be sent through the capability bridge. */
+    nextTick?(callback: (...args: unknown[]) => unknown, ...args: unknown[]): void
+  }>
   readonly stdio?: Readonly<{ write(stream: 'stderr' | 'stdout', chunk: unknown): unknown }>
 }
 
 export interface CapabilityGuestBridgeV1 {
-  invoke(requestJson: string, signal?: CapabilityGuestAbortSignalV1): Promise<string>
+  /** Trusted local Event Loop boundary; callbacks never cross the Host invocation wire. */
+  enqueueCallback?(callback: () => void): void
+  invoke(
+    requestJson: string,
+    signal?: CapabilityGuestAbortSignalV1,
+    hostInput?: CapabilityInvocationHostInputV1
+  ): Promise<string>
   invokeImmediate?(requestJson: string): string
   invokeSync(requestJson: string): string
   releaseResource?(bindingId: string): void
   subscribeResource?(bindingId: string, listener: (eventJson: string) => void): () => void
+}
+
+/** Reuses the caller-owned loop, including referenced liveness and its disposal fence. */
+export const createCapabilityCallbackDispatcherV1 = (
+  loop: { readonly isDisposed: boolean; enqueueIoCallback(callback: () => void): unknown }
+): (callback: () => void) => void =>
+callback => {
+  if (loop.isDisposed) return
+  try {
+    loop.enqueueIoCallback(callback)
+  } catch (error) {
+    // A fatal clock/wakeup failure has already terminated the owning loop.
+    if (!loop.isDisposed) throw error
+  }
+}
+
+/** Private transport inputs; never part of serialized invocation metadata. */
+export interface CapabilityInvocationHostInputV1 {
+  readonly networkRequestBodyBase64?: string
 }
 
 export interface CapabilityGuestAbortSignalV1 {
@@ -140,8 +169,15 @@ export const deepFreezeCapabilityValueV1 = <T>(value: T): T => {
   return value
 }
 
-export const createCapabilitySyntheticBindingV1 = (namespace: object, names: readonly string[]) =>
-  Object.freeze({
+export const createCapabilitySyntheticBindingV1 = (namespace: object, names: readonly string[]) => {
+  const hasDefault = names.includes('default')
+  const defaultExport = hasDefault ? Object.getOwnPropertyDescriptor(namespace, 'default') : undefined
+  if (hasDefault && (defaultExport == null || !('value' in defaultExport))) {
+    throw new TypeError('Synthetic default export must be an own data property')
+  }
+  return Object.freeze({
+    commonjsValue: hasDefault ? defaultExport!.value : namespace,
     descriptor: Object.freeze({ exportNames: Object.freeze([...names]) }),
     namespace: Object.freeze(namespace)
   })
+}

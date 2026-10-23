@@ -5,6 +5,7 @@ import {
   defineTestProperty,
   freezeTestValue
 } from './intrinsics.js'
+import { runRegisteredTests } from './test-runner.js'
 import type {
   DescribeRegistration,
   HolonomyTestPlatform,
@@ -34,7 +35,7 @@ export interface RegisteredSuite {
 
 const PLATFORMS = ['android', 'desktop', 'ios', 'node', 'web'] as const
 
-export const createTestRegistry = () => {
+export const createTestRegistry = (platform: HolonomyTestPlatform) => {
   const root: RegisteredSuite = {
     after: [],
     afterEach: [],
@@ -126,21 +127,38 @@ export const createTestRegistry = () => {
   })
 
   const it = ((name: string, callback: TestCallback) => registerCase(name, callback, false)) as TestRegistration
+  const after = (callback: HookCallback) => appendTestValue(current.after, callback)
+  const afterEach = (callback: HookCallback) => appendTestValue(current.afterEach, callback)
+  const before = (callback: HookCallback) => appendTestValue(current.before, callback)
+  const beforeEach = (callback: HookCallback) => appendTestValue(current.beforeEach, callback)
+  const run = () => runRegisteredTests(root, platform)
+  const frozenDescribe = freezeTestValue(describe)
   defineTestProperties(it, {
+    after: { value: after },
+    afterEach: { value: afterEach },
+    before: { value: before },
+    beforeEach: { value: beforeEach },
+    describe: { value: frozenDescribe },
     holonomy: {
       value: platformMethods<TestCallback>((platform, name, callback) => registerCase(name, callback, false, platform))
     },
-    skip: { value: (name: string, callback?: TestCallback) => registerCase(name, callback, true) }
+    it: { value: it },
+    run: { value: run },
+    skip: { value: (name: string, callback?: TestCallback) => registerCase(name, callback, true) },
+    test: { value: it }
   })
 
+  const frozenIt = freezeTestValue(it)
+
   return freezeTestValue({
-    after: (callback: HookCallback) => appendTestValue(current.after, callback),
-    afterEach: (callback: HookCallback) => appendTestValue(current.afterEach, callback),
-    before: (callback: HookCallback) => appendTestValue(current.before, callback),
-    beforeEach: (callback: HookCallback) => appendTestValue(current.beforeEach, callback),
-    describe: freezeTestValue(describe),
-    it: freezeTestValue(it),
+    after,
+    afterEach,
+    before,
+    beforeEach,
+    describe: frozenDescribe,
+    it: frozenIt,
     root,
-    test: freezeTestValue(it)
+    run,
+    test: frozenIt
   })
 }

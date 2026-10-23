@@ -2,8 +2,9 @@ import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import process from 'node:process'
 
-import { createHoloUvSupervisorEnvironmentFactoryV1, encodeHoloUvEnvironmentConfigurationV1 } from '@holonomyjs/holouv'
+import { createHoloUvSupervisorEnvironmentFactoryV1, encodeHoloUvEnvironmentConfigurationV2 } from '@holonomyjs/holouv'
 import { decodeV86UdpDatagramV1, encodeV86UdpResponseV1 } from './capability-process-v86-udp.mjs'
+import { instantiateVerifiedNodeHostWasmV1 } from './engine-gate-native.mjs'
 
 const invalid = () => {
   throw new TypeError('Invalid v86 Process environment')
@@ -92,6 +93,7 @@ const v86Options = async (configuration, V86, loadArtifact, networkEnabled) => {
       cmdline:
         'tsc=reliable mitigations=off random.trust_cpu=on earlyprintk=serial,ttyS0,115200 console=ttyS0 audit=0 rdinit=/sbin/holo-uvd',
       disable_keyboard: true,
+      disable_jit: true,
       disable_mouse: true,
       disable_speaker: true,
       filesystem: {},
@@ -101,7 +103,7 @@ const v86Options = async (configuration, V86, loadArtifact, networkEnabled) => {
       ...(networkEnabled ? { net_device: { relay_url: 'fetch', type: 'virtio' } } : {}),
       screen: { container: null },
       uart1: true,
-      wasm_fn: async imports => (await WebAssembly.instantiate(wasm, imports)).instance.exports
+      wasm_fn: async imports => instantiateVerifiedNodeHostWasmV1(wasm, artifacts.wasm.sha256, imports)
     }
   }
 }
@@ -122,10 +124,13 @@ export const createV86ProcessEnvironmentFactoryV1 = options => {
   ) return invalid()
   return createHoloUvSupervisorEnvironmentFactoryV1({
     createConfiguration(request) {
-      return encodeHoloUvEnvironmentConfigurationV1({
+      if (request.scope !== 'processTree' || request.policy?.access !== 'sandboxed') return invalid()
+      return encodeHoloUvEnvironmentConfigurationV2({
         execGateTimeoutMs: request.configuration.supervisor.execGateTimeoutMs,
         hosts: environmentHosts(request.policy),
-        version: 1
+        maxProcessTreeDepth: request.policy.limits.maxProcessTreeDepth,
+        maxTotalProcesses: request.policy.limits.maxTotalProcesses,
+        version: 2
       })
     },
     ...(options.handleExecutionRequest == null

@@ -1,6 +1,7 @@
 import type { FilesystemOperationV1 } from '@holonomyjs/capability-fs/kernel/filesystem-registry'
 import type { NetworkOperationV1 } from '@holonomyjs/capability-network/kernel/network-registry'
 import type { ProcessOperationV1 } from '@holonomyjs/capability-process/kernel/process-registry'
+import { STORAGE_OPERATIONS_V1 } from '@holonomyjs/capability-storage/kernel/storage-types'
 import { SYSTEM_OPERATION_REGISTRY_V1 } from '@holonomyjs/capability-system/kernel/system-registry'
 import { FACADE_DELIVERY_REGISTRY_V1 } from './facade-delivery.js'
 import { OPERATION_REGISTRY_V1 } from './operation-registry.js'
@@ -10,15 +11,24 @@ import { DEVICE_OPERATIONS_V1 } from './registry-types.js'
 
 const FS_OPERATIONS = [
   'filesystem.directory.create',
+  'filesystem.directory.close',
+  'filesystem.directory.open',
   'filesystem.directory.read',
+  'filesystem.directory.sync',
   'filesystem.entry.rename',
   'filesystem.entry.unlink',
   'filesystem.file.close',
+  'filesystem.file.datasync',
   'filesystem.file.open',
   'filesystem.file.read',
+  'filesystem.file.sync',
+  'filesystem.file.truncate',
   'filesystem.file.write',
+  'filesystem.metadata.access',
+  'filesystem.metadata.chmod',
   'filesystem.metadata.lstat',
   'filesystem.metadata.stat',
+  'filesystem.metadata.utimes',
   'filesystem.watch.close',
   'filesystem.watch.subscribe'
 ] as const satisfies readonly FilesystemOperationV1[]
@@ -153,6 +163,7 @@ export const validateOperationRegistryV1 = (
   assertCovered('Filesystem Registry', FS_OPERATIONS, registry)
   assertCovered('Network Registry', NETWORK_OPERATIONS, registry)
   assertCovered('Process Registry', PROCESS_OPERATIONS, registry)
+  assertCovered('Storage Registry', STORAGE_OPERATIONS_V1, registry)
   for (const system of SYSTEM_OPERATION_REGISTRY_V1) {
     if (!registry.some(row => row.module === system.module && row.member === system.member)) {
       throw new Error(`System Registry missing ${system.module}/${system.member}`)

@@ -11,6 +11,8 @@
 struct holo_exec_gate {
     int listener_fd;
     pid_t initial_pid;
+    uint32_t max_total_processes;
+    uint32_t max_process_tree_depth;
     uint64_t notification_id;
     uint32_t request_id;
     pid_t notification_pid;
@@ -33,7 +35,13 @@ struct holo_exec_gate {
 
 void holo_exec_gate_init(struct holo_exec_gate *gate);
 int holo_exec_gate_prepare_child(int socket_fd);
-int holo_exec_gate_prepare_parent(int socket_fd, pid_t root_pid, struct holo_exec_gate *gate);
+int holo_exec_gate_prepare_parent(
+    int socket_fd,
+    pid_t root_pid,
+    uint32_t max_total_processes,
+    uint32_t max_process_tree_depth,
+    struct holo_exec_gate *gate
+);
 int holo_exec_gate_poll_event(
     struct holo_exec_gate *gate,
     int control_fd,

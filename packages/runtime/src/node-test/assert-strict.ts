@@ -1,59 +1,13 @@
-import {
-  assignTestProperties,
-  freezeTestValue,
-  getTestOwnDescriptor,
-  getTestPrototype,
-  isTestValue,
-  ownTestKeys,
-  testString
-} from './intrinsics.js'
+import { deepEqualValue } from './assert-deep-value.js'
+import { invalidAssertionArgument, matchExpectedException } from './assert-error-matcher.js'
+import type { ExpectedException } from './assert-error-matcher.js'
+import { AssertionError } from './assertion-error.js'
+import { assignTestProperties, freezeTestValue, isTestValue } from './intrinsics.js'
 
-export class AssertionError extends Error {
-  readonly actual: unknown
-  readonly code = 'ERR_ASSERTION'
-  readonly expected: unknown
-  readonly operator: string
-
-  constructor(message: string, actual?: unknown, expected?: unknown, operator = 'fail') {
-    super(message)
-    this.name = 'AssertionError'
-    this.actual = actual
-    this.expected = expected
-    this.operator = operator
-  }
-}
+export { AssertionError } from './assertion-error.js'
 
 const fail = (message = 'Failed') => {
   throw new AssertionError(message)
-}
-
-const deepEqualValue = (actual: unknown, expected: unknown, seen: WeakMap<object, object>): boolean => {
-  if (isTestValue(actual, expected)) return true
-  if (actual == null || expected == null || typeof actual !== 'object' || typeof expected !== 'object') return false
-  if (getTestPrototype(actual) !== getTestPrototype(expected)) return false
-  if (seen.get(actual) === expected) return true
-  seen.set(actual, expected)
-  const actualKeys = ownTestKeys(actual)
-  const expectedKeys = ownTestKeys(expected)
-  if (actualKeys.length !== expectedKeys.length) return false
-  for (let index = 0; index < actualKeys.length; index += 1) {
-    const key = actualKeys[index]!
-    let found = false
-    for (let expectedIndex = 0; expectedIndex < expectedKeys.length; expectedIndex += 1) {
-      if (isTestValue(expectedKeys[expectedIndex], key)) found = true
-    }
-    if (!found) return false
-    const actualDescriptor = getTestOwnDescriptor(actual, key)
-    const expectedDescriptor = getTestOwnDescriptor(expected, key)
-    if (
-      actualDescriptor == null ||
-      expectedDescriptor == null ||
-      !('value' in actualDescriptor) ||
-      !('value' in expectedDescriptor) ||
-      !deepEqualValue(actualDescriptor.value, expectedDescriptor.value, seen)
-    ) return false
-  }
-  return true
 }
 
 const strictEqual = (actual: unknown, expected: unknown, message?: string) => {
@@ -63,7 +17,7 @@ const strictEqual = (actual: unknown, expected: unknown, message?: string) => {
 }
 
 const deepStrictEqual = (actual: unknown, expected: unknown, message?: string) => {
-  if (!deepEqualValue(actual, expected, new WeakMap())) {
+  if (!deepEqualValue(actual, expected)) {
     throw new AssertionError(message ?? 'Expected values to be deeply equal', actual, expected, 'deepStrictEqual')
   }
 }
@@ -78,32 +32,50 @@ const match = (value: string, expression: RegExp, message?: string) => {
   }
 }
 
-const throws = (callback: () => unknown, expected?: RegExp | ((error: unknown) => boolean)) => {
+const equalErrorProperty = deepEqualValue
+
+const throws = (callback: () => unknown, expected?: ExpectedException, message?: string): void => {
+  if (typeof callback !== 'function') invalidAssertionArgument('ERR_INVALID_ARG_TYPE')
   try {
     callback()
   } catch (error) {
-    if (expected instanceof RegExp) match(testString((error as { message?: unknown })?.message ?? error), expected)
-    else if (typeof expected === 'function' && !expected(error)) fail('Thrown error did not satisfy validator')
-    return error
+    matchExpectedException(error, expected, equalErrorProperty, 'throws', message)
+    return
   }
-  fail('Expected function to throw')
+  fail(message ?? (typeof expected === 'string' ? expected : 'Expected function to throw'))
+}
+
+const promiseThen = Promise.prototype.then
+const isPromise = (value: unknown): boolean => {
+  try {
+    promiseThen.call(value as Promise<unknown>, () => undefined, () => undefined)
+    return true
+  } catch {
+    return false
+  }
 }
 
 const rejects = async (
   value: PromiseLike<unknown> | (() => PromiseLike<unknown>),
-  expected?: RegExp | ((error: unknown) => boolean)
-) => {
-  try {
-    await (typeof value === 'function' ? value() : value)
-  } catch (error) {
-    if (expected instanceof RegExp) match(testString((error as { message?: unknown })?.message ?? error), expected)
-    else if (typeof expected === 'function' && !expected(error)) fail('Rejected error did not satisfy validator')
-    return error
+  expected?: ExpectedException,
+  message?: string,
+  promiseBrand: (value: unknown) => boolean = isPromise
+): Promise<void> => {
+  // A synchronous throw while obtaining the Promise is not its rejection.
+  const pending = typeof value === 'function' ? value() : value
+  if (promiseBrand(pending) !== true) {
+    invalidAssertionArgument(typeof value === 'function' ? 'ERR_INVALID_RETURN_VALUE' : 'ERR_INVALID_ARG_TYPE')
   }
-  fail('Expected promise to reject')
+  try {
+    await pending
+  } catch (error) {
+    matchExpectedException(error, expected, equalErrorProperty, 'rejects', message)
+    return
+  }
+  fail(message ?? (typeof expected === 'string' ? expected : 'Expected promise to reject'))
 }
 
-export const createAssertStrictModule = () => {
+export const createAssertStrictModule = (promiseBrand: (value: unknown) => boolean = isPromise) => {
   const assertFunction = (value: unknown, message?: string) => ok(value, message)
   const assert = assignTestProperties(assertFunction, {
     AssertionError,
@@ -113,7 +85,7 @@ export const createAssertStrictModule = () => {
     fail,
     match,
     notDeepEqual(actual: unknown, expected: unknown, message?: string) {
-      if (deepEqualValue(actual, expected, new WeakMap())) {
+      if (deepEqualValue(actual, expected)) {
         throw new AssertionError(message ?? 'Expected values not to be deeply equal', actual, expected, 'notDeepEqual')
       }
     },
@@ -133,7 +105,11 @@ export const createAssertStrictModule = () => {
       }
     },
     ok,
-    rejects,
+    rejects: (
+      value: PromiseLike<unknown> | (() => PromiseLike<unknown>),
+      expected?: ExpectedException,
+      message?: string
+    ) => rejects(value, expected, message, promiseBrand),
     strictEqual,
     throws
   })

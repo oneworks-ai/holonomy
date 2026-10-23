@@ -3,13 +3,12 @@ package ai.oneworks.holonomy.capability
 import android.os.FileObserver
 import ai.oneworks.holonomy.host.RuntimeCapabilityResourceEventSink
 import java.io.File
-import java.io.RandomAccessFile
 import org.json.JSONArray
 import org.json.JSONObject
 
 internal class AndroidFileHandleResource(
     val append: Boolean,
-    val file: RandomAccessFile,
+    val file: AndroidFilesystemOpenFile,
     val path: File,
     val rights: Set<String>,
     private val onClose: () -> Unit,

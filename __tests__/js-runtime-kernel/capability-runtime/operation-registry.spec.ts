@@ -33,6 +33,52 @@ const selectedResultSchema = (row: OperationDescriptorV1, args: unknown): string
 }
 
 describe('capability operation registry v1', () => {
+  it('requires a fresh chmod branch and strict permission and readback schemas', () => {
+    const rows = OPERATION_REGISTRY_V1.filter(row => row.operation === 'filesystem.metadata.chmod')
+    expect(rows).toHaveLength(7)
+    for (const row of rows) {
+      expect(row.capability).toEqual({
+        anyOf: [{ allOf: [{ name: 'host.fs', version: 1 }], branchId: 'fs-chmod' }]
+      })
+    }
+    expect(validateSchema('FsChmodArgsV1', { path: 'holo-fs://workspace/file', mode: 0o777 })).toBe(true)
+    expect(validateSchema('FsChmodArgsV1', { path: 'holo-fs://workspace/file', mode: 0o4755 })).toBe(false)
+    expect(validateSchema('FsChmodArgsV1', { path: 'holo-fs://workspace/file', mode: '0644' })).toBe(false)
+    expect(validateSchema('FsChmodArgsV1', {
+      path: 'holo-fs://workspace/file',
+      mode: 0o644,
+      expectedKind: 'file'
+    })).toBe(false)
+    expect(validateSchema('FsChmodReadbackArgsV1', {
+      path: 'holo-fs://workspace/file',
+      mode: 0o644,
+      readback: true,
+      expectedKind: 'file'
+    })).toBe(true)
+    const pathPromise = rows.find(row => row.module === 'node:fs/promises' && row.member === 'chmod')!
+    expect(selectedResultSchema(pathPromise, { path: 'holo-fs://workspace/file', mode: 0o644 })).toBe('void')
+    expect(selectedResultSchema(pathPromise, {
+      path: 'holo-fs://workspace/file',
+      mode: 0o644,
+      readback: true
+    })).toBe('FsChmodMetadataResultV1')
+    const readback = {
+      atimeMs: 1,
+      atimeNs: '1000000',
+      birthtimeMs: 1,
+      ctimeMs: 1,
+      ctimeNs: '1000000',
+      kind: 'file',
+      mode: 0o100644,
+      mtimeMs: 1,
+      mtimeNs: '1000000',
+      size: 0
+    }
+    expect(validateSchema('FsChmodMetadataResultV1', readback)).toBe(true)
+    expect(validateSchema('FsChmodMetadataResultV1', { ...readback, kind: 'directory' })).toBe(false)
+    expect(validateSchema('FsChmodMetadataResultV1', { ...readback, mode: 0o104644 })).toBe(false)
+  })
+
   it('is exhaustive across every closed operation family', () => {
     expect(() => validateOperationRegistryV1()).not.toThrow()
     expect(new Set(OPERATION_REGISTRY_V1.map(row => row.operation)))

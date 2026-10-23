@@ -41,6 +41,7 @@ export type BuiltInCapabilityNameV1 =
   | 'host.process.shell'
   | 'host.process.signal'
   | 'host.storage.credential'
+  | 'host.storage'
   | 'host.system.basic'
   | 'host.system.compute'
   | 'host.system.identity'

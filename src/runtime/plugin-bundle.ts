@@ -1,1 +1,1 @@
-export * from '@holonomyjs/runtime/app/plugin-bundle'
+export * from '@holonomyjs/runtime/app/plugin-bundles'

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { NativeBridgeError } from '../../../packages/runtime/src/native-port/errors.js'
+
 import {
   RuntimeEventLoop,
   ScriptedNetworkProvider,
@@ -333,6 +335,42 @@ describe('web network Fetch v3 adversarial lifecycle regressions', () => {
     ) {
       expect(() => authorizeResolvedAddress(resolved, address)).toThrow(/not authorized/u)
     }
+  })
+
+  it('preserves an explicit zero redirect limit', () => {
+    expect(
+      resolveNetworkAuthority({
+        ...authority,
+        limits: { maxRedirects: 0 }
+      }).limits.maxRedirects
+    ).toBe(0)
+  })
+
+  it('does not mislabel a generic Native Bridge quota as a response cap', async () => {
+    const bridge = {
+      cancel: () => false,
+      dispose() {},
+      get isDisposed() {
+        return false
+      },
+      getSnapshot: () => ({
+        inFlightBinaryBytes: 0,
+        inFlightBinaryHandles: 0,
+        openHandles: 0,
+        openResources: 0,
+        outstandingCredits: 0,
+        pendingRequests: 0
+      }),
+      request: async () => {
+        throw new NativeBridgeError('limit_exceeded')
+      },
+      revokeResource: () => false,
+      stream: () => {
+        throw new Error('stream is unreachable')
+      }
+    }
+    await expect(createFetchRuntime({ authority, bridge }).fetch('https://api.example/quota'))
+      .rejects.toMatchObject({ code: 'network.protocol_error' })
   })
 
   it('uses only final outgoing headers after set/delete mutation', async () => {

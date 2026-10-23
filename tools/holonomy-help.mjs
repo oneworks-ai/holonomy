@@ -21,7 +21,7 @@ Usage:
   holonomy --llms [MARKDOWN]
 
 Core options:
-  --target android|node     Select the required runtime host
+  --target android|node|native Select the required runtime host
   --device, --serial ID     Select an Android device
   --detach                  Return a managed process id without waiting
   --openapi auto|URL        Use the local service or an explicit remote service
@@ -35,6 +35,9 @@ Core options:
   --env KEY=VALUE           Add a guest environment value
   --arg VALUE               Add a guest argv value
   --reporter tap|json       Select the test reporter
+  --config FILE             Install startup Runtime plugins for run or test
+  --plugin-root DIRECTORY   Allow an absolute plugin source root
+  --watch                   Reload plugin configuration (run only)
   --timeout MS              Set the process timeout
 
 Documentation:

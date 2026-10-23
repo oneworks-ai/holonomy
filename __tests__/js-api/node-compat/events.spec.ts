@@ -3,7 +3,7 @@ import { EventEmitter as NodeEventEmitter } from 'node:events'
 import { describe, expect, it } from 'vitest'
 
 import { UnhandledErrorEventError } from '../../../src/node-compat/errors.js'
-import { EventEmitter } from '../../../src/node-compat/events.js'
+import { EventEmitter, createEventsSyntheticModule } from '../../../src/node-compat/events.js'
 
 const runTrace = (Emitter: typeof EventEmitter | typeof NodeEventEmitter) => {
   const emitter = new Emitter()
@@ -26,6 +26,14 @@ const runTrace = (Emitter: typeof EventEmitter | typeof NodeEventEmitter) => {
 }
 
 describe('node:events compatibility', () => {
+  it('keeps the CommonJS constructor and named EventEmitter alias identical', () => {
+    const events = createEventsSyntheticModule()
+    expect(events.default).toBe(events.EventEmitter)
+    expect((events.default as typeof EventEmitter & { EventEmitter: typeof EventEmitter }).EventEmitter).toBe(
+      EventEmitter
+    )
+  })
+
   it('matches Node ordering, once visibility and removal for the promised subset', () => {
     expect(runTrace(EventEmitter)).toEqual(runTrace(NodeEventEmitter))
   })

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Closed result schema table is reviewed as one registry. */
 import {
   DEVICE_SUBSCRIPTION_RESOURCE_V1_SCHEMA,
   DEVICE_SUMMARY_V1_SCHEMA,
@@ -5,6 +6,7 @@ import {
 } from '@holonomyjs/capability-device/kernel/device-schema'
 import type { DeviceValueOperationV1 } from '@holonomyjs/capability-device/kernel/device-types'
 import { NETWORK_HEADER_VIEW_V1_SCHEMA } from '@holonomyjs/capability-network/kernel/registry-network-argument-schemas'
+import { STORAGE_RESULT_SCHEMAS_V1 } from '@holonomyjs/capability-storage/kernel/storage-operation-schemas'
 import { SYSTEM_FIELD_VALUE_SCHEMAS_V1 } from '@holonomyjs/capability-system/kernel/system-schema'
 import { REGISTRY_EVENT_SCHEMAS_V1 } from './registry-event-schemas.js'
 import {
@@ -29,13 +31,28 @@ const primitive: Readonly<Record<string, JsonSchema>> = {
   string: { type: 'string' },
   void: EMPTY_ARGS_SCHEMA_V1
 }
-const virtualStats = strictObject({
+const preciseNs = { maxLength: 22, pattern: '^(?:0|[1-9][0-9]{0,20}|-[1-9][0-9]{0,20})$', type: 'string' }
+const preciseMs = { maximum: 1_000_000_000_000_000, minimum: -1_000_000_000_000_000, type: 'number' }
+const baseVirtualStatsFields = {
+  atimeMs: preciseMs,
+  atimeNs: preciseNs,
   birthtimeMs: { minimum: 0, type: 'number' },
-  ctimeMs: { minimum: 0, type: 'number' },
+  ctimeMs: preciseMs,
+  ctimeNs: preciseNs,
   kind: { enum: ['directory', 'file', 'symlink'] },
-  mtimeMs: { minimum: 0, type: 'number' },
+  mtimeMs: preciseMs,
+  mtimeNs: preciseNs,
   size: integerSchema(0, Number.MAX_SAFE_INTEGER)
-})
+} as const
+const virtualStatsFields = { ...baseVirtualStatsFields, mode: integerSchema(0, 0o177777) }
+const virtualStats = strictObject(virtualStatsFields, ['birthtimeMs', 'ctimeMs', 'kind', 'mtimeMs', 'size'])
+const exactMetadata = strictObject(virtualStatsFields, Object.keys(baseVirtualStatsFields))
+const chmodMetadata: JsonSchema = {
+  oneOf: [
+    strictObject({ ...baseVirtualStatsFields, kind: { const: 'file' }, mode: integerSchema(0o100000, 0o100777) }),
+    strictObject({ ...baseVirtualStatsFields, kind: { const: 'directory' }, mode: integerSchema(0o040000, 0o040777) })
+  ]
+}
 const fsWatchFacade = (resourceType: 'filesystem.watch-iterator' | 'filesystem.watcher') =>
   strictObject({
     binding: BINDING_SCHEMA_V1,
@@ -44,6 +61,22 @@ const fsWatchFacade = (resourceType: 'filesystem.watch-iterator' | 'filesystem.w
   })
 const fsResults: Readonly<Record<string, JsonSchema>> = {
   FileHandleV1: resourceFacade('filesystem.file-handle'),
+  FsDirectoryHandleV1: strictObject({
+    binding: BINDING_SCHEMA_V1,
+    entries: {
+      items: strictObject({
+        kind: { enum: ['directory', 'file', 'symlink'] },
+        name: { maxLength: 255, minLength: 1, type: 'string' }
+      }),
+      maxItems: 100_000,
+      type: 'array'
+    },
+    resourceType: { const: 'filesystem.directory-handle' }
+  }),
+  FsExactMetadataResultV1: exactMetadata,
+  FsChmodMetadataResultV1: chmodMetadata,
+  FsChmodMutationResultV1: { oneOf: [EMPTY_ARGS_SCHEMA_V1, chmodMetadata] },
+  FsMutationResultV1: { oneOf: [EMPTY_ARGS_SCHEMA_V1, exactMetadata] },
   FsMkdirRecursiveResultV1: {
     oneOf: [
       strictObject({ kind: { const: 'undefined' } }),
@@ -180,6 +213,7 @@ export const OPERATION_RESULT_SCHEMAS_V1: Readonly<Record<string, JsonSchema>> =
   ...fsResults,
   ...processResults,
   ...networkResults,
+  ...STORAGE_RESULT_SCHEMAS_V1,
   ...REGISTRY_EVENT_SCHEMAS_V1,
   ...deviceResults,
   DeviceSubscriptionV1: DEVICE_SUBSCRIPTION_RESOURCE_V1_SCHEMA,

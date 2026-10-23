@@ -1,10 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
 import { prepareHolonomyRuntimePlugins } from '../../tools/holonomy-plugin-bundle.mjs'
+import { validateRuntimePluginConfig } from '../../tools/runtime-plugin-config-validator.mjs'
 
 const writeConfig = (root: string, plugin: Record<string, unknown>) => {
   const path = join(root, 'holo.config.json')
@@ -13,6 +14,16 @@ const writeConfig = (root: string, plugin: Record<string, unknown>) => {
 }
 
 describe('holonomy Runtime plugin bundles', () => {
+  it('keeps the shared Ajv validator differential vectors exact', () => {
+    const vectors = JSON.parse(
+      readFileSync(new URL('../../tools/native-cli/tests/fixtures/plugin-schema-vectors.json', import.meta.url), 'utf8')
+    )
+    for (const vector of vectors) {
+      const validate = () => validateRuntimePluginConfig(vector.schema, vector.config)
+      if (vector.accepted) expect(validate, vector.name).not.toThrow()
+      else expect(validate, vector.name).toThrow()
+    }
+  })
   it('resolves package, relative, and allowed absolute sources to one hostless identity', () => {
     const root = mkdtempSync(join(tmpdir(), 'holonomy-plugin-sources-'))
     try {

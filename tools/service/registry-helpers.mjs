@@ -111,7 +111,7 @@ export const useIdempotency = (draft, input, now, retentionMs, create) => {
 
 export const validateDeviceInput = (input, now) => {
   const value = requireRecord(input, 'Device')
-  const platform = requireEnum(value.platform ?? 'android', ['android', 'node'], 'Device platform')
+  const platform = requireEnum(value.platform ?? 'android', ['android', 'node', 'native'], 'Device platform')
   return {
     ...(value.apiLevel == null ? {} : {
       apiLevel: requireInteger(value.apiLevel, 'Device API level', { min: 1 })

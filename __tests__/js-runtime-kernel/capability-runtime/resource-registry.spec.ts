@@ -69,4 +69,26 @@ describe('capability resource registry', () => {
     registry.release('fd-2')
     expect(() => registry.get('fd-2')).toThrow(expect.objectContaining({ code: 'runtime.generation_stale' }))
   })
+
+  it('exposes only trusted publication metadata for event delivery', () => {
+    const registry = new CapabilityResourceRegistryV1(identity)
+    registry.publish(
+      { binding: { bindingId: 'watch-1', generation: 1 }, resourceType: 'filesystem.watcher' },
+      [{
+        bindingId: 'watch-1',
+        eventSchemaId: 'VirtualFsWatcherDeliveryV1',
+        resourceType: 'filesystem.watcher',
+        subscribe: () => () => undefined
+      }],
+      'host.fs',
+      selection
+    )
+    expect(registry.eventDescriptor('watch-1')).toEqual({
+      eventSchemaId: 'VirtualFsWatcherDeliveryV1',
+      providerModule: 'host.fs',
+      resourceType: 'filesystem.watcher'
+    })
+    registry.release('watch-1')
+    expect(() => registry.eventDescriptor('watch-1')).toThrow()
+  })
 })

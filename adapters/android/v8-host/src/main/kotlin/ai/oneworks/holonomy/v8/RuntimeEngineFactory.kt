@@ -6,7 +6,9 @@ import ai.oneworks.holonomy.host.DedicatedThreadRuntimeEngine
 import ai.oneworks.holonomy.host.RuntimeCapabilities
 import ai.oneworks.holonomy.host.RuntimeCapabilityHost
 import ai.oneworks.holonomy.host.RuntimeCapabilityServicesFactory
+import ai.oneworks.holonomy.host.RuntimeCryptoHost
 import ai.oneworks.holonomy.host.RuntimeEngine
+import ai.oneworks.holonomy.host.RuntimeEngineGate
 import ai.oneworks.holonomy.host.RuntimeImplementationStage
 import ai.oneworks.holonomy.host.RuntimeMicrotaskMode
 import ai.oneworks.holonomy.host.RuntimeModuleResolver
@@ -30,6 +32,7 @@ object RuntimeEngineFactory {
         processHost: RuntimeProcessHost = SilentRuntimeProcessHost,
         capabilityHost: RuntimeCapabilityHost? = null,
         trustedBackend: RuntimeTrustedBackend? = null,
+        engineGate: RuntimeEngineGate? = null,
     ): RuntimeEngine = OneGenerationRuntimeEngine(
         createEngine(
             assets = assets,
@@ -40,6 +43,7 @@ object RuntimeEngineFactory {
             processHost = processHost,
             capabilityHostSource = capabilityHost?.let(RuntimeCapabilityHostGenerationSource::oneGeneration),
             trustedBackendSource = trustedBackend?.let(RuntimeTrustedBackendGenerationSource::oneGeneration),
+            engineGateSource = engineGate?.let(RuntimeEngineGateGenerationSource::oneGeneration),
         ),
     )
 
@@ -54,6 +58,8 @@ object RuntimeEngineFactory {
         capabilityHostFactory: (() -> RuntimeCapabilityHost)? = null,
         trustedBackendFactory: (() -> RuntimeTrustedBackend)? = null,
         capabilityServicesFactory: RuntimeCapabilityServicesFactory? = null,
+        engineGateFactory: (() -> RuntimeEngineGate)? = null,
+        cryptoHostFactory: (() -> RuntimeCryptoHost)? = null,
     ): RuntimeEngine {
         require(
             capabilityServicesFactory == null || capabilityHostFactory == null && trustedBackendFactory == null,
@@ -70,6 +76,8 @@ object RuntimeEngineFactory {
         capabilityServicesSource = capabilityServicesFactory?.let { factory ->
             RuntimeCapabilityServicesGenerationSource(factory::create)
         },
+        engineGateSource = engineGateFactory?.let(RuntimeEngineGateGenerationSource::restartable),
+        cryptoHostSource = cryptoHostFactory?.let(::RuntimeCryptoHostGenerationSource),
         )
     }
 
@@ -83,6 +91,8 @@ object RuntimeEngineFactory {
         capabilityHostSource: RuntimeCapabilityHostGenerationSource?,
         trustedBackendSource: RuntimeTrustedBackendGenerationSource?,
         capabilityServicesSource: RuntimeCapabilityServicesGenerationSource? = null,
+        engineGateSource: RuntimeEngineGateGenerationSource? = null,
+        cryptoHostSource: RuntimeCryptoHostGenerationSource? = null,
     ): RuntimeEngine = DedicatedThreadRuntimeEngine(
         JavetRuntimeAdapterFactory(
             assets = assets,
@@ -94,7 +104,9 @@ object RuntimeEngineFactory {
             capabilityHostSource = capabilityHostSource,
             trustedBackendSource = trustedBackendSource,
             capabilityServicesSource = capabilityServicesSource,
+            engineGateSource = engineGateSource,
             runtimeArchitecture = resolveRuntimeArchitecture(Build.SUPPORTED_ABIS),
+            cryptoHostSource = cryptoHostSource,
         ),
     )
 }
@@ -115,7 +127,9 @@ internal class JavetRuntimeAdapterFactory(
     private val capabilityHostSource: RuntimeCapabilityHostGenerationSource?,
     private val trustedBackendSource: RuntimeTrustedBackendGenerationSource?,
     private val capabilityServicesSource: RuntimeCapabilityServicesGenerationSource?,
+    private val engineGateSource: RuntimeEngineGateGenerationSource?,
     private val runtimeArchitecture: String,
+    private val cryptoHostSource: RuntimeCryptoHostGenerationSource? = null,
 ) : ai.oneworks.holonomy.host.RuntimeAdapterFactory {
     override val capabilities = RuntimeCapabilities(
         implementationStage = RuntimeImplementationStage.BOOTSTRAP,
@@ -129,7 +143,7 @@ internal class JavetRuntimeAdapterFactory(
         host: ai.oneworks.holonomy.host.RuntimeAdapterHost,
     ): ai.oneworks.holonomy.host.RuntimeAdapter {
         val services = capabilityServicesSource?.create()
-        return JavetRuntimeAdapter(
+        val construct = { crypto: RuntimeCryptoHost? -> JavetRuntimeAdapter(
         assets = assets,
         bootstrapAssetPath = bootstrapAssetPath,
         host = host,
@@ -138,10 +152,13 @@ internal class JavetRuntimeAdapterFactory(
         processHost = processHost,
         capabilityHost = services?.capabilityHost ?: capabilityHostSource?.create(),
         trustedBackend = services?.trustedBackend ?: trustedBackendSource?.create(),
+        engineGate = engineGateSource?.create(),
+        cryptoHost = crypto,
         nativeHost = services?.nativeHost ?: nativeHostSource.create(),
         runtimeArchitecture = runtimeArchitecture,
         threadGuard = threadGuard,
-        )
+        ) }
+        return cryptoHostSource?.createOwned(construct) ?: construct(null)
     }
 }
 

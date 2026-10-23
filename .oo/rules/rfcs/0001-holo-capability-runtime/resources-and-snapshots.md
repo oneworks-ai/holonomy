@@ -16,6 +16,8 @@ interface CanonicalResourceBaseV1 {
     | 'processInstance'
     | 'processNetworkEndpoint'
     | 'systemField'
+    | 'storageKv'
+    | 'storageSql'
   readonly semanticId: string
   readonly semanticResourceDigest: string
   readonly display: Readonly<{ label: string }>
@@ -71,6 +73,8 @@ type CanonicalResourceV1 =
   | ProcessInstanceResourceV1
   | ProcessNetworkEndpointResourceV1
   | SystemInformationFieldResourceV1
+  | StorageKvResourceV1
+  | StorageSqlResourceV1
 
 interface ResourceCanonicalizerV1<Args> {
   canonicalize(

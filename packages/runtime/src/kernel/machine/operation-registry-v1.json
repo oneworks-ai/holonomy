@@ -1843,6 +1843,854 @@
     "resultSchemaId": "void"
   },
   {
+    "argsSchemaId": "FsChmodArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-chmod"
+        }
+      ]
+    },
+    "deliverySchemaId": "SyncVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "chmodSync",
+    "modes": [
+      "sync"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.metadata.chmod",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsChmodArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-chmod"
+        }
+      ]
+    },
+    "deliverySchemaId": "CallbackVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "chmod",
+    "modes": [
+      "callback"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.metadata.chmod",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsChmodPromiseArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-chmod"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseVariantDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "chmod",
+    "modes": [
+      "promise"
+    ],
+    "module": "node:fs/promises",
+    "operation": "filesystem.metadata.chmod",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "FsChmodMutationResultV1",
+    "resultVariants": [
+      {
+        "resultSchemaId": "void",
+        "whenArgumentsSchemaId": "FsChmodArgsV1"
+      },
+      {
+        "resultSchemaId": "FsChmodMetadataResultV1",
+        "whenArgumentsSchemaId": "FsChmodReadbackArgsV1"
+      }
+    ]
+  },
+  {
+    "argsSchemaId": "FsFchmodArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-chmod"
+        }
+      ]
+    },
+    "deliverySchemaId": "SyncVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "fchmodSync",
+    "modes": [
+      "sync"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.metadata.chmod",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsFchmodArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-chmod"
+        }
+      ]
+    },
+    "deliverySchemaId": "CallbackVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "fchmod",
+    "modes": [
+      "callback"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.metadata.chmod",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsHandleChmodPromiseArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-chmod"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseVariantDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "FileHandle.chmod",
+    "modes": [
+      "promise"
+    ],
+    "module": "node:fs/promises",
+    "operation": "filesystem.metadata.chmod",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "FsChmodMutationResultV1",
+    "resultVariants": [
+      {
+        "resultSchemaId": "void",
+        "whenArgumentsSchemaId": "FsHandleChmodArgsV1"
+      },
+      {
+        "resultSchemaId": "FsChmodMetadataResultV1",
+        "whenArgumentsSchemaId": "FsHandleChmodReadbackArgsV1"
+      }
+    ]
+  },
+  {
+    "argsSchemaId": "FsHandleChmodReadbackArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-chmod"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseResultDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "directory.chmod",
+    "modes": [
+      "promise"
+    ],
+    "module": "host.fs",
+    "operation": "filesystem.metadata.chmod",
+    "resourceSchemaId": "OpaqueDirectoryHandleResourceV1",
+    "resultSchemaId": "FsChmodMetadataResultV1"
+  },
+  {
+    "argsSchemaId": "FsUtimesArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "SyncVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "utimesSync",
+    "modes": [
+      "sync"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.metadata.utimes",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsUtimesArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "CallbackVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "utimes",
+    "modes": [
+      "callback"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.metadata.utimes",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsUtimesPromiseArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseVariantDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "utimes",
+    "modes": [
+      "promise"
+    ],
+    "module": "node:fs/promises",
+    "operation": "filesystem.metadata.utimes",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "FsMutationResultV1",
+    "resultVariants": [
+      {
+        "resultSchemaId": "void",
+        "whenArgumentsSchemaId": "FsUtimesArgsV1"
+      },
+      {
+        "resultSchemaId": "FsExactMetadataResultV1",
+        "whenArgumentsSchemaId": "FsUtimesReadbackArgsV1"
+      }
+    ]
+  },
+  {
+    "argsSchemaId": "FsHandleTimesArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-handle-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "SyncVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "futimesSync",
+    "modes": [
+      "sync"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.metadata.utimes",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsHandleTimesArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-handle-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "CallbackVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "futimes",
+    "modes": [
+      "callback"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.metadata.utimes",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsHandleTimesPromiseArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-handle-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseVariantDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "FileHandle.utimes",
+    "modes": [
+      "promise"
+    ],
+    "module": "node:fs/promises",
+    "operation": "filesystem.metadata.utimes",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "FsMutationResultV1",
+    "resultVariants": [
+      {
+        "resultSchemaId": "void",
+        "whenArgumentsSchemaId": "FsHandleTimesArgsV1"
+      },
+      {
+        "resultSchemaId": "FsExactMetadataResultV1",
+        "whenArgumentsSchemaId": "FsHandleTimesReadbackArgsV1"
+      }
+    ]
+  },
+  {
+    "argsSchemaId": "FsTruncateArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "SyncVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "truncateSync",
+    "modes": [
+      "sync"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.file.truncate",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsTruncateArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "CallbackVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "truncate",
+    "modes": [
+      "callback"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.file.truncate",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsTruncatePromiseArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseVariantDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "truncate",
+    "modes": [
+      "promise"
+    ],
+    "module": "node:fs/promises",
+    "operation": "filesystem.file.truncate",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "FsMutationResultV1",
+    "resultVariants": [
+      {
+        "resultSchemaId": "void",
+        "whenArgumentsSchemaId": "FsTruncateArgsV1"
+      },
+      {
+        "resultSchemaId": "FsExactMetadataResultV1",
+        "whenArgumentsSchemaId": "FsTruncateReadbackArgsV1"
+      }
+    ]
+  },
+  {
+    "argsSchemaId": "FsHandleTruncateArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-handle-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "SyncVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "ftruncateSync",
+    "modes": [
+      "sync"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.file.truncate",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsHandleTruncateArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-handle-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "CallbackVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "ftruncate",
+    "modes": [
+      "callback"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.file.truncate",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsHandleTruncatePromiseArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-handle-write"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseVariantDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "FileHandle.truncate",
+    "modes": [
+      "promise"
+    ],
+    "module": "node:fs/promises",
+    "operation": "filesystem.file.truncate",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "FsMutationResultV1",
+    "resultVariants": [
+      {
+        "resultSchemaId": "void",
+        "whenArgumentsSchemaId": "FsHandleTruncateArgsV1"
+      },
+      {
+        "resultSchemaId": "FsExactMetadataResultV1",
+        "whenArgumentsSchemaId": "FsHandleTruncateReadbackArgsV1"
+      }
+    ]
+  },
+  {
+    "argsSchemaId": "FsSyncArgsV1",
+    "capability": {
+      "kind": "inherited"
+    },
+    "deliverySchemaId": "SyncVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "fsyncSync",
+    "modes": [
+      "sync"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.file.sync",
+    "resourceSchemaId": "OpaqueFileHandleResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsSyncArgsV1",
+    "capability": {
+      "kind": "inherited"
+    },
+    "deliverySchemaId": "CallbackVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "fsync",
+    "modes": [
+      "callback"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.file.sync",
+    "resourceSchemaId": "OpaqueFileHandleResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "EmptyArgsV1",
+    "capability": {
+      "kind": "inherited"
+    },
+    "deliverySchemaId": "PromiseVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "FileHandle.sync",
+    "modes": [
+      "promise"
+    ],
+    "module": "node:fs/promises",
+    "operation": "filesystem.file.sync",
+    "resourceSchemaId": "OpaqueFileHandleResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsSyncArgsV1",
+    "capability": {
+      "kind": "inherited"
+    },
+    "deliverySchemaId": "SyncVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "fdatasyncSync",
+    "modes": [
+      "sync"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.file.datasync",
+    "resourceSchemaId": "OpaqueFileHandleResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsSyncArgsV1",
+    "capability": {
+      "kind": "inherited"
+    },
+    "deliverySchemaId": "CallbackVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "fdatasync",
+    "modes": [
+      "callback"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.file.datasync",
+    "resourceSchemaId": "OpaqueFileHandleResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "EmptyArgsV1",
+    "capability": {
+      "kind": "inherited"
+    },
+    "deliverySchemaId": "PromiseVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "FileHandle.datasync",
+    "modes": [
+      "promise"
+    ],
+    "module": "node:fs/promises",
+    "operation": "filesystem.file.datasync",
+    "resourceSchemaId": "OpaqueFileHandleResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsAccessArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-access"
+        }
+      ]
+    },
+    "deliverySchemaId": "SyncVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "accessSync",
+    "modes": [
+      "sync"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.metadata.access",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsAccessArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-access"
+        }
+      ]
+    },
+    "deliverySchemaId": "CallbackVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "access",
+    "modes": [
+      "callback"
+    ],
+    "module": "node:fs",
+    "operation": "filesystem.metadata.access",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsAccessArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-access"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "access",
+    "modes": [
+      "promise"
+    ],
+    "module": "node:fs/promises",
+    "operation": "filesystem.metadata.access",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "FsDirectoryOpenArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.fs",
+              "version": 1
+            }
+          ],
+          "branchId": "fs-list"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseResultDeliveryV1",
+    "interception": "host",
+    "kind": "open",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "directory.open",
+    "modes": [
+      "promise"
+    ],
+    "module": "host.fs",
+    "operation": "filesystem.directory.open",
+    "resourceSchemaId": "FilesystemResourceV1",
+    "resultSchemaId": "FsDirectoryHandleV1"
+  },
+  {
+    "argsSchemaId": "FsDirectorySyncArgsV1",
+    "capability": {
+      "kind": "inherited"
+    },
+    "deliverySchemaId": "PromiseVoidDeliveryV1",
+    "interception": "host",
+    "kind": "invoke",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "directory.sync",
+    "modes": [
+      "promise"
+    ],
+    "module": "host.fs",
+    "operation": "filesystem.directory.sync",
+    "resourceSchemaId": "OpaqueDirectoryHandleResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "EmptyArgsV1",
+    "capability": {
+      "kind": "inherited"
+    },
+    "deliverySchemaId": "PromiseVoidDeliveryV1",
+    "interception": "systemOnly",
+    "kind": "close",
+    "limitsOwner": "FilesystemLimitsV2",
+    "member": "directory.close",
+    "modes": [
+      "promise"
+    ],
+    "module": "host.fs",
+    "operation": "filesystem.directory.close",
+    "resourceSchemaId": "OpaqueDirectoryHandleResourceV1",
+    "resultSchemaId": "void"
+  },
+  {
     "argsSchemaId": "NetworkInvocationSnapshotV1",
     "capability": {
       "anyOf": [
@@ -2472,6 +3320,202 @@
     "operation": "process.resource.close",
     "resourceSchemaId": "ProcessInstanceResourceV1",
     "resultSchemaId": "void"
+  },
+  {
+    "argsSchemaId": "StorageKvKeyArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.storage",
+              "version": 1
+            }
+          ],
+          "branchId": "storage"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseResultDeliveryV1",
+    "interception": "host",
+    "kind": "read",
+    "limitsOwner": "StorageSandboxV2.limits",
+    "member": "kv.get",
+    "modes": [
+      "promise"
+    ],
+    "module": "holo:storage",
+    "operation": "storage.kv.get",
+    "resourceSchemaId": "StorageKvResourceV1",
+    "resultSchemaId": "StorageKvGetResultV1"
+  },
+  {
+    "argsSchemaId": "StorageKvSetArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.storage",
+              "version": 1
+            }
+          ],
+          "branchId": "storage"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseResultDeliveryV1",
+    "interception": "host",
+    "kind": "write",
+    "limitsOwner": "StorageSandboxV2.limits",
+    "member": "kv.set",
+    "modes": [
+      "promise"
+    ],
+    "module": "holo:storage",
+    "operation": "storage.kv.set",
+    "resourceSchemaId": "StorageKvResourceV1",
+    "resultSchemaId": "StorageVoidResultV1"
+  },
+  {
+    "argsSchemaId": "StorageKvKeyArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.storage",
+              "version": 1
+            }
+          ],
+          "branchId": "storage"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseResultDeliveryV1",
+    "interception": "host",
+    "kind": "write",
+    "limitsOwner": "StorageSandboxV2.limits",
+    "member": "kv.delete",
+    "modes": [
+      "promise"
+    ],
+    "module": "holo:storage",
+    "operation": "storage.kv.delete",
+    "resourceSchemaId": "StorageKvResourceV1",
+    "resultSchemaId": "boolean"
+  },
+  {
+    "argsSchemaId": "StorageKvListArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.storage",
+              "version": 1
+            }
+          ],
+          "branchId": "storage"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseResultDeliveryV1",
+    "interception": "host",
+    "kind": "read",
+    "limitsOwner": "StorageSandboxV2.limits",
+    "member": "kv.list",
+    "modes": [
+      "promise"
+    ],
+    "module": "holo:storage",
+    "operation": "storage.kv.list",
+    "resourceSchemaId": "StorageKvResourceV1",
+    "resultSchemaId": "StorageKvListResultV1"
+  },
+  {
+    "argsSchemaId": "StorageSqlStatementArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.storage",
+              "version": 1
+            }
+          ],
+          "branchId": "storage"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseResultDeliveryV1",
+    "interception": "host",
+    "kind": "write",
+    "limitsOwner": "StorageSandboxV2.limits",
+    "member": "sqlite.execute",
+    "modes": [
+      "promise"
+    ],
+    "module": "holo:storage",
+    "operation": "storage.sqlite.execute",
+    "resourceSchemaId": "StorageSqlResourceV1",
+    "resultSchemaId": "StorageExecuteResultV1"
+  },
+  {
+    "argsSchemaId": "StorageSqlStatementArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.storage",
+              "version": 1
+            }
+          ],
+          "branchId": "storage"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseResultDeliveryV1",
+    "interception": "host",
+    "kind": "read",
+    "limitsOwner": "StorageSandboxV2.limits",
+    "member": "sqlite.query",
+    "modes": [
+      "promise"
+    ],
+    "module": "holo:storage",
+    "operation": "storage.sqlite.query",
+    "resourceSchemaId": "StorageSqlResourceV1",
+    "resultSchemaId": "StorageQueryResultV1"
+  },
+  {
+    "argsSchemaId": "StorageSqlTransactionArgsV1",
+    "capability": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "name": "host.storage",
+              "version": 1
+            }
+          ],
+          "branchId": "storage"
+        }
+      ]
+    },
+    "deliverySchemaId": "PromiseResultDeliveryV1",
+    "interception": "host",
+    "kind": "write",
+    "limitsOwner": "StorageSandboxV2.limits",
+    "member": "sqlite.transaction",
+    "modes": [
+      "promise"
+    ],
+    "module": "holo:storage",
+    "operation": "storage.sqlite.transaction",
+    "resourceSchemaId": "StorageSqlResourceV1",
+    "resultSchemaId": "StorageTransactionResultV1"
   },
   {
     "argsSchemaId": "EmptyArgsV1",

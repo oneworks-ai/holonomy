@@ -9,6 +9,7 @@ const OBJECT_FREEZE = Object.freeze
 const OBJECT_GET_OWN_PROPERTY_DESCRIPTOR = Object.getOwnPropertyDescriptor
 const OBJECT_GET_PROTOTYPE_OF = Object.getPrototypeOf
 const OBJECT_IS = Object.is
+const OBJECT_KEYS = Object.keys
 const REFLECT_OWN_KEYS = Reflect.ownKeys
 const STRING = String
 
@@ -30,6 +31,7 @@ export const getTestOwnDescriptor: typeof Object.getOwnPropertyDescriptor = OBJE
 export const getTestPrototype: typeof Object.getPrototypeOf = OBJECT_GET_PROTOTYPE_OF
 export const isTestArray: typeof Array.isArray = ARRAY_IS_ARRAY
 export const isTestValue: typeof Object.is = OBJECT_IS
+export const getTestEnumerableKeys: typeof Object.keys = OBJECT_KEYS
 export const nowForTest = DATE_NOW
 export const maxTestNumber = MATH_MAX
 export const ownTestKeys: typeof Reflect.ownKeys = REFLECT_OWN_KEYS

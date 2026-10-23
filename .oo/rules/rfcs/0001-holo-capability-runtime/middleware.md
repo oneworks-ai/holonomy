@@ -115,11 +115,13 @@ const dispose = runtime.interceptors.use(
 语义必须固定：
 
 - `next()` 最多调用一次；重复调用产生稳定 Middleware 错误；
+- 授权判断应在 `next()` 前完成；一旦委派，下游可能已经开始 I/O，之后拒绝不能承诺撤销已提交的副作用，只能取消尚未提交或尚未开始的工作；
 - 不调用 `next()` 并直接返回会短路后续 Middleware 和 Provider；
 - 短路结果仍必须经过结果 Schema、配额、Realm 重建和脱敏；
 - 抛错会中止调用；Host 内部异常必须映射为稳定、无敏感信息的 Guest 错误；
 - `dispose()` 只影响之后的新调用，不撤销已经进入链路的调用；
 - Runtime stop/restart、deadline 或 AbortSignal 必须取消正在等待的 Middleware；
+- 对外 terminal 与所有已启动 frame 的 settlement 分离；即使 handler 未等待 `next()`，原 graph、资源和 pending 额度也须保留到所有已启动工作及其清理完成，晚到的结果或异常不得覆盖已选择 terminal；
 - 不可移除的系统 Middleware 位于宿主 Middleware 外层。
 
 ### 10.3 Matcher

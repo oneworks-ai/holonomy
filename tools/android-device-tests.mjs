@@ -3,6 +3,8 @@
 import { spawnSync } from 'node:child_process'
 import process from 'node:process'
 
+import { v86TestBudget } from '../conformance/capabilities/process-v86-watchdog.mjs'
+
 import {
   androidBuildEnvironment,
   androidRoot,
@@ -44,6 +46,7 @@ function executeDeviceSuite(adb, serial, requireV86) {
     [
       '--no-daemon',
       ':e2e:connectedDebugAndroidTest',
+      `-Pandroid.testInstrumentationRunnerArguments.timeout_msec=${v86TestBudget.instrumentationTimeoutMs}`,
       ...(requireV86
         ? [
           '-Pandroid.testInstrumentationRunnerArguments.holonomyRequireV86=true',

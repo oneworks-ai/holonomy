@@ -1,11 +1,14 @@
+/* eslint-disable max-lines -- Native Process admission shares the existing policy and Backend fixtures. */
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'vitest'
 
 import { createNodeProcessBackendRegistryForInstallationV1 } from '../../../adapters/node/src/capability-process-v86-installation.mjs'
 import { createServiceCapabilityRuntimeManagerV1 } from '../capability-runtime-manager.mjs'
+import { materializeNativeLaunch } from '../native-launch-materialization.mjs'
+import { privateLaunchLine } from '../native-target-adapter.mjs'
 import { compileSandboxPolicy } from '../sandbox-policy.mjs'
 import { runtimeLaunch } from './sandbox-fixture.mjs'
 
@@ -65,6 +68,26 @@ const processInput = (target = 'node', source = 'export {}') => ({
   target
 })
 
+const nativeInput = (source, extraModules = []) => {
+  const entryUrl = 'app://workspace/main.mjs'
+  return {
+    entryUrl,
+    fixture: undefined,
+    inspectorMode: 'off',
+    launch: {
+      argv: [entryUrl],
+      command: 'run',
+      entryUrl,
+      moduleRootUrl: 'app://workspace/',
+      modules: [{ source, url: entryUrl }, ...extraModules],
+      schemaVersion: 2,
+      target: 'native'
+    },
+    sandboxPolicy: legacyNone,
+    target: 'native'
+  }
+}
+
 const request = policy => ({
   context: context(),
   initialMiddlewareId: 'service.continue.v1',
@@ -111,6 +134,36 @@ const processPolicy = () => ({
     network: { access: 'none' },
     shell: { access: 'none' }
   }
+})
+
+const nativeProcessPolicy = () => {
+  const policy = processPolicy()
+  policy.device.operations = {}
+  policy.process.limits.maxProcessTreeDepth = 2
+  return policy
+}
+
+const controlledStringsPolicy = () => ({
+  ...capabilityPolicy(),
+  codeGeneration: {
+    dynamicImport: { access: 'none' },
+    strings: {
+      access: 'controlled',
+      decisionTimeoutMs: 1000,
+      maxOperations: 4,
+      maxSourceBytes: 4096
+    },
+    wasm: { access: 'none' }
+  }
+})
+
+const nativeCodePolicy = () => ({
+  codeGeneration: {
+    dynamicImport: { access: 'controlled', decisionTimeoutMs: 1000, maxOperations: 2, maxSourceBytes: 4096 },
+    strings: { access: 'none' },
+    wasm: { access: 'controlled', decisionTimeoutMs: 1000, maxOperations: 1, maxSourceBytes: 4096 }
+  },
+  schemaVersion: 2
 })
 
 describe('service capability Runtime launch manager', () => {
@@ -198,6 +251,37 @@ describe('service capability Runtime launch manager', () => {
     }
   )
 
+  it.skipIf(process.platform !== 'darwin')(
+    'prepares only an explicit Darwin profile for Native without publishing Host paths',
+    async () => {
+      const manager = createServiceCapabilityRuntimeManagerV1({
+        processProfiles: { developer: nativeProcessProfile }
+      })
+      const expected = processInput('native')
+      const admitted = manager.admit(
+        { ...request(nativeProcessPolicy()), processProfileId: 'developer' },
+        expected
+      )
+      assert.equal(admitted.processProfileId, 'developer')
+      assert.equal(admitted.sandboxPolicy.process.limits.maxProcessTreeDepth, 2)
+      assert.equal(JSON.stringify(admitted).includes('/usr/bin/true'), false)
+      const prepared = await manager.prepare({
+        ...expected,
+        capabilityRuntime: admitted,
+        generation: 1,
+        id: 'process_native'
+      })
+      assert.equal(prepared.processProfileId, 'developer')
+      assert.equal(prepared.processProfile.executables[0].executable.path, '/usr/bin/true')
+      const writable = nativeProcessPolicy()
+      writable.process.limits.maxWritableRootfsBytes = 1024
+      assert.throws(
+        () => manager.admit({ ...request(writable), processProfileId: 'developer' }, expected),
+        error => error.code === 'sandbox.capability_unsupported'
+      )
+    }
+  )
+
   it('injects only the selected Host-owned v86 installation into the Node session', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'holonomy-v86-manager-'))
     const installation = {
@@ -239,6 +323,14 @@ describe('service capability Runtime launch manager', () => {
       const admitted = manager.admit(
         { ...request(processPolicy()), processProfileId: 'linux' },
         processInput()
+      )
+      assert.throws(
+        () =>
+          manager.admit(
+            { ...request(nativeProcessPolicy()), processProfileId: 'linux' },
+            processInput('native')
+          ),
+        error => error.code === 'sandbox.capability_unsupported'
       )
       const prepared = await manager.prepare({
         capabilityRuntime: admitted,
@@ -305,6 +397,194 @@ describe('service capability Runtime launch manager', () => {
     )
     assert.throws(
       () => manager.admit(request(capabilityPolicy()), { ...processInput(), inspectorMode: 'enabled' }),
+      error => error.code === 'sandbox.capability_unsupported'
+    )
+  })
+
+  it('admits controlled strings only when the Node Host installs an M4 Engine Gate', () => {
+    const unavailable = createServiceCapabilityRuntimeManagerV1()
+    assert.throws(
+      () => unavailable.admit(request(controlledStringsPolicy()), processInput()),
+      error => error.code === 'sandbox.capability_unsupported'
+    )
+
+    const available = createServiceCapabilityRuntimeManagerV1({ engineGate: () => ({ action: 'allow' }) })
+    assert.equal(
+      available.admit(request(controlledStringsPolicy()), processInput()).sandboxPolicy.codeGeneration.strings.access,
+      'controlled'
+    )
+    assert.throws(
+      () => available.admit(request(controlledStringsPolicy()), processInput('android')),
+      error => error.code === 'sandbox.capability_unsupported'
+    )
+
+    const dynamicImport = controlledStringsPolicy()
+    dynamicImport.codeGeneration.strings = { access: 'none' }
+    dynamicImport.codeGeneration.dynamicImport = {
+      access: 'controlled',
+      decisionTimeoutMs: 1000,
+      maxOperations: 2,
+      maxSourceBytes: 4096
+    }
+    assert.equal(
+      available.admit(
+        request(dynamicImport),
+        processInput('node', "await import('./other.mjs')")
+      ).sandboxPolicy.codeGeneration.dynamicImport.access,
+      'controlled'
+    )
+
+    const wasm = controlledStringsPolicy()
+    wasm.codeGeneration.wasm = {
+      access: 'controlled',
+      decisionTimeoutMs: 1000,
+      maxOperations: 1,
+      maxSourceBytes: 4096
+    }
+    assert.equal(
+      available.admit(request(wasm), processInput()).sandboxPolicy.codeGeneration.wasm.access,
+      'controlled'
+    )
+    assert.throws(
+      () => available.admit(request(wasm), processInput('android')),
+      error => error.code === 'sandbox.capability_unsupported'
+    )
+  })
+
+  it('carries controlled Native Wasm and dynamic-import Policy through private staging without a Service callback', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'holonomy-native-gates-stage-'))
+    const manager = createServiceCapabilityRuntimeManagerV1({ stateDirectory: directory })
+    const lazyUrl = 'app://workspace/lazy.mjs'
+    const expected = nativeInput(
+      "await WebAssembly.compile(new Uint8Array([0,97,115,109,1,0,0,0])); await import('./lazy.mjs')",
+      [{ source: 'export const value = 42', url: lazyUrl }]
+    )
+    try {
+      const admitted = manager.admit(request(nativeCodePolicy()), expected)
+      const process = { ...expected, capabilityRuntime: admitted, generation: 1, id: 'process_native_gates' }
+      const prepared = await manager.prepare(process)
+      assert.equal(admitted.sandboxPolicy.codeGeneration.wasm.access, 'controlled')
+      assert.equal(admitted.sandboxPolicy.codeGeneration.dynamicImport.access, 'controlled')
+      assert.equal(prepared.policyDigest, admitted.policyDigest)
+      assert.deepEqual(prepared.policy, admitted.sandboxPolicy)
+      assert.equal(Object.hasOwn(prepared, 'engineGate'), false)
+
+      const staged = await materializeNativeLaunch(process, directory, prepared)
+      const hostConfig = JSON.parse(await readFile(staged.hostConfigPath, 'utf8'))
+      const privateLaunch = JSON.parse(privateLaunchLine(process, staged))
+      assert.deepEqual(hostConfig.sandboxPolicy.codeGeneration, admitted.sandboxPolicy.codeGeneration)
+      assert.deepEqual(privateLaunch.hostConfig.sandboxPolicy.codeGeneration, admitted.sandboxPolicy.codeGeneration)
+      assert.deepEqual(hostConfig.plugins, [])
+      assert(privateLaunch.moduleAllowlist.includes(lazyUrl))
+      assert.equal(await readFile(join(staged.workspaceRoot, 'lazy.mjs'), 'utf8'), 'export const value = 42')
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
+  it('keeps Native none, wrong-target and malformed requests outside the staging boundary', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'holonomy-native-gates-deny-'))
+    const unavailable = createServiceCapabilityRuntimeManagerV1({ stateDirectory: directory })
+    const callbackOnly = createServiceCapabilityRuntimeManagerV1({
+      engineGate: () => ({ action: 'allow' }),
+      stateDirectory: directory
+    })
+    const source = "globalThis.entryRan = true; await import('./lazy.mjs')"
+    const expected = nativeInput(source, [{ source: 'export default 1', url: 'app://workspace/lazy.mjs' }])
+    try {
+      const none = nativeCodePolicy()
+      none.codeGeneration.dynamicImport = { access: 'none' }
+      none.codeGeneration.wasm = { access: 'none' }
+      assert.throws(
+        () => unavailable.admit(request(none), expected),
+        error => error.code === 'sandbox.capability_unsupported'
+      )
+      assert.equal(
+        unavailable.admit(request(none), nativeInput('export {}')).sandboxPolicy.codeGeneration.wasm.access,
+        'none'
+      )
+      assert.throws(
+        () => unavailable.admit(request(nativeCodePolicy()), processInput('node', source)),
+        error => error.code === 'sandbox.capability_unsupported'
+      )
+      assert.throws(
+        () => callbackOnly.admit(request(nativeCodePolicy()), processInput('android', source)),
+        error => error.code === 'sandbox.capability_unsupported'
+      )
+      const malformed = nativeCodePolicy()
+      malformed.codeGeneration.wasm.unrecognized = true
+      assert.throws(
+        () => unavailable.admit(request(malformed), expected),
+        error => error.code === 'service.invalid_request'
+      )
+      assert.deepEqual(await readdir(directory), [])
+    } finally {
+      await rm(directory, { force: true, recursive: true })
+    }
+  })
+
+  it('admits Native Inspector policy through the Native Host Gate without a Service Gate', () => {
+    const manager = createServiceCapabilityRuntimeManagerV1()
+    const nativePolicy = {
+      schemaVersion: 2,
+      codeGeneration: {
+        dynamicImport: { access: 'none' },
+        strings: {
+          access: 'controlled',
+          decisionTimeoutMs: 1_000,
+          maxOperations: 4,
+          maxSourceBytes: 4_096
+        },
+        wasm: { access: 'none' }
+      },
+      inspector: { evaluate: true }
+    }
+    const native = { ...processInput('native'), inspectorMode: 'break' }
+    const admitted = manager.admit(request(nativePolicy), native)
+    assert.equal(admitted.sandboxPolicy.inspector.evaluate, true)
+    assert.equal(admitted.sandboxPolicy.codeGeneration.strings.access, 'controlled')
+    assert.throws(
+      () => manager.admit(request(nativePolicy), { ...processInput('android'), inspectorMode: 'break' }),
+      error => error.code === 'sandbox.capability_unsupported'
+    )
+  })
+
+  it('admits only pre-registered Node Runtime Observer bindings', () => {
+    const observerRegistry = {
+      'service.script-observer': {
+        observer: () => undefined,
+        registration: { events: ['script.compiled'] }
+      }
+    }
+    const manager = createServiceCapabilityRuntimeManagerV1({ observerRegistry })
+    const policy = capabilityPolicy()
+    policy.diagnostics = {
+      maxObserverCallbackMs: 100,
+      maxQueuedEvents: 8,
+      maxSourceReadBytes: 0,
+      observerEvents: ['script.compiled'],
+      retentionMs: 0,
+      sourceReader: 'metadataOnly'
+    }
+    const admitted = manager.admit(
+      { ...request(policy), initialObserverIds: ['service.script-observer'] },
+      processInput()
+    )
+    assert.deepEqual(admitted.initialObserverIds, ['service.script-observer'])
+    assert.throws(
+      () =>
+        manager.admit(
+          { ...request(policy), initialObserverIds: ['service.missing-observer'] },
+          processInput()
+        ),
+      error => error.code === 'service.invalid_request'
+    )
+    assert.throws(
+      () =>
+        manager.admit(
+          { ...request(policy), initialObserverIds: ['service.script-observer'] },
+          processInput('android')
+        ),
       error => error.code === 'sandbox.capability_unsupported'
     )
   })

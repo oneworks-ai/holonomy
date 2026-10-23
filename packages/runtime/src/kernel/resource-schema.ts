@@ -1,3 +1,7 @@
+import {
+  STORAGE_KV_RESOURCE_V1_SCHEMA,
+  STORAGE_SQL_RESOURCE_V1_SCHEMA
+} from '@holonomyjs/capability-storage/kernel/storage-resource-schema'
 import type { JsonSchema } from './schema-primitives.js'
 import { integerSchema, strictObject } from './schema-primitives.js'
 
@@ -129,7 +133,9 @@ export const CANONICAL_RESOURCE_V1_SCHEMA: JsonSchema = Object.freeze({
     PROCESS_EXECUTABLE_RESOURCE_V1_SCHEMA,
     PROCESS_INSTANCE_RESOURCE_V1_SCHEMA,
     PROCESS_NETWORK_ENDPOINT_RESOURCE_V1_SCHEMA,
-    SYSTEM_INFORMATION_FIELD_RESOURCE_V1_SCHEMA
+    SYSTEM_INFORMATION_FIELD_RESOURCE_V1_SCHEMA,
+    STORAGE_KV_RESOURCE_V1_SCHEMA,
+    STORAGE_SQL_RESOURCE_V1_SCHEMA
   ]
 })
 

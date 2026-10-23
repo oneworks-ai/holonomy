@@ -4,6 +4,49 @@ import { describe, it } from 'vitest'
 import { InspectorCdpProxy } from '../inspector-proxy.mjs'
 
 describe('inspector resume coordination', () => {
+  it('owns Native resume before upstream I/O even when a client and its lease close', async () => {
+    const proxy = new InspectorCdpProxy()
+    let release
+    let entered
+    let committed = false
+    let calls = 0
+    let upstream = 0
+    const started = new Promise(resolve => entered = resolve)
+    proxy.configureResume(async () => {
+      calls++
+      entered()
+      await new Promise(resolve => release = resolve)
+      committed = true
+    })
+    for (const id of ['one', 'two']) {
+      proxy.attach({
+        inspector: { generation: 1, id: `inspector_${id}`, processId: 'native_process' },
+        process: { generation: 1, id: 'native_process', target: 'native' },
+        transport: {
+          close() {},
+          send: async () => {
+            upstream++
+            return { result: {} }
+          }
+        }
+      })
+    }
+    const first = proxy.connect('inspector_one', () => undefined)
+    const second = proxy.connect('inspector_two', () => undefined)
+    const a = first.receive({ id: 1, method: 'Runtime.runIfWaitingForDebugger' })
+    const b = second.receive({ id: 1, method: 'Runtime.runIfWaitingForDebugger' })
+    await started
+    first.close()
+    proxy.closeLease('inspector_one')
+    release()
+    assert.equal((await a).error.code, -32_000)
+    assert.deepEqual(await b, { id: 1, result: {} })
+    assert.equal(committed, true)
+    assert.equal(calls, 1)
+    assert.equal(upstream, 0)
+    await proxy.close()
+  })
+
   it('resumes one exact lease once and rejects its stale session', async () => {
     const calls = []
     const proxy = new InspectorCdpProxy()

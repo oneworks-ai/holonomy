@@ -43,6 +43,56 @@ export const fsTargetV1 = (value: unknown): { fields: FsCapabilityFieldsV1; valu
   const path = capabilityTextPathV1(value)
   return { fields: { path }, value: path }
 }
+export const fsDescriptorTargetV1 = (value: unknown) => {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    return invalidFsValueV1('File descriptor must be a nonnegative safe integer')
+  }
+  return { fd: value, fields: fsTargetV1(value).fields }
+}
+export const fsLengthV1 = (value: unknown): number => {
+  if (value === undefined) return 0
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    return invalidFsValueV1('Length must be a nonnegative safe integer')
+  }
+  return value
+}
+export const fsAccessModeV1 = (value: unknown): number => {
+  if (value === undefined) return 0
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 7) {
+    return invalidFsValueV1('Access mode must use F_OK, R_OK, W_OK or X_OK')
+  }
+  return value
+}
+export const fsChmodModeV1 = (value: unknown): number => {
+  const mode = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && /^[0-7]{1,4}$/u.test(value)
+    ? Number.parseInt(value, 8)
+    : Number.NaN
+  if (!Number.isSafeInteger(mode) || mode < 0 || mode > 0o777) {
+    return invalidFsValueV1('Mode must be a permission value from 0000 to 0777')
+  }
+  return mode
+}
+const fsTimeV1 = (value: unknown) => {
+  let seconds: number
+  if (typeof value === 'number') seconds = value
+  else if (typeof value === 'string' && /^-?\d+(?:\.\d+)?$/u.test(value)) seconds = Number(value)
+  else return invalidFsValueV1('Time must be a finite number or numeric string')
+  if (!Number.isFinite(seconds) || seconds < 0 || seconds > 253_402_300_799) {
+    return invalidFsValueV1('Time is outside the supported range')
+  }
+  let whole = Math.floor(seconds)
+  let nanoseconds = Math.round((seconds - whole) * 1_000_000_000)
+  if (nanoseconds === 1_000_000_000) {
+    whole++
+    nanoseconds = 0
+  }
+  if (whole > 253_402_300_799) return invalidFsValueV1('Time is outside the supported range')
+  return Object.freeze({ kind: 'set', nanoseconds, seconds: whole })
+}
+export const fsTimesV1 = (atime: unknown, mtime: unknown) =>
+  Object.freeze({ atime: fsTimeV1(atime), mtime: fsTimeV1(mtime) })
 export const fsAbortSignalV1 = (value: unknown): CapabilityGuestAbortSignalV1 | undefined => {
   if (value === undefined) return undefined
   if (value == null || typeof value !== 'object' || Array.isArray(value)) {
@@ -96,12 +146,14 @@ export const fsStatsV1 = (value: unknown) => {
   const source = fsObjectV1(value)
   const kind = source.kind
   return Object.freeze({
+    ...(source.atimeMs === undefined ? {} : { atimeMs: source.atimeMs }),
     birthtimeMs: source.birthtimeMs,
     ctimeMs: source.ctimeMs,
     isDirectory: () => kind === 'directory',
     isFile: () => kind === 'file',
     isSymbolicLink: () => kind === 'symlink',
     mtimeMs: source.mtimeMs,
+    ...(source.mode === undefined ? {} : { mode: source.mode }),
     size: source.size
   })
 }

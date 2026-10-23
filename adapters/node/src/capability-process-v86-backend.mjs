@@ -99,7 +99,9 @@ const validateLaunchFilesystem = (input, filesystemBridge) => {
 export const V86_PROCESS_BACKEND_DESCRIPTOR_V1 = Object.freeze({
   backendId: 'experimental.v86-v1',
   binaryFormats: Object.freeze(['linux-x86-32']),
-  environmentScopes: Object.freeze(['processTree', 'runtime']),
+  // Packet admission is endpoint-bound, not independently bound to each PID.
+  // Keep one root per VM until runtime-scope attribution is kernel-bound.
+  environmentScopes: Object.freeze(['processTree']),
   family: 'virtual-machine',
   features: Object.freeze({
     filesystemBridge: false,

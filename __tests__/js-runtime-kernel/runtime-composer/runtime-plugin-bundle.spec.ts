@@ -44,4 +44,17 @@ describe('runtime Plugin source-only Bundle v1', () => {
       }])
     ).toThrow('version or files are invalid')
   })
+
+  it('binds an optional config Schema to the bundle digest', () => {
+    const original = bundle()
+    const configSchema = { properties: { revision: { type: 'integer' } }, type: 'object' }
+    const withSchema = {
+      ...original,
+      bundleSha256: runtimePluginBundleDigestV1({ ...original, configSchema }),
+      configSchema
+    }
+    expect(normalizeRuntimePluginBundlesV1([withSchema])[0]?.configSchema).toEqual(configSchema)
+    expect(() => normalizeRuntimePluginBundlesV1([{ ...withSchema, configSchema: false }]))
+      .toThrow('digest is invalid')
+  })
 })

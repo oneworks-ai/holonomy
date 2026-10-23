@@ -6,8 +6,10 @@ import ai.oneworks.holonomy.host.RuntimeAdapter
 import ai.oneworks.holonomy.host.RuntimeAdapterHost
 import ai.oneworks.holonomy.host.RuntimeCapabilityHost
 import ai.oneworks.holonomy.host.RuntimeCapabilityResourceEventSink
+import ai.oneworks.holonomy.host.RuntimeCryptoHost
 import ai.oneworks.holonomy.host.RuntimeEngineErrorCode
 import ai.oneworks.holonomy.host.RuntimeEngineException
+import ai.oneworks.holonomy.host.RuntimeEngineGate
 import ai.oneworks.holonomy.host.RuntimeEvaluation
 import ai.oneworks.holonomy.host.RuntimeModuleResolver
 import ai.oneworks.holonomy.host.RuntimeModuleSource
@@ -31,6 +33,7 @@ import com.caoccao.javet.values.V8Value
 import com.caoccao.javet.values.reference.IV8Module
 import com.caoccao.javet.values.reference.IV8ValuePromise
 import com.caoccao.javet.values.reference.V8ValueArray
+import com.caoccao.javet.values.reference.V8ValueArrayBuffer
 import com.caoccao.javet.values.reference.V8ValueFunction
 import com.caoccao.javet.values.reference.V8ValueObject
 import com.caoccao.javet.values.reference.V8ValuePromise
@@ -52,12 +55,21 @@ internal class JavetRuntimeAdapter(
     private val nativeHost: RuntimeNativeHost,
     private val capabilityHost: RuntimeCapabilityHost?,
     private val trustedBackend: RuntimeTrustedBackend?,
+    engineGate: RuntimeEngineGate?,
     private val processHost: RuntimeProcessHost,
     private val runtimeArchitecture: String,
     private val threadGuard: RuntimeThreadGuard,
+    cryptoHost: RuntimeCryptoHost? = null,
 ) : RuntimeAdapter {
     private val assetResolver = AndroidAssetModuleResolver(assets)
     private val runtime: V8Runtime = V8Host.getV8Instance().createV8Runtime()
+    private val engineGateBinding = try {
+        engineGate?.let(::AndroidEngineGateNativeBinding)
+    } catch (error: Throwable) {
+        runCatching { engineGate?.close() }
+        runCatching { runtime.close() }
+        throw error
+    }
     private val pluginHost = if (capabilityHost != null || processHost.configuration.runtimePluginsJson != "[]") {
         AndroidRuntimePluginHost(
             assets,
@@ -66,11 +78,13 @@ internal class JavetRuntimeAdapter(
             processHost,
             host,
             threadGuard,
+            nativeHost,
         )
     } else {
         null
     }
     private val callbacks = HostCallbacks()
+    private val cryptoBinding = cryptoHost?.let { AndroidCryptoEngineBinding(runtime, it, threadGuard) }
     private val diagnosticsExecutor = ThreadPoolExecutor(
         1,
         1,
@@ -124,6 +138,16 @@ internal class JavetRuntimeAdapter(
         hostObject = runtime.createV8ValueObject()
         hostObject.bind(callbacks)
         runtime.globalObject.set(HOST_GLOBAL, hostObject)
+        engineGateBinding?.let {
+            // Enter V8 through a trusted constant script so nativeArm() can
+            // obtain the active isolate from V8 itself instead of depending
+            // on Javet's private V8Runtime memory layout.
+            runtime.getExecutor("$HOST_GLOBAL.armEngineGate()").executeVoid()
+            // V8 consults the modify callback only when this context would
+            // otherwise reject string compilation. The callback is the sole
+            // per-compilation override for Host-controlled generations.
+            runtime.allowEval(false)
+        }
         installModuleResolver()
     }
 
@@ -204,6 +228,7 @@ internal class JavetRuntimeAdapter(
             started = true
         } catch (error: Throwable) {
             runCatching { trustedBackendBridge?.close() }
+            runCatching { cryptoBinding?.close() }
             trustedBackendBridge = null
             runCatching { pluginHost?.close() }
             runCatching { capabilityHost?.close() }
@@ -259,6 +284,7 @@ internal class JavetRuntimeAdapter(
         runCatching { capabilityHost?.close() }
         runCatching { trustedBackend?.close() }
         closeNativeHost()
+        runCatching { cryptoBinding?.close() }
         runCatching { inspectorServer?.close() }
         runCatching { inspector?.close() }
         runCatching { turnDriver?.close() }
@@ -280,7 +306,9 @@ internal class JavetRuntimeAdapter(
         runCatching { hostObject.close() }
         pendingModuleEvaluations.forEach { promise -> runCatching { promise.close() } }
         pendingModuleEvaluations.clear()
+        moduleCache.values.forEach { module -> runCatching { module.close() } }
         moduleCache.clear()
+        runCatching { engineGateBinding?.close() }
         runtime.close()
     }
 
@@ -590,20 +618,23 @@ internal class JavetRuntimeAdapter(
         val driver = nativeDriver ?: return
         runtime.createV8ValueArray().use { handles ->
             runtime.createV8ValueArray().use { values ->
-                val typedValues = mutableListOf<V8ValueTypedArray>()
+                runtime.createV8ValueNull().use { prototype ->
+                    check(handles.setPrototype(prototype) && values.setPrototype(prototype))
+                }
+                val buffers = mutableListOf<V8ValueArrayBuffer>()
                 try {
-                    for (item in binary) {
-                        handles.push(item.handle)
-                        val typed = runtime.createV8ValueTypedArray(V8ValueType.Uint8Array, item.data.size)
-                        typed.fromBytes(item.data)
-                        typedValues += typed
-                        values.push(typed)
+                    for ((index, item) in binary.withIndex()) {
+                        check(handles.set(index, item.handle))
+                        val buffer = runtime.createV8ValueArrayBuffer(item.data.size)
+                        buffer.byteBuffer.duplicate().apply { clear(); put(item.data) }
+                        buffers += buffer
+                        check(values.set(index, buffer))
                     }
                     driver.callVoid(runtime.globalObject, callToken, channel, eventJson, handles, values)
                     checkpointRequested = true
                     drainMicrotasks()
                 } finally {
-                    typedValues.forEach { typed -> runCatching { typed.close() } }
+                    buffers.forEach { buffer -> runCatching { buffer.close() } }
                 }
             }
         }
@@ -619,11 +650,14 @@ internal class JavetRuntimeAdapter(
         return List(length) { index ->
             val handle = handles.getString(index)
             require(NATIVE_HANDLE.matches(handle))
-            values.get<V8ValueTypedArray>(index).use { typed ->
-                require(typed.type == V8ValueType.Uint8Array)
-                val data = typed.toBytes()
-                totalBytes += data.size
+            values.get<V8ValueArrayBuffer>(index).use { buffer ->
+                require(buffer.type == V8ValueType.ArrayBuffer)
+                val bytes = buffer.byteBuffer.duplicate()
+                totalBytes += bytes.capacity()
                 require(totalBytes <= MAX_NATIVE_BINARY_BYTES)
+                val data = ByteArray(bytes.capacity())
+                bytes.clear()
+                bytes.get(data)
                 RuntimeNativeBinary(handle, data)
             }
         }
@@ -716,6 +750,12 @@ internal class JavetRuntimeAdapter(
     }
 
     private inner class HostCallbacks {
+        @V8Function
+        fun armEngineGate() {
+            engineGateBinding?.armFromCurrentIsolate()
+                ?: throw IllegalStateException("The Android Engine Gate binding is unavailable")
+        }
+
         @V8Function
         fun architecture(): String = runtimeArchitecture
 
@@ -847,10 +887,25 @@ internal class JavetRuntimeAdapter(
         }
 
         @V8Function
-        fun sha256Hex(value: V8ValueTypedArray): String {
-            require(value.type == V8ValueType.Uint8Array)
-            val bytes = value.toBytes()
-            require(bytes.size.toLong() <= MAX_NATIVE_BINARY_BYTES)
+        fun cryptoAvailable(): Boolean = cryptoBinding != null
+
+        @V8Function
+        fun cryptoLimits(): String = cryptoBinding?.limitsJson() ?: "{}"
+
+        @V8Function
+        fun cryptoCall(operation: Double, handle: Double, first: V8Value, second: V8Value): V8Value =
+            try {
+                requireNotNull(cryptoBinding).invoke(operation, handle, first, second)
+            } catch (_: Throwable) {
+                throw IllegalStateException("Cryptographic primitive failed")
+            }
+
+        @V8Function
+        fun sha256Hex(value: V8ValueArrayBuffer): String {
+            require(value.type == V8ValueType.ArrayBuffer)
+            val bytes = value.byteBuffer.duplicate()
+            require(bytes.capacity().toLong() <= MAX_NATIVE_BINARY_BYTES)
+            bytes.clear()
             return MessageDigest.getInstance("SHA-256").apply { update(bytes) }.digest().toHex()
         }
 
@@ -860,11 +915,12 @@ internal class JavetRuntimeAdapter(
             val digest = MessageDigest.getInstance("SHA-256")
             var total = 0L
             for (index in 0 until values.length) {
-                values.get<V8ValueTypedArray>(index).use { typed ->
-                    require(typed.type == V8ValueType.Uint8Array)
-                    val bytes = typed.toBytes()
-                    total += bytes.size
+                values.get<V8ValueArrayBuffer>(index).use { buffer ->
+                    require(buffer.type == V8ValueType.ArrayBuffer)
+                    val bytes = buffer.byteBuffer.duplicate()
+                    total += bytes.capacity()
                     require(total <= MAX_NATIVE_BINARY_BYTES)
+                    bytes.clear()
                     digest.update(bytes)
                 }
             }
@@ -927,6 +983,16 @@ internal class JavetRuntimeAdapter(
                 require(contextJson.toByteArray(Charsets.UTF_8).size <= MAX_NATIVE_CONTEXT_JSON_BYTES)
                 JSONObject(requestJson)
                 JSONObject(contextJson)
+                if (JSONObject(requestJson).optString("module") == "host.storage") {
+                    val accepted = pluginHost?.dispatchStorage(
+                        callToken, requestId, requestJson, readNativeBinary(binaryHandles, binaryValues), sink,
+                    ) == true
+                    if (!accepted) sink.emit(RuntimeNativeEvent(JSONObject()
+                        .put("id", requestId).put("type", "result")
+                        .put("value", JSONObject().put("ok", false).put("error", JSONObject().put("code", "storage.not_supported")))
+                        .toString()))
+                    return
+                }
                 nativeHost.dispatch(
                     requestId,
                     requestJson,
@@ -942,7 +1008,9 @@ internal class JavetRuntimeAdapter(
 
         @V8Function
         fun nativeCancel(callToken: String, reason: String?) {
-            if (NATIVE_CALL_TOKEN.matches(callToken)) runCatching { nativeHost.cancel(callToken, reason) }
+            if (NATIVE_CALL_TOKEN.matches(callToken)) runCatching {
+                if (pluginHost?.cancelStorage(callToken) != true) nativeHost.cancel(callToken, reason)
+            }
         }
 
         @V8Function

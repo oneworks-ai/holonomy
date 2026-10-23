@@ -27,6 +27,7 @@ import {
   sha256
 } from './image-contract.mjs'
 import { createNewcArchiveV1 } from './newc.mjs'
+import { fetchPinnedImageBytesV1, parseImageSourceMirrorV1 } from './source-fetch.mjs'
 
 const [selector, supervisorInput, outputInput, cacheInput] = process.argv.slice(2)
 if (selector == null || supervisorInput == null || outputInput == null) {
@@ -41,6 +42,7 @@ const kernelLock = normalizeKernelLockV1(JSON.parse(
 ))
 const outputRoot = resolve(outputInput)
 const cacheRoot = resolve(cacheInput ?? join(tmpdir(), 'holonomy-v86-image-cache-v1'))
+const sourceMirror = parseImageSourceMirrorV1(process.env.HOLO_V86_SOURCE_MIRROR)
 const staging = await mkdtemp(join(tmpdir(), 'holonomy-v86-image-'))
 
 const replaceReadonlyArtifact = async (target, value) => {
@@ -61,10 +63,7 @@ const download = async ({ sha256: expected, url }) => {
     const current = await readFile(target)
     if (sha256(current) === expected) return target
   } catch {}
-  const response = await fetch(url)
-  if (!response.ok) throw new Error(`v86 image download failed: ${url}`)
-  const bytes = new Uint8Array(await response.arrayBuffer())
-  if (sha256(bytes) !== expected) throw new Error(`v86 image digest mismatch: ${url}`)
+  const bytes = await fetchPinnedImageBytesV1({ expected, url, mirror: sourceMirror })
   const temporary = `${target}.${process.pid}.tmp`
   await writeFile(temporary, bytes, { mode: 0o600 })
   await rename(temporary, target)

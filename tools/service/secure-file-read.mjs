@@ -10,12 +10,15 @@ export const readBoundedRegularFile = async (path, options = {}) => {
   const maxBytes = options.maxBytes ?? 1024 * 1024
   let descriptor
   try {
-    descriptor = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
+    descriptor = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0))
     const metadata = await descriptor.stat()
     if (!metadata.isFile() || metadata.size <= 0 || metadata.size > maxBytes) {
       throw invalidFile(options.label ?? 'File')
     }
-    if (options.ownerOnly === true && (metadata.mode & 0o077) !== 0) {
+    if (
+      options.ownerOnly === true && (metadata.mode & 0o077) !== 0 ||
+      options.ownerUid !== undefined && metadata.uid !== options.ownerUid
+    ) {
       throw invalidFile(options.label ?? 'File')
     }
     const output = Buffer.allocUnsafe(metadata.size)
@@ -26,7 +29,13 @@ export const readBoundedRegularFile = async (path, options = {}) => {
       offset += result.bytesRead
     }
     const current = await descriptor.stat()
-    if (offset !== output.byteLength || current.size !== metadata.size) {
+    if (
+      offset !== output.byteLength || current.size !== metadata.size ||
+      options.ownerUid !== undefined && (
+          current.uid !== options.ownerUid || current.dev !== metadata.dev ||
+          current.ino !== metadata.ino || current.mtimeMs !== metadata.mtimeMs
+        )
+    ) {
       throw invalidFile(options.label ?? 'File')
     }
     return output

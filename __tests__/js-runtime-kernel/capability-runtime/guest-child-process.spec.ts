@@ -112,7 +112,7 @@ describe('child process environment symbol', () => {
     ])
   })
 
-  it('releases the child and every stdio binding when close becomes terminal', () => {
+  it('releases the child and every stdio binding when close becomes terminal', async () => {
     const listeners = new Map<string, (event: string) => void>()
     const released: string[] = []
     const terminal = JSON.stringify({
@@ -138,7 +138,9 @@ describe('child process environment symbol', () => {
     const binding = createCapabilityChildProcessOverrideV1({
       invoke: async () => terminal,
       invokeImmediate: () => terminal,
-      invokeSync: () => terminal,
+      invokeSync: () => {
+        throw new Error('readable control invoked after child close')
+      },
       releaseResource: bindingId => released.push(bindingId),
       subscribeResource: (bindingId, listener) => {
         listeners.set(bindingId, listener)
@@ -147,14 +149,71 @@ describe('child process environment symbol', () => {
     }, {})!
     const child = (binding.namespace as Record<string, Function>).spawn('tool')
 
+    let childCloseReadControls = 0
+    child.on('close', () => {
+      child.stdout.resume()
+      child.stderr.pause()
+      childCloseReadControls += 1
+    })
+    listeners.get('process-1-stdout')!(JSON.stringify({ event: 'end', tuple: [] }))
+    expect(child.stdout.resume()).toBe(child.stdout)
     listeners.get('process-1')!(JSON.stringify({ event: 'close', tuple: [0, null] }))
+    await Promise.resolve()
 
+    expect(childCloseReadControls).toBe(1)
     expect(child.pid).toBe(1)
+    expect(child.stdout.resume()).toBe(child.stdout)
+    expect(child.stdout.pause()).toBe(child.stdout)
+    expect(child.stdout.destroy()).toBe(child.stdout)
     expect(released).toEqual([
       'process-1-stdin',
       'process-1-stdout',
       'process-1-stderr',
       'process-1'
     ])
+    expect(listeners.size).toBe(0)
+  })
+
+  it('continues child close after a readable was already released', () => {
+    const listeners = new Map<string, (event: string) => void>()
+    const released = new Set<string>()
+    const terminal = JSON.stringify({
+      ok: true,
+      value: {
+        binding: { bindingId: 'process-2', generation: 1 },
+        pid: 2,
+        resourceType: 'process.child',
+        stderr: null,
+        stdin: null,
+        stdout: {
+          binding: { bindingId: 'process-2-stdout', generation: 1 },
+          resourceType: 'process.readable'
+        }
+      }
+    })
+    const binding = createCapabilityChildProcessOverrideV1({
+      invoke: async () => terminal,
+      invokeImmediate: () => terminal,
+      invokeSync: request => {
+        if ((JSON.parse(request) as { member: string }).member === 'stdout/stderr.destroy') {
+          released.add('process-2-stdout')
+        }
+        return JSON.stringify({ ok: true, value: {} })
+      },
+      releaseResource: bindingId => {
+        if (released.has(bindingId)) throw new Error('runtime.generation_stale')
+        released.add(bindingId)
+      },
+      subscribeResource: (bindingId, listener) => {
+        listeners.set(bindingId, listener)
+        return () => listeners.delete(bindingId)
+      }
+    }, {})!
+    const child = (binding.namespace as Record<string, Function>).spawn('tool')
+    child.stdout.destroy()
+    expect(() => listeners.get('process-2')!(JSON.stringify({ event: 'close', tuple: [0, null] }))).not.toThrow()
+    expect(released.has('process-2')).toBe(true)
+    expect(listeners.size).toBe(0)
+    expect(child.pid).toBe(2)
   })
 })

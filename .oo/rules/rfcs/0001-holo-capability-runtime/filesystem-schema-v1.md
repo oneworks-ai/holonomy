@@ -4,23 +4,26 @@
 
 v1 是明确的 production 子集，不声称实现全部 Node FS。未列为 supported 的 export 由 Synthetic Module 缺失导出或稳定 `ERR_METHOD_NOT_IMPLEMENTED` 表达，永不回退 ambient `node:fs`。
 
-每个supported export/overload的args/result/callback tuple/right/syscall由[附录 H.1](filesystem-operation-registry.md)唯一冻结；本页matrix只做能力导航。
+每个supported export/overload的args/result/callback tuple/right/syscall由[附录 H.1](filesystem-operation-registry.md)及其[H.2 扩展](filesystem-metadata-and-durability.md)唯一冻结；本页matrix只做能力导航，平台实际支持须另有执行证据。
 
 ## H.1 Capability matrix
 
-| Operation family                               | `node:fs` sync       | callback            | `node:fs/promises`        | v1                           |
-| ---------------------------------------------- | -------------------- | ------------------- | ------------------------- | ---------------------------- |
-| readFile/writeFile                             | `*Sync`              | functions           | functions                 | supported                    |
-| open/close                                     | `openSync/closeSync` | functions           | `open`+FileHandle.close   | supported                    |
-| stat/lstat                                     | `*Sync`              | functions           | functions/FileHandle.stat | supported                    |
-| readdir/mkdir                                  | `*Sync`              | functions           | functions                 | supported                    |
-| rename/unlink                                  | `*Sync`              | functions           | functions                 | supported                    |
-| watch                                          | `watch` resource     | `watch` listener    | `watch` AsyncIterable     | partial, same event contract |
-| fd/FileHandle readFile/writeFile               | methods/input fd     | functions accept fd | FileHandle methods        | supported                    |
-| partial read/write/readv/writev                | exports              | exports             | FileHandle methods        | unsupported                  |
-| streams/Dir/opendir                            | exports              | exports             | exports                   | unsupported                  |
-| realpath/readlink/symlink/link                 | exports              | exports             | exports                   | unsupported                  |
-| chmod/chown/utimes/truncate/copy/cp/rm/mkdtemp | exports              | exports             | exports                   | unsupported                  |
+| Operation family                         | `node:fs` sync       | callback            | `node:fs/promises`        | v1                                 |
+| ---------------------------------------- | -------------------- | ------------------- | ------------------------- | ---------------------------------- |
+| readFile/writeFile                       | `*Sync`              | functions           | functions                 | supported                          |
+| open/close                               | `openSync/closeSync` | functions           | `open`+FileHandle.close   | supported                          |
+| stat/lstat                               | `*Sync`              | functions           | functions/FileHandle.stat | supported                          |
+| readdir/mkdir                            | `*Sync`              | functions           | functions                 | supported                          |
+| rename/unlink                            | `*Sync`              | functions           | functions                 | supported                          |
+| watch                                    | `watch` resource     | `watch` listener    | `watch` AsyncIterable     | partial, same event contract       |
+| fd/FileHandle readFile/writeFile         | methods/input fd     | functions accept fd | FileHandle methods        | supported                          |
+| partial read/write/readv/writev          | exports              | exports             | FileHandle methods        | unsupported                        |
+| streams/Dir/opendir                      | exports              | exports             | exports                   | unsupported                        |
+| realpath/readlink/symlink/link           | exports              | exports             | exports                   | unsupported                        |
+| utimes/futimes/truncate/ftruncate/access | functions            | functions           | functions/FileHandle      | partial, H.2 exact inputs          |
+| fsync/fdatasync                          | functions            | functions           | FileHandle.sync/datasync  | supported contract, H.2            |
+| chmod/fchmod                             | functions            | functions           | chmod/FileHandle.chmod    | partial, explicit chmod right, H.3 |
+| chown/copy/cp/rm/mkdtemp                 | exports              | exports             | exports                   | unsupported                        |
 
 所有 supported sync/callback/promise 入口映射到 §15 的同一 operation。callback 异步 exactly-once；Promise/async options支持 Runtime-captured AbortSignal，sync 不接受 signal。
 
@@ -40,9 +43,25 @@ type FsOpenFlagV1 =
   | 'ax'
   | 'a+'
   | 'ax+'
+
+interface FsPortableOpenFlagV1 {
+  readonly kind: 'portable-open-v1'
+  readonly access: 'read' | 'write' | 'readWrite'
+  readonly create: boolean
+  readonly exclusive: boolean
+  readonly truncate: boolean
+  readonly append: boolean
+}
+type KernelOpenFlagV1 = FsOpenFlagV1 | FsPortableOpenFlagV1
 ```
 
 Read/write/readdir/mkdir options 会随sync/async参数选择结果或取消语义，全部由附录 H.1 唯一定义，避免导航页与 Operation Registry 重复 owner。
+
+`FsPortableOpenFlagV1`仅是可信 Linux Capability Source 的内部 normalized open 分支；公开 Node facade仍只接受上述 string flags，不能由Guest直接传入record。`FsOpenArgsV1.flag`在Kernel准入此discriminant后，沿同一个`filesystem.file.open`、snapshot、resource与Provider链传递；Host Middleware看到真实create/truncate/append意图，不能用`w`加隐藏hint伪装无截断打开。
+
+record必须strict unknown=false。`exclusive=true`要求`create=true`；read-only禁止truncate/append。open操作的必要rights与返回handle的access分开：任何create/truncate/append都要求write；read-only+create同时要求read/write，但返回句柄仍不可写。existing+create且无truncate保持内容；missing+create=false固定ENOENT；exclusive创建existing固定EEXIST。Node Provider用本机`fs.constants`，Native用本机`libc`，单次授权后原子open，禁止stat后再w。append在带offset的Linux写请求中仍追加，不因Host pwrite差异变成覆盖。模式/flags保持在原句柄配额与generation生命周期内。
+
+Linux flags归一化只可忽略明确属于Guest descriptor或regular-file无效的`O_NOCTTY/O_NONBLOCK/O_LARGEFILE/O_CLOEXEC`；`O_NOFOLLOW/O_DIRECTORY/O_SYNC/O_PATH`及未知bits在未实现精确语义前拒绝，不可默默抹掉。此open分支不增加公开numeric flags支持；ACCESS、fsync与目录durability由H.2独立注册，不可从open flag推断已授权。
 
 path v1只接受canonical `holo-fs://<rootId>/<segments>` string，经附录B canonicalize；Guest URL object、subclass/Proxy/fake URL、相对/原生/file URL拒绝。这样snapshotter无需读取URL exotic internal slot或可替换getter。Host将rootId映射到真实目录，映射只存在Provider authority，不进Context/CDP/log/error。mode v1只允许省略；数字mode返回unsupported。
 
@@ -63,10 +82,17 @@ interface FileHandleV1 {
     options?: FsWriteFileAsyncOptionsV1
   ): Promise<void>
   stat(): Promise<VirtualStatsV1>
+  utimes(atime: FsPublicTimeV1, mtime: FsPublicTimeV1): Promise<void>
+  truncate(len?: number): Promise<void>
+  sync(): Promise<void>
+  datasync(): Promise<void>
+  chmod(mode: FsModeInputV1): Promise<void>
   close(): Promise<void>
 }
 interface VirtualStatsV1 {
   readonly size: number
+  readonly mode?: number
+  readonly atimeMs?: number
   readonly mtimeMs: number
   readonly ctimeMs: number
   readonly birthtimeMs: number
@@ -82,7 +108,7 @@ interface VirtualDirentV1 {
 }
 ```
 
-size/times 是非负 safe number（bytes/Unix epoch ms）。Objects 在 Guest Realm 重建，方法是 facade wrapper；无 native fd/path/prototype。lstat 可报告 symlink；Policy symlinks=deny 时访问终止，withinRoot 时按附录 B.1 challenge。
+size是非负safe integer bytes；Ms是Unix epoch有限数（atime/mtime/ctime允许负值），birthtimeMs保持非负。H.2的精确Ns是Host-only snapshot字段，不投影为普通Guest Stats的string属性；`bigint:true`尚未支持。Objects 在 Guest Realm 重建，方法是 facade wrapper；无 native fd/path/prototype。lstat 可报告 symlink；Policy symlinks=deny 时访问终止，withinRoot 时按附录 B.1 challenge。
 
 ## H.4 Semantics
 

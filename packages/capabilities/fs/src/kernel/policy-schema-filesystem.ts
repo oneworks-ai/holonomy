@@ -2,9 +2,9 @@ import { integerSchema, noneSchema, strictObject, stringSetSchema } from '@holon
 
 const root = strictObject({
   rights: stringSetSchema(
-    { enum: ['create', 'delete', 'list', 'move', 'read', 'watch', 'write'] },
+    { enum: ['chmod', 'create', 'delete', 'list', 'move', 'read', 'watch', 'write'] },
     1,
-    7
+    8
   ),
   rootId: { maxLength: 64, minLength: 1, pattern: '^[A-Za-z0-9._-]+$', type: 'string' },
   symlinks: { enum: ['deny', 'withinRoot'] },

@@ -11,7 +11,10 @@ enum {
     HOLO_SYS_EXECVE = 11,
     HOLO_SYS_PAUSE = 29,
     HOLO_SYS_SOCKETCALL = 102,
-    HOLO_SYS_EXECVEAT = 358
+    HOLO_SYS_CLONE = 120,
+    HOLO_SYS_VFORK = 190,
+    HOLO_SYS_EXECVEAT = 358,
+    HOLO_SYS_CLONE3 = 435
 };
 
 enum {
@@ -302,6 +305,40 @@ static void execveat_selftest(char **envp) {
     syscall1(HOLO_SYS_EXIT, 0);
 }
 
+static void execveat_denied_selftest(char **envp) {
+    static const char executable[] = "/usr/bin/holo-v86-selftest";
+    static const char output[] = "EXECVEAT_DIRECT_DENIED\n";
+    char *argv[] = { (char *)executable, "descendant-child", 0 };
+    if (syscall5(
+        HOLO_SYS_EXECVEAT,
+        (unsigned long)HOLO_AT_FDCWD,
+        (unsigned long)executable,
+        (unsigned long)argv,
+        (unsigned long)envp,
+        0
+    ) != -1) syscall1(HOLO_SYS_EXIT, 96);
+    write_all(1, output, sizeof(output) - 1U);
+    syscall1(HOLO_SYS_EXIT, 0);
+}
+
+static void creation_denied_selftest(void) {
+    static const char output[] =
+        "FORK_DENIED\nVFORK_DENIED\nCLONE_DENIED\nCLONE3_DENIED\n";
+    int result = syscall0(HOLO_SYS_FORK);
+    if (result == 0) syscall1(HOLO_SYS_EXIT, 97);
+    if (result != -1) syscall1(HOLO_SYS_EXIT, 98);
+    result = syscall0(HOLO_SYS_VFORK);
+    if (result == 0) syscall1(HOLO_SYS_EXIT, 99);
+    if (result != -1) syscall1(HOLO_SYS_EXIT, 100);
+    result = syscall5(HOLO_SYS_CLONE, 0, 0, 0, 0, 0);
+    if (result == 0) syscall1(HOLO_SYS_EXIT, 101);
+    if (result != -1) syscall1(HOLO_SYS_EXIT, 102);
+    result = syscall2(HOLO_SYS_CLONE3, 0, 0);
+    if (result != -1) syscall1(HOLO_SYS_EXIT, 103);
+    write_all(1, output, sizeof(output) - 1U);
+    syscall1(HOLO_SYS_EXIT, 0);
+}
+
 static void exec_failure_selftest(char **envp) {
     static const char invalid_executable[] = "/usr/bin/holo-v86-invalid-executable";
     static const char executable[] = "/usr/bin/holo-v86-selftest";
@@ -345,6 +382,8 @@ void holo_selftest_start(unsigned long *stack) {
     if (argc == 2 && string_equal(argv[1], "descendant")) descendant_selftest(envp);
     if (argc == 2 && string_equal(argv[1], "descendant-denied")) descendant_denied_selftest(envp);
     if (argc == 2 && string_equal(argv[1], "execveat")) execveat_selftest(envp);
+    if (argc == 2 && string_equal(argv[1], "execveat-denied")) execveat_denied_selftest(envp);
+    if (argc == 2 && string_equal(argv[1], "creation-denied")) creation_denied_selftest();
     if (argc == 2 && string_equal(argv[1], "exec-failure")) exec_failure_selftest(envp);
     if (argc == 2 && string_equal(argv[1], "descendant-child")) syscall1(HOLO_SYS_EXIT, 13);
     if (argc == 2 && string_equal(argv[1], "sleep")) {

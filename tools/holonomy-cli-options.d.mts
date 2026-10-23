@@ -17,7 +17,7 @@ export interface HolonomyCliOptions {
   rootUrl: string
   sandbox?: string
   serial?: string
-  target: 'android' | 'node'
+  target: 'android' | 'node' | 'native'
   timeoutMs: number
   timeoutExplicit: boolean
   watch: boolean

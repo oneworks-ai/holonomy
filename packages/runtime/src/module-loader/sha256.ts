@@ -1,4 +1,15 @@
-const ROUND_CONSTANTS = new Uint32Array([
+const RuntimeUint8Array = Uint8Array
+const RuntimeUint32Array = Uint32Array
+const applyIntrinsic = Reflect.apply
+const ceilIntrinsic = Math.ceil
+const isSafeInteger = Number.isSafeInteger
+const typedArrayPrototype = Object.getPrototypeOf(RuntimeUint8Array.prototype) as object
+const byteLengthGetter = Object.getOwnPropertyDescriptor(typedArrayPrototype, 'byteLength')?.get
+if (byteLengthGetter == null) throw new Error('Required SHA-256 byteLength intrinsic is unavailable')
+const byteLength = (value: Uint8Array): number => applyIntrinsic(byteLengthGetter, value, []) as number
+const HEX = '0123456789abcdef'
+
+const ROUND_CONSTANTS = new RuntimeUint32Array([
   0x428A2F98,
   0x71374491,
   0xB5C0FBCF,
@@ -69,32 +80,39 @@ const rotateRight = (value: number, count: number) => (
   (value >>> count) | (value << (32 - count))
 )
 
-export const sha256Hex = (input: Uint8Array) => {
-  const paddedLength = Math.ceil((input.byteLength + 9) / 64) * 64
-  const padded = new Uint8Array(paddedLength)
-  padded.set(input)
-  padded[input.byteLength] = 0x80
+const hashOwnedBytes = (input: Uint8Array, length: number): string => {
+  const paddedLength = ceilIntrinsic((length + 9) / 64) * 64
+  const padded = new RuntimeUint8Array(paddedLength)
+  for (let index = 0; index < length; index += 1) padded[index] = input[index]!
+  padded[length] = 0x80
 
-  const bitLength = input.byteLength * 8
-  const paddedView = new DataView(padded.buffer)
-  paddedView.setUint32(paddedLength - 8, Math.floor(bitLength / 0x1_0000_0000))
-  paddedView.setUint32(paddedLength - 4, bitLength >>> 0)
+  const bitLength = length * 8
+  const high = (bitLength / 0x1_0000_0000) >>> 0
+  const low = bitLength >>> 0
+  for (let index = 0; index < 4; index += 1) {
+    const shift = 24 - index * 8
+    padded[paddedLength - 8 + index] = (high >>> shift) & 0xFF
+    padded[paddedLength - 4 + index] = (low >>> shift) & 0xFF
+  }
 
-  const state = new Uint32Array([
-    0x6A09E667,
-    0xBB67AE85,
-    0x3C6EF372,
-    0xA54FF53A,
-    0x510E527F,
-    0x9B05688C,
-    0x1F83D9AB,
-    0x5BE0CD19
-  ])
-  const words = new Uint32Array(64)
+  const state = new RuntimeUint32Array(8)
+  state[0] = 0x6A09E667
+  state[1] = 0xBB67AE85
+  state[2] = 0x3C6EF372
+  state[3] = 0xA54FF53A
+  state[4] = 0x510E527F
+  state[5] = 0x9B05688C
+  state[6] = 0x1F83D9AB
+  state[7] = 0x5BE0CD19
+  const words = new RuntimeUint32Array(64)
 
   for (let offset = 0; offset < paddedLength; offset += 64) {
     for (let index = 0; index < 16; index += 1) {
-      words[index] = paddedView.getUint32(offset + index * 4)
+      const position = offset + index * 4
+      words[index] = (
+        (padded[position]! << 24) | (padded[position + 1]! << 16) |
+        (padded[position + 2]! << 8) | padded[position + 3]!
+      ) >>> 0
     }
     for (let index = 16; index < 64; index += 1) {
       const word15 = words[index - 15] ?? 0
@@ -141,5 +159,19 @@ export const sha256Hex = (input: Uint8Array) => {
     state[7] = ((state[7] ?? 0) + h) >>> 0
   }
 
-  return [...state].map(value => value.toString(16).padStart(8, '0')).join('')
+  let output = ''
+  for (let index = 0; index < 8; index += 1) {
+    const word = state[index]!
+    for (let shift = 28; shift >= 0; shift -= 4) output += HEX[(word >>> shift) & 0xF]
+  }
+  return output
 }
+
+export const sha256HexOwnedBytes = (input: Uint8Array, length: number): string => {
+  if (!isSafeInteger(length) || length < 0 || byteLength(input) !== length) {
+    throw new TypeError('Invalid owned SHA-256 byte input')
+  }
+  return hashOwnedBytes(input, length)
+}
+
+export const sha256Hex = (input: Uint8Array): string => hashOwnedBytes(input, byteLength(input))

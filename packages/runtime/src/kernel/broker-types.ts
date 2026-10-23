@@ -1,3 +1,4 @@
+import type { NetworkRequestBodyReaderBindingV1 } from '@holonomyjs/capability-network/kernel/request-body-reader'
 import type { CapabilityProviderResolutionPlanV1 } from './broker-resolution-types.js'
 import type { TrustedInvocationValueV1 } from './broker-values.js'
 import type { AuthorityBindingV1, CapabilityBindingV1, CapabilitySelectionV1 } from './capability-types.js'
@@ -50,6 +51,7 @@ export interface HoloInvocationContextV1<THostContext = JsonValueV1> {
   readonly authorityBindings: readonly AuthorityBindingV1[]
   readonly capabilities: readonly CapabilityBindingV1[]
   readonly hostContext: Readonly<THostContext>
+  readonly hostBindings?: readonly NetworkRequestBodyReaderBindingV1[]
   readonly invocationMode: InvocationModeV1
   readonly kind: OperationDescriptorV1['kind']
   readonly member: string
@@ -146,6 +148,7 @@ export interface CapabilitySystemMiddlewareRegistrationV1<THostContext = JsonVal
 
 export interface CapabilityBrokerInvocationV1 {
   readonly arguments: TrustedInvocationValueV1
+  readonly hostBindings?: readonly NetworkRequestBodyReaderBindingV1[]
   readonly inheritedBindingId?: string
   readonly invocationMode: InvocationModeV1
   readonly member: string

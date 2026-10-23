@@ -8,15 +8,19 @@ export class SessionModuleGraph {
   #context
   #definitions = new Map()
   #entryUrl
+  #gateDynamicImport
   #liveSynthetic = new Map()
   #modules = new Map()
+  #observeScriptCompiled
   #runtimeContext
   #synthetic
 
-  constructor(runtimeContext, session) {
+  constructor(runtimeContext, session, options = {}) {
     this.#runtimeContext = runtimeContext
     this.#context = runtimeContext.context
     this.#entryUrl = session.entryUrl
+    this.#gateDynamicImport = options.gateDynamicImport
+    this.#observeScriptCompiled = options.observeScriptCompiled
     this.#synthetic = session.syntheticModules
     for (const definition of [...session.runtimeModules, ...session.userModules]) {
       this.#definitions.set(definition.url, definition)
@@ -105,7 +109,16 @@ export class SessionModuleGraph {
       context: this.#context,
       identifier: url,
       importModuleDynamically: async (specifier, importer) => {
-        const target = this.#link(specifier, importer)
+        const targetUrl = this.#resolve(specifier, importer)
+        const importerDefinition = this.#definitions.get(importer.identifier)
+        if (importerDefinition?.kind !== 'runtime') {
+          await this.#gateDynamicImport?.({
+            importerUrl: importer.identifier,
+            source: this.#definitions.get(targetUrl)?.source,
+            targetUrl
+          })
+        }
+        const target = this.#getModule(targetUrl)
         if (target.status === 'unlinked') await target.link((nested, from) => this.#link(nested, from))
         if (target.status === 'linked') await target.evaluate()
         return target
@@ -115,6 +128,7 @@ export class SessionModuleGraph {
       }
     })
     this.#modules.set(url, module)
+    this.#observeScriptCompiled?.({ source: definition.source, url })
     return module
   }
 
@@ -135,7 +149,7 @@ export class SessionModuleGraph {
     return module
   }
 
-  #link(specifier, importer) {
+  #resolve(specifier, importer) {
     const importerDefinition = this.#definitions.get(importer.identifier)
     let targetUrl = this.#liveSynthetic.has(specifier) || this.#synthetic[specifier] != null
       ? specifier
@@ -177,6 +191,10 @@ export class SessionModuleGraph {
         targetDefinition?.kind !== 'runtime'
       ) throw new TypeError('Runtime plugins cannot import Guest modules')
     }
-    return this.#getModule(targetUrl)
+    return targetUrl
+  }
+
+  #link(specifier, importer) {
+    return this.#getModule(this.#resolve(specifier, importer))
   }
 }

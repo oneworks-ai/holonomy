@@ -21,6 +21,7 @@ const DEFINITIONS: readonly Definition[] = [
   ['host.process.network', 'process', 'ProcessNetworkCapabilityConstraintsV1', 'host.process'],
   ['host.process.shell', 'process', 'ProcessShellCapabilityConstraintsV1', 'host.process'],
   ['host.process.signal', 'process', 'ProcessSignalCapabilityConstraintsV1', 'host.process'],
+  ['host.storage', 'storage', 'StorageCapabilityConstraintsV1', 'host.storage'],
   ['host.storage.credential', 'credential', 'CredentialCapabilityConstraintsV1', 'host.storage'],
   ['host.system.basic', 'system', 'SystemCapabilityConstraintsV1', 'host.system'],
   ['host.system.compute', 'system', 'SystemCapabilityConstraintsV1', 'host.system'],

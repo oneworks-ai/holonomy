@@ -33,6 +33,7 @@ const processRecord = (target = 'node') => ({
 })
 
 class FakeSupervisor extends EventEmitter {
+  generation = 1
   ruleCalls = []
   stopCalls = 0
 
@@ -170,6 +171,9 @@ describe('target adapter contracts', () => {
     const terminals = []
     const unsubscribe = await adapter.subscribeProcess({ onTerminal: event => terminals.push(event), process })
     supervisor.emit('log', { level: 'error', text: 'Runtime terminated: process.exit(0)' })
+    assert.deepEqual(terminals, [])
+    assert.equal(supervisor.stopCalls, 0)
+    supervisor.emit('exit', { code: 0, generation: 1, signal: null })
     supervisor.emit('state', { state: 'failed' })
     await Promise.resolve()
     assert.deepEqual(terminals, [{
@@ -177,7 +181,7 @@ describe('target adapter contracts', () => {
       generation: 1,
       state: 'exited'
     }])
-    assert.equal(supervisor.stopCalls, 1)
+    assert.equal(supervisor.stopCalls, 0)
     unsubscribe()
     await adapter.removeProcess({ process })
   })

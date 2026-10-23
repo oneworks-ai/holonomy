@@ -27,7 +27,7 @@ const unsupported = (target, operation) => async () => {
 }
 
 export const createTargetAdapter = (target, implementation = {}) => {
-  if (target !== 'android' && target !== 'node') {
+  if (target !== 'android' && target !== 'node' && target !== 'native') {
     throw serviceError('service.invalid_request', 'Target adapter name is invalid')
   }
   const adapter = { target }
@@ -56,9 +56,21 @@ export const createNodeLocalAdapter = (implementation = {}) =>
     ...implementation
   })
 
+export const createNativeLocalAdapter = (implementation = {}) =>
+  createTargetAdapter('native', {
+    listDevices: async () => [{
+      id: 'native:local',
+      kind: 'local',
+      platform: 'native',
+      serial: 'local',
+      state: 'online'
+    }],
+    ...implementation
+  })
+
 export const createTargetAdapterDispatcher = options => {
   const adapters = new Map()
-  for (const adapter of [options.android, options.node]) {
+  for (const adapter of [options.android, options.node, options.native]) {
     if (adapter != null) adapters.set(adapter.target, adapter)
   }
   const getAdapter = target => {

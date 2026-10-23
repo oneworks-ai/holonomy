@@ -36,6 +36,11 @@
 #define __NR_sendto 369
 #endif
 
+/* Linux i386 syscall table: clone3 is 435 even if the compiler headers predate it. */
+#ifndef __NR_clone3
+#define __NR_clone3 435
+#endif
+
 enum holo_exec_response_result {
     HOLO_EXEC_RESPONSE_ERROR = -1,
     HOLO_EXEC_RESPONSE_STALE = 0,
@@ -132,13 +137,25 @@ int holo_exec_gate_prepare_child(int socket_fd) {
         BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, AUDIT_ARCH_I386, 1, 0),
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS),
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_execve, 5, 0),
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_execveat, 4, 0),
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_socketcall, 3, 0),
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_connect, 2, 0),
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_sendto, 1, 0),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_execve, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_execveat, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_socketcall, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_connect, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_sendto, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_fork, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_vfork, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_clone, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_clone3, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF),
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
-        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_USER_NOTIF)
     };
     struct sock_fprog program = {
         .filter = instructions,
@@ -156,15 +173,28 @@ int holo_exec_gate_prepare_child(int socket_fd) {
     return 0;
 }
 
-int holo_exec_gate_prepare_parent(int socket_fd, pid_t root_pid, struct holo_exec_gate *gate) {
+int holo_exec_gate_prepare_parent(
+    int socket_fd,
+    pid_t root_pid,
+    uint32_t max_total_processes,
+    uint32_t max_process_tree_depth,
+    struct holo_exec_gate *gate
+) {
     int listener_fd = receive_listener(socket_fd);
-    if (listener_fd < 0) return -1;
+    if (
+        listener_fd < 0 || max_total_processes == 0 || max_process_tree_depth == 0
+    ) {
+        if (listener_fd >= 0) close(listener_fd);
+        return -1;
+    }
     if (set_nonblocking(listener_fd) != 0) {
         close(listener_fd);
         return -1;
     }
     gate->listener_fd = listener_fd;
     gate->initial_pid = root_pid;
+    gate->max_total_processes = max_total_processes;
+    gate->max_process_tree_depth = max_process_tree_depth;
     return 0;
 }
 
@@ -530,10 +560,35 @@ int holo_exec_gate_poll_event(struct holo_exec_gate *gate, int control_fd, uint3
     if (notification.data.arch != AUDIT_ARCH_I386) {
         return response_status(respond(gate->listener_fd, notification.id, 0));
     }
+    if (
+        notification.data.nr == __NR_fork || notification.data.nr == __NR_vfork ||
+        notification.data.nr == __NR_clone || notification.data.nr == __NR_clone3
+    ) {
+        /*
+         * A fork-only descendant never reaches authorizeDescendantProcess,
+         * which currently reserves the Host ledger only on exec. Until a
+         * versioned Host reservation/commit operation exists, even a Policy
+         * allowing depth > 1 cannot safely continue a process-creation call.
+         * The notification is denied before the kernel creates a child.
+         */
+        return response_status(respond(gate->listener_fd, notification.id, 0));
+    }
     if (gate->initial_pid > 0) {
-        int allowed = notification.pid == (uint32_t)gate->initial_pid;
-        gate->initial_pid = 0;
+        int allowed = notification.pid == (uint32_t)gate->initial_pid &&
+            notification.data.nr == __NR_execve;
+        if (allowed) gate->initial_pid = 0;
         return response_status(respond(gate->listener_fd, notification.id, allowed));
+    }
+    if (notification.data.nr == __NR_execve || notification.data.nr == __NR_execveat) {
+        /*
+         * A later Guest exec uses pointer arguments. CONTINUE would let the
+         * kernel read them after this daemon's final snapshot, so another
+         * process could replace the authorized path or argv in shared memory.
+         * The post-exec commit check cannot undo executed code. Keep the
+         * trusted root's initial exec above, but deny all later Guest execs
+         * until target identity is bound by a kernel-enforced mechanism.
+         */
+        return response_status(respond(gate->listener_fd, notification.id, 0));
     }
     if (
         notification.data.nr == __NR_socketcall || notification.data.nr == __NR_connect ||

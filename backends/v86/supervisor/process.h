@@ -45,6 +45,8 @@ struct holo_process {
 
 struct holo_process_table {
     struct holo_process entries[HOLO_MAX_PROCESSES];
+    uint32_t max_total_processes;
+    uint32_t max_process_tree_depth;
     uint32_t next_id;
     uint32_t next_exec_request_id;
 };

@@ -86,10 +86,22 @@ export class RunnerCapabilityActions {
           signal
         })
         const completed = await this.#registry.completeRuntimePluginUpdate(process, operation, true)
-        await this.#registry.updateOperation(operation.id, 'succeeded', { result: { process: completed.process } })
+        await this.#registry.updateOperation(operation.id, completed.applied ? 'succeeded' : 'cancelled', {
+          ...(completed.applied ? { result: { process: completed.process } } : {})
+        })
       } catch (error) {
-        await this.#registry.completeRuntimePluginUpdate(process, operation, false)
-        await this.#registry.updateOperation(operation.id, 'failed', { error: redactAdapterFailure(error) })
+        const completed = await this.#registry.completeRuntimePluginUpdate(process, operation, false)
+        if (error?.details?.cleanupPending === true) {
+          await this.#registry.updateProcessCleanupPending(process.id, process.generation, true)
+          await this.#registry.updateProcess(process.id, process.generation, {
+            activeOperationId: null,
+            exit: { reason: 'lost' },
+            state: 'lost'
+          })
+        }
+        await this.#registry.updateOperation(operation.id, completed.applied ? 'failed' : 'cancelled', {
+          ...(completed.applied ? { error: redactAdapterFailure(error) } : {})
+        })
       }
     })
   }

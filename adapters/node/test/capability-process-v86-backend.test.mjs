@@ -52,7 +52,7 @@ test('publishes v86 as an injected experimental Linux Backend', () => {
   assert.deepEqual(backend.descriptor, V86_PROCESS_BACKEND_DESCRIPTOR_V1)
   assert.equal(backend.descriptor.features.filesystemBridge, false)
   assert.equal(backend.descriptor.features.networkBridge, false)
-  assert.deepEqual(backend.descriptor.environmentScopes, ['processTree', 'runtime'])
+  assert.deepEqual(backend.descriptor.environmentScopes, ['processTree'])
 })
 
 test('declares the filesystem Bridge only when the Host installs its handler', () => {
@@ -174,7 +174,14 @@ test('negotiates atomic truncation because Host open owns O_TRUNC', async () => 
 test('isolates FUSE inode and handle state between v86 environments', async () => {
   const bridge = new V86FuseBridgeV1(async input => {
     assert.equal(input.operation, 'lookup')
-    return { kind: 'file', size: 3 }
+    return {
+      kind: 'file',
+      size: 3,
+      mode: 0o100644,
+      atimeNs: '0',
+      mtimeNs: '0',
+      ctimeNs: '0'
+    }
   })
   const attributed = environmentId => ({
     environmentId,

@@ -8,7 +8,8 @@ export type FilesystemRegistryRowV1 = readonly [
   result: string,
   operation: FilesystemOperationV1,
   right: string,
-  delivery: string
+  delivery: string,
+  module?: 'node:fs' | 'node:fs/promises' | 'host.fs'
 ]
 
 export const FILESYSTEM_CORE_OPERATION_ROWS_V1 = Object.freeze(

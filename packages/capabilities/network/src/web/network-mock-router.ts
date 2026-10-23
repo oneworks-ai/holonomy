@@ -20,9 +20,11 @@ import type {
   NativePortResourceReference,
   NativeProviderToken
 } from '@holonomyjs/runtime/native-port/types'
-import type { NetworkAuthority, NetworkMockRuleSet, NetworkMockRuleSetSnapshot } from './types.js'
+import type { NetworkAuthority, NetworkMockRequest, NetworkMockRuleSet, NetworkMockRuleSetSnapshot } from './types.js'
 
 export interface NetworkMockRouterOptions {
+  /** Trusted transport check after upload and before either mock matching or real I/O. */
+  verifyRequest?: (request: NetworkMockRequest, capabilityBindingId: string | null) => void
   authority: NetworkAuthority
   bodySha256?: (body: Uint8Array) => string
   bodySha256Chunks?: (body: readonly Uint8Array[]) => string
@@ -416,26 +418,33 @@ export class NetworkMockRouter implements NativePort {
         // A digest seam failure makes sha256 rules non-matching, not authoritative.
       }
     }
+    const matchingRequest: NetworkMockRequest = {
+      body,
+      bodyLength: exchange.bodyBytes,
+      bodySha256,
+      headers: exchange.headers,
+      sensitiveHeaderSha256: this.options.bodySha256 == null
+        ? undefined
+        : exchange.headers.flatMap(([name, value]) => {
+          if (!SENSITIVE_HEADERS.has(name)) return []
+          try {
+            const digest = this.options.bodySha256!(encodeUtf8(value))
+            return /^[0-9a-f]{64}$/u.test(digest) ? [[name, digest] as const] : []
+          } catch {
+            return []
+          }
+        }),
+      method: exchange.method,
+      url: exchange.url
+    }
+    try {
+      this.options.verifyRequest?.(matchingRequest, exchange.capabilityBindingId)
+    } catch {
+      reject(sink, request.id, 'resource_invalid')
+      return
+    }
     const match = this.rules.match(
-      {
-        body,
-        bodyLength: exchange.bodyBytes,
-        bodySha256,
-        headers: exchange.headers,
-        sensitiveHeaderSha256: this.options.bodySha256 == null
-          ? undefined
-          : exchange.headers.flatMap(([name, value]) => {
-            if (!SENSITIVE_HEADERS.has(name)) return []
-            try {
-              const digest = this.options.bodySha256!(encodeUtf8(value))
-              return /^[0-9a-f]{64}$/u.test(digest) ? [[name, digest] as const] : []
-            } catch {
-              return []
-            }
-          }),
-        method: exchange.method,
-        url: exchange.url
-      },
+      matchingRequest,
       Date.now(),
       exchange.ruleSnapshot
     )

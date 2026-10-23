@@ -60,8 +60,9 @@ class HolonomyE2eApplication : Application(), HolonomySessionServiceProvider {
         val process = JSONObject(configuration).getJSONObject("session")
             .getJSONObject("runtimeCreation").getJSONObject("configuration")
             .getJSONObject("sandboxPolicy").getJSONObject("process")
+        if (process.getString("access") != "sandboxed") return null
         val network = process.getJSONObject("network")
-        if (process.getString("access") != "sandboxed" || network.getString("access") != "restricted") return null
+        if (network.getString("access") != "restricted") return null
         return {
             AndroidV86HostNetworkTransport(
                 allowPrivateNetwork = network.optString("privateNetwork", "deny") == "allow",

@@ -14,6 +14,121 @@ const requestEvent = requestId => ({
 })
 
 describe('inspector CDP proxy', () => {
+  it('gates every code-generating CDP command with exact Inspector metadata', async () => {
+    const gateRequests = []
+    const upstream = []
+    const proxy = new InspectorCdpProxy({
+      engineGate: request => {
+        gateRequests.push(request)
+        return { action: 'allow' }
+      }
+    })
+    proxy.configureEndpoint('http://127.0.0.1:49123')
+    const attached = proxy.attach({
+      inspector: { generation: 2, id: 'inspector_gate', processId: 'process_gate' },
+      process: {
+        capabilityRuntime: {
+          policyDigest: 'a'.repeat(64),
+          sandboxPolicy: {
+            codeGeneration: {
+              strings: { access: 'controlled', decisionTimeoutMs: 100, maxOperations: 16, maxSourceBytes: 4096 }
+            },
+            inspector: {
+              callFunctionOn: true,
+              compileScript: true,
+              evaluate: true,
+              runScript: true,
+              setScriptSource: true
+            }
+          }
+        },
+        generation: 2,
+        id: 'process_gate'
+      },
+      transport: {
+        send: async message => {
+          upstream.push(message)
+          return { id: message.id, result: {} }
+        }
+      }
+    })
+    const token = new URL(attached.webSocketDebuggerUrl).searchParams.get('access_token')
+    const session = proxy.connectAuthorized('inspector_gate', token, () => undefined)
+    const commands = [
+      { id: 1, method: 'Runtime.evaluate', params: { expression: '1 + 1' } },
+      { id: 2, method: 'Runtime.compileScript', params: { expression: '2 + 2', sourceURL: 'debug://fixture' } },
+      { id: 3, method: 'Runtime.runScript', params: { scriptId: 'script-1' } },
+      { id: 4, method: 'Runtime.callFunctionOn', params: { functionDeclaration: 'function () { return 5 }' } },
+      { id: 5, method: 'Debugger.setScriptSource', params: { scriptId: 'script-1', scriptSource: '6 + 6' } }
+    ]
+    for (const command of commands) {
+      assert.deepEqual(await session.receive(command), { id: command.id, result: {} })
+    }
+
+    assert.equal(upstream.length, 5)
+    assert.deepEqual(gateRequests.map(request => request.entryDetail.kind), [
+      'inspectorEvaluate',
+      'inspectorCompile',
+      'inspectorRunScript',
+      'inspectorCallFunction',
+      'debuggerSetScriptSource'
+    ])
+    assert.equal(gateRequests[1].origin, 'debug://fixture')
+    assert.equal(gateRequests[2].metadataSupport.source, 'unavailable')
+    assert.ok(gateRequests.every(request => request.runtime.generation === 2 && request.signal instanceof AbortSignal))
+    await proxy.close()
+  })
+
+  it('does not forward a CDP code command denied by Inspector Policy', async () => {
+    let sent = 0
+    let gated = 0
+    const proxy = new InspectorCdpProxy({
+      engineGate: () => {
+        gated += 1
+        return { action: 'allow' }
+      }
+    })
+    proxy.configureEndpoint('http://127.0.0.1:49123')
+    const attached = proxy.attach({
+      inspector: { generation: 1, id: 'inspector_denied', processId: 'process_denied' },
+      process: {
+        capabilityRuntime: {
+          policyDigest: 'b'.repeat(64),
+          sandboxPolicy: {
+            codeGeneration: {
+              strings: { access: 'controlled', decisionTimeoutMs: 100, maxOperations: 1, maxSourceBytes: 1024 }
+            },
+            inspector: {
+              callFunctionOn: false,
+              compileScript: false,
+              evaluate: false,
+              runScript: false,
+              setScriptSource: false
+            }
+          }
+        },
+        generation: 1,
+        id: 'process_denied'
+      },
+      transport: {
+        send: async message => {
+          sent += 1
+          return { id: message.id, result: {} }
+        }
+      }
+    })
+    const token = new URL(attached.webSocketDebuggerUrl).searchParams.get('access_token')
+    const session = proxy.connectAuthorized('inspector_denied', token, () => undefined)
+
+    assert.deepEqual(await session.receive({ id: 1, method: 'Runtime.evaluate', params: { expression: '1' } }), {
+      error: { code: -32_000, message: 'Inspector operation failed' },
+      id: 1
+    })
+    assert.equal(gated, 0)
+    assert.equal(sent, 0)
+    await proxy.close()
+  })
+
   it('proxies non-Network CDP and owns remapped Network events and response bodies', async () => {
     let upstream
     let closeCalls = 0

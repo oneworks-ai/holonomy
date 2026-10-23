@@ -1,0 +1,38 @@
+[
+  {
+    "name": "additionalProperties-null",
+    "schema": { "type": "object", "additionalProperties": null },
+    "config": {},
+    "accepted": false
+  },
+  { "name": "items-null", "schema": { "type": "array", "items": null }, "config": [], "accepted": false },
+  { "name": "not-null", "schema": { "not": null }, "config": {}, "accepted": false },
+  { "name": "multipleOf-zero", "schema": { "type": "number", "multipleOf": 0 }, "config": 7, "accepted": false },
+  { "name": "id-number", "schema": { "$id": 1, "type": "object" }, "config": {}, "accepted": false },
+  {
+    "name": "local-defs-ref",
+    "schema": {
+      "$defs": { "label": { "type": "string" } },
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "label": { "$ref": "#/$defs/label" } },
+      "required": ["label"]
+    },
+    "config": { "label": "ok" },
+    "accepted": true
+  },
+  {
+    "name": "unique-object-order",
+    "schema": { "type": "array", "uniqueItems": true },
+    "config": [{ "a": 1, "b": 2 }, { "b": 2, "a": 1 }],
+    "accepted": false
+  },
+  {
+    "name": "unicode-codepoint-length",
+    "schema": { "type": "string", "minLength": 2 },
+    "config": "😀",
+    "accepted": false
+  },
+  { "name": "boolean-true", "schema": true, "config": { "anything": "accepted" }, "accepted": true },
+  { "name": "boolean-false", "schema": false, "config": {}, "accepted": false }
+]

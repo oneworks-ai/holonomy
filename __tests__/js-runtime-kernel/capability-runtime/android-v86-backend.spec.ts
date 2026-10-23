@@ -30,7 +30,7 @@ const readyPayload = (flags: number): Uint8Array => {
 
 describe('android v86 production backend', () => {
   it('preserves filesystem errno through both Android Runtime Realm terminals', () => {
-    const root = new URL('../../../adapters/android/e2e/src/runtimeBootstrap/', import.meta.url)
+    const root = new URL('../../../adapters/android/runtime-host/src/runtimeBootstrap/', import.meta.url)
     const guest = readFileSync(new URL('capability-runtime.mjs', root), 'utf8')
     expect(guest).toContain('Number.isInteger(terminal.error?.errno)')
     expect(guest).toContain('value: terminal.error.errno')
@@ -90,7 +90,7 @@ describe('android v86 production backend', () => {
         hosts: [{ address: '192.168.87.1', hostname: 'example.test' }],
         memoryBytes: 134_217_728,
         network: false,
-        policy: {},
+        policy: { limits: { maxProcessTreeDepth: 1, maxTotalProcesses: 1 } },
         requiredKernelCapabilities: ['process'],
         scope: 'processTree'
       })
@@ -110,8 +110,10 @@ describe('android v86 production backend', () => {
     const configuration = FakeV86.instance.writes[0]!
     const configurationView = new DataView(configuration.buffer, configuration.byteOffset, configuration.byteLength)
     expect(configuration[9]).toBe(18)
-    expect(configuration.slice(24, 28)).toEqual(Uint8Array.of(1, 0, 0, 1))
+    expect(configuration.slice(24, 28)).toEqual(Uint8Array.of(2, 0, 0, 1))
     expect(configurationView.getUint32(28)).toBe(30_000)
+    expect(configurationView.getUint32(32)).toBe(1)
+    expect(configurationView.getUint32(36)).toBe(1)
 
     const requestId = configurationView.getUint32(12)
     for (const byte of frame(1, new Uint8Array(), requestId)) receive(byte)
@@ -160,7 +162,7 @@ describe('android v86 production backend', () => {
         hosts: [],
         memoryBytes: 134_217_728,
         network: false,
-        policy: {},
+        policy: { limits: { maxProcessTreeDepth: 1, maxTotalProcesses: 1 } },
         requiredKernelCapabilities: ['process', 'fuse'],
         scope: 'processTree'
       })

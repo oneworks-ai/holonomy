@@ -20,8 +20,8 @@ export const ENGINE_HOOK_CAPABILITY_PROBE_V1_SCHEMA = Object.freeze({
     }),
     provenance: strictObject({
       generationLevel: { const: 'behavioralProbe' },
-      metadata: { const: 'profileStaticUnsupported' },
-      perCompilationCallback: { const: 'profileStaticUnsupported' }
+      metadata: { enum: ['behavioralProbe', 'profileStaticUnsupported'] },
+      perCompilationCallback: { enum: ['behavioralProbe', 'profileStaticUnsupported'] }
     }),
     schemaVersion: { const: 1 },
     strings: gateFlags,

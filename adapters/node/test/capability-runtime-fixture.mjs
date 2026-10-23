@@ -7,10 +7,14 @@ import { sandboxLimits, sandboxSession } from './sandbox-fixture.mjs'
 export const capabilityRuntimeSession = ({
   additionalUserModules = [],
   behavior = 'allow',
+  codeGeneration,
   deviceTarget = 'node',
+  diagnostics,
   entryUrl,
   filesystemSymlinks = 'deny',
+  filesystemRights = ['create', 'delete', 'list', 'move', 'read', 'watch', 'write'],
   hostPath,
+  initialObservers = [],
   middlewareMatcher,
   moduleRootUrl,
   network,
@@ -33,6 +37,8 @@ export const capabilityRuntimeSession = ({
   })
   const launch = createNodeModuleLaunchV1({ moduleRootUrl, userEntryUrl: entryUrl, userModules })
   const policy = structuredClone(DEFAULT_SANDBOX_POLICY_V2)
+  if (codeGeneration != null) policy.codeGeneration = codeGeneration
+  if (diagnostics != null) policy.diagnostics = diagnostics
   policy.filesystem = {
     access: 'sandboxed',
     limits: {
@@ -44,7 +50,7 @@ export const capabilityRuntimeSession = ({
       maxWriteBytes: 4096
     },
     roots: [{
-      rights: ['create', 'delete', 'list', 'move', 'read', 'watch', 'write'],
+      rights: filesystemRights,
       rootId: 'workspace',
       symlinks: filesystemSymlinks,
       virtualUrl: 'holo-fs://workspace/'
@@ -205,7 +211,7 @@ export const capabilityRuntimeSession = ({
         hostBindings: {
           engineGate: { bindingId: 'engine-gate', ownerId, version: '1' },
           initialMiddlewareSet: { bindingId: 'middleware', ownerId, version: '1' },
-          initialObservers: [],
+          initialObservers,
           moduleResolver: { bindingId: 'resolver', ownerId, version: '1' },
           providerBindings: providerModules.map(provider)
         }

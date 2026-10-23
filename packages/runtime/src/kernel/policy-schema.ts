@@ -1,6 +1,7 @@
 import { FILESYSTEM_SANDBOX_V2_SCHEMA } from '@holonomyjs/capability-fs/kernel/policy-schema-filesystem'
 import { NETWORK_SANDBOX_V2_SCHEMA } from '@holonomyjs/capability-network/kernel/policy-schema-network'
 import { PROCESS_SANDBOX_V2_SCHEMA } from '@holonomyjs/capability-process/kernel/policy-schema-process'
+import { STORAGE_SANDBOX_V2_SCHEMA } from '@holonomyjs/capability-storage/kernel/storage-schema'
 import {
   DEVICE_SANDBOX_V2_SCHEMA,
   DIAGNOSTICS_SANDBOX_V2_SCHEMA,
@@ -21,6 +22,7 @@ export const SANDBOX_POLICY_V2_SCHEMA = Object.freeze({
     network: NETWORK_SANDBOX_V2_SCHEMA,
     process: PROCESS_SANDBOX_V2_SCHEMA,
     schemaVersion: { const: 2 },
+    storage: STORAGE_SANDBOX_V2_SCHEMA,
     systemInformation: SYSTEM_INFORMATION_SANDBOX_V2_SCHEMA
   }, ['schemaVersion'])
 })

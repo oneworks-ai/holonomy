@@ -1,7 +1,7 @@
 import { HoloGuestErrorV1 } from '@holonomyjs/runtime/kernel/guest-errors'
 import { normalizeDeviceEventV1 } from './device-events.js'
 import type { DeviceEventBaseV1, DeviceOverflowEventV1, HoloDeviceEventV1 } from './device-events.js'
-import { DEVICE_EVENT_KINDS_V1 } from './device-provider.js'
+import { validateDeviceResyncAckV1 } from './device-resync-ack.js'
 import type { DeviceEventKindV1 } from './device-types.js'
 
 type DataEventV1 = DeviceEventBaseV1<DeviceEventKindV1>
@@ -23,14 +23,9 @@ export interface GuestDeviceSubscriptionControllerV1 {
       startSequence: number
     }>
   accept(value: unknown): void
+  /** Copies a successful independent getter's source revision; never increments it. */
+  observeRead(kind: DeviceEventKindV1, revision: number): void
 }
-
-const invalidAck = () =>
-  new HoloGuestErrorV1(
-    'holo.invalid_arguments',
-    'device.events.acknowledgeResync',
-    false
-  )
 
 const maxRevision = (target: Map<DeviceEventKindV1, number>, kind: DeviceEventKindV1, revision: number) => {
   target.set(kind, Math.max(target.get(kind) ?? 0, revision))
@@ -49,6 +44,7 @@ export const createGuestDeviceSubscriptionV1 = (
   const queue: HoloDeviceEventV1[] = []
   const waiting: Array<(value: IteratorResultV1) => void> = []
   const observedRevisions = new Map<DeviceEventKindV1, number>()
+  const readRevisions = new Map<DeviceEventKindV1, number>()
   const requiredRevisions = new Map<DeviceEventKindV1, number>()
   const coalesced = new Map<DeviceEventKindV1, DataEventV1>()
   let closed = false
@@ -134,19 +130,11 @@ export const createGuestDeviceSubscriptionV1 = (
 
   const acknowledgeResync = async (value: unknown) => {
     if (closed) throw new HoloGuestErrorV1('holo.generation_stale', 'device.events.acknowledgeResync', false)
-    if (value == null || typeof value !== 'object' || Array.isArray(value)) throw invalidAck()
-    const revisions = value as Readonly<Record<string, unknown>>
-    for (const key of Object.keys(revisions)) {
-      if (!DEVICE_EVENT_KINDS_V1.includes(key as DeviceEventKindV1)) throw invalidAck()
-      const revision = revisions[key]
-      if (!Number.isSafeInteger(revision) || (revision as number) < 0) throw invalidAck()
-      if ((revision as number) > (observedRevisions.get(key as DeviceEventKindV1) ?? -1)) throw invalidAck()
-    }
-    for (const [kind, requiredRevision] of requiredRevisions) {
-      const revision = revisions[kind]
-      if (typeof revision !== 'number' || revision < requiredRevision) throw invalidAck()
-    }
+    const revisions = validateDeviceResyncAckV1(value, requiredRevisions, observedRevisions, readRevisions)
     const buffered = [...coalesced.values()].sort((left, right) => left.kind.localeCompare(right.kind))
+    for (const [kind, revision] of Object.entries(revisions)) {
+      maxRevision(observedRevisions, kind as DeviceEventKindV1, revision as number)
+    }
     requiredRevisions.clear()
     coalesced.clear()
     for (const event of buffered) {
@@ -158,6 +146,9 @@ export const createGuestDeviceSubscriptionV1 = (
     if (closed) return
     closed = true
     queue.length = 0
+    requiredRevisions.clear()
+    coalesced.clear()
+    readRevisions.clear()
     while (waiting.length > 0) waiting.shift()!(doneResult())
     await input.onClose()
   }
@@ -179,5 +170,13 @@ export const createGuestDeviceSubscriptionV1 = (
     },
     startSequence: input.startSequence
   })
-  return Object.freeze({ accept, resource })
+  return Object.freeze({
+    accept,
+    observeRead(kind: DeviceEventKindV1, revision: number) {
+      if (!closed && requestedKinds.has(kind) && Number.isSafeInteger(revision) && revision >= 0) {
+        maxRevision(readRevisions, kind, revision)
+      }
+    },
+    resource
+  })
 }

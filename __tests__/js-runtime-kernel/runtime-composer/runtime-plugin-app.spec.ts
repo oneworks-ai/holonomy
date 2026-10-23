@@ -12,6 +12,81 @@ const definition = (instanceId: string, bundleSha256 = digest('a'), config = {})
 })
 
 describe('holonomy runtime Cordis plugin app', () => {
+  it.each(['service', 'context'] as const)('cleans staged resources when %s construction throws', async phase => {
+    const disposed: string[] = []
+    const app = new HolonomyRuntimePluginAppV1({
+      createContextService: (definition, lifecycle) => {
+        lifecycle.registerDispose(() => {
+          disposed.push(definition.instanceId)
+        })
+        if (definition.instanceId === 'stable') return {}
+        if (phase === 'service') throw new Error('service failed')
+        return Object.defineProperty({}, 'broken', {
+          enumerable: true,
+          get() {
+            throw new Error('context failed')
+          }
+        })
+      },
+      importModule: async () => ({ default: () => {} })
+    })
+    await app.replace([definition('stable')])
+    await expect(app.replace([definition('stable'), definition('broken', digest('b'))])).rejects.toThrow('failed')
+    expect(disposed).toEqual(['broken'])
+    expect(app.snapshot()).toMatchObject({ pluginGraphRevision: 1, instances: [{ instanceId: 'stable' }] })
+    await app.close()
+    expect(disposed).toEqual(['broken', 'stable'])
+  })
+
+  it('does not apply or publish a module that resolves after app close', async () => {
+    let release!: (value: { default(): void }) => void
+    let started!: () => void
+    const imported = new Promise<void>(resolve => started = resolve)
+    const events: string[] = []
+    const app = new HolonomyRuntimePluginAppV1({
+      importModule: () => {
+        started()
+        return new Promise(resolve => release = resolve)
+      },
+      publish: () => {
+        events.push('published')
+      }
+    })
+    const pending = app.replace([definition('late')])
+    await imported
+    await app.close()
+    release({
+      default: () => {
+        events.push('applied')
+      }
+    })
+    await expect(pending).rejects.toThrow('closed')
+    expect(events).toEqual([])
+    expect(app.snapshot()).toMatchObject({ closed: true, instances: [], pluginGraphRevision: 0 })
+  })
+
+  it('runs all registered cleanup even when one disposer throws synchronously', async () => {
+    const events: string[] = []
+    const app = new HolonomyRuntimePluginAppV1({
+      createContextService: (_definition, lifecycle) => {
+        lifecycle.registerDispose(() => {
+          events.push('first')
+        })
+        lifecycle.registerDispose(() => {
+          throw new Error('bad disposer')
+        })
+        lifecycle.registerDispose(() => {
+          events.push('last')
+        })
+        return {}
+      },
+      importModule: async () => ({ default: () => {} })
+    })
+    await app.replace([definition('cleanup')])
+    await app.close()
+    expect(events).toEqual(['last', 'first'])
+  })
+
   it('diffs stable instances and disposes replaced scopes after the graph revision changes', async () => {
     const events: string[] = []
     const modules = new Map([

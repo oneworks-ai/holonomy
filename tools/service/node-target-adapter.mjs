@@ -6,8 +6,6 @@ import { CdpWebSocketTransport } from './cdp-websocket-transport.mjs'
 import { serviceError } from './errors.mjs'
 import { createNodeLocalAdapter } from './target-adapters.mjs'
 
-const EXIT_LOG = /^Runtime terminated: process\.exit\((\d{1,3})\)$/u
-
 const requireRecord = (records, processId) => {
   const record = records.get(processId)
   if (record == null) throw serviceError('service.not_found', 'Node runtime process was not found')
@@ -42,21 +40,13 @@ const createRecord = (supervisor, process) => {
     stopping: false,
     supervisor,
     terminal: undefined,
+    osExit: undefined,
     terminalListeners: new Set(),
     transports: new Map()
   }
   supervisor.on('log', event => {
     record.logs.push({ chunk: event.text, sequence: record.nextSequence++, stream: event.level })
     if (record.logs.length > 4_096) record.logs.shift()
-    const match = EXIT_LOG.exec(event.text)
-    if (match == null) return
-    const code = Number(match[1])
-    publishTerminal(record, {
-      exit: { code, reason: code === 0 ? 'completed' : 'failed' },
-      generation: record.processGeneration,
-      state: code === 0 ? 'exited' : 'failed'
-    })
-    void supervisor.stop().catch(() => undefined)
   })
   supervisor.on('network', event => {
     for (const listener of [...diagnosticListeners]) {
@@ -78,6 +68,18 @@ const createRecord = (supervisor, process) => {
         state: 'failed'
       })
     }
+  })
+  supervisor.on('exit', event => {
+    // Supervisor generations are local to this owned supervisor instance;
+    // Service restart may create a new supervisor whose local generation is 1.
+    if (event.generation !== supervisor.generation) return
+    record.osExit = event
+    const code = Number.isInteger(event.code) ? event.code : 1
+    publishTerminal(record, {
+      exit: { code, reason: code === 0 ? 'completed' : 'failed' },
+      generation: record.processGeneration,
+      state: code === 0 ? 'exited' : 'failed'
+    })
   })
   return record
 }
@@ -113,7 +115,15 @@ const toNodeSession = (process, initialNetworkRuleSet, sandboxPlan, capabilityRu
 
 export const createNodeRuntimeAdapter = (options = {}) => {
   const records = new Map()
-  const createSupervisor = options.createSupervisor ?? (() => new NodeRuntimeSupervisor())
+  const createSupervisor = options.createSupervisor ?? (
+    () =>
+      new NodeRuntimeSupervisor({
+        engineGate: options.engineGate,
+        observerBindings: options.observerBindings,
+        observerHostCaps: options.observerHostCaps,
+        sourceReaderHostCaps: options.sourceReaderHostCaps
+      })
+  )
   const transport = options.createTransport ?? (url => new CdpWebSocketTransport(url))
   return createNodeLocalAdapter({
     applyNetworkRules: async ({ networkRules, process }) => {
@@ -179,9 +189,16 @@ export const createNodeRuntimeAdapter = (options = {}) => {
       const supervisor = createSupervisor()
       const record = createRecord(supervisor, process)
       records.set(process.id, record)
-      const result = await supervisor.start(
-        toNodeSession(process, initialNetworkRuleSet, sandboxPlan, capabilityRuntime)
-      )
+      let result
+      try {
+        result = await supervisor.start(toNodeSession(process, initialNetworkRuleSet, sandboxPlan, capabilityRuntime))
+      } catch (error) {
+        // A legitimate Runtime may exit before the asynchronous start ACK.
+        // Preserve its actual OS status; owner-requested cleanup exits are not
+        // emitted by Supervisor and cannot turn startup rejection into success.
+        if (!Number.isInteger(record.osExit?.code) || record.osExit.signal != null) throw error
+        return { waitingForDebugger: false }
+      }
       record.inspectorUrl = result.inspectorUrl
       return {
         diagnostics: record.diagnostics,

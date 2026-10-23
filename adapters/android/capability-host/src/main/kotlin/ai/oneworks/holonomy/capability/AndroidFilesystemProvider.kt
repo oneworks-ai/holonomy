@@ -3,7 +3,6 @@ package ai.oneworks.holonomy.capability
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.io.RandomAccessFile
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
@@ -177,7 +176,7 @@ internal class AndroidFilesystemProvider(
                     handle.file.setLength(0)
                 }
                 handle.file.write(data)
-                handle.file.fd.sync()
+                handle.file.sync()
                 success(JSONObject())
             }
             "filesystem.metadata.stat" -> success(stat(handle.path, followLinks = true))
@@ -246,27 +245,32 @@ internal class AndroidFilesystemProvider(
     }
 
     private fun open(request: JSONObject, resource: JSONObject, target: File): String {
-        val flag = request.arguments().getString("flag")
-        val rights = flagRights(flag)
-        rights.forEach { right -> requireAuthority(request, right) }
+        val value = request.arguments().opt("flag")
+        val flag = AndroidFilesystemOpenFlag.parse(
+            if (value is JSONObject) value.keys().asSequence().associateWith { value.opt(it) } else value,
+        )
+        flag.requiredRights.forEach { right -> requireAuthority(request, right) }
         requireHandleCapacity(request)
-        val exists = target.exists()
-        if (flag.startsWith("r") && !exists) throw ProviderFailure("resource.not_found")
-        if (flag.contains("x") && exists) throw ProviderFailure("resource.exists")
-        val handle = RandomAccessFile(target, if (rights.contains("write")) "rw" else "r")
-        if (flag.startsWith("w")) handle.setLength(0)
-        val fd = nextFd.getAndIncrement().toInt()
-        val bindingId = "fd-$fd"
-        openHandles += bindingId
-        resources.publish(bindingId, AndroidFileHandleResource(flag.startsWith("a"), handle, target, rights) {
-            openHandles -= bindingId
-        })
-        val value = if (request.getString("member") == "open" && request.getString("invocationMode") == "promise") {
-            facade(bindingId, "filesystem.file-handle")
-        } else {
-            JSONObject().put("binding", "opaque").put("fd", fd)
+        return publishFilesystemOpen(target, flag) { handle ->
+            val fd = nextFd.getAndIncrement().toInt()
+            val bindingId = "fd-$fd"
+            val result = if (request.getString("member") == "open" && request.getString("invocationMode") == "promise") {
+                facade(bindingId, "filesystem.file-handle")
+            } else {
+                JSONObject().put("binding", "opaque").put("fd", fd)
+            }
+            val terminal = success(result, listOf(resourcePublication(bindingId, "filesystem.file-handle")))
+            openHandles += bindingId
+            try {
+                resources.publish(bindingId, AndroidFileHandleResource(flag.append, handle, target, flag.handleRights) {
+                    openHandles -= bindingId
+                })
+            } catch (error: Throwable) {
+                openHandles -= bindingId
+                throw error
+            }
+            terminal
         }
-        return success(value, listOf(resourcePublication(bindingId, "filesystem.file-handle")))
     }
 
     private fun readdir(request: JSONObject, target: File): String {
@@ -426,12 +430,6 @@ internal class AndroidFilesystemProvider(
             .put("kind", if (attributes.isSymbolicLink) "symlink" else if (attributes.isDirectory) "directory" else "file")
             .put("mtimeMs", attributes.lastModifiedTime().toMillis().coerceAtLeast(0))
             .put("size", attributes.size().coerceAtLeast(0))
-    }
-
-    private fun flagRights(flag: String): Set<String> = when {
-        flag.contains('+') -> setOf("read", "write")
-        flag.startsWith('r') -> setOf("read")
-        else -> setOf("write")
     }
 
     private fun facade(bindingId: String, type: String) = JSONObject()

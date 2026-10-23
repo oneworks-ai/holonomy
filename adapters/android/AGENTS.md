@@ -4,12 +4,19 @@ Android contains three native adapter responsibilities. `host-core` and `v8-host
 
 Android instrumentation may verify APK packaging, engine/native transport, Backend assets, generation restart and teardown. Public JavaScript API behavior must execute as a shared JavaScript conformance case; Kotlin only starts the Runtime and checks its test-runner terminal summary.
 
+`runtime-host/` owns the production JS bootstrap and AAR asset packager; `e2e/` is only its diagnostic/test wrapper. `crypto-host/` owns synchronous JCA primitives behind the engine-only Crypto port. `storage-host/` owns asynchronous binary KV I/O behind shared NativeBridge/Broker selection; never dispatch storage disk work through the synchronous Capability callback. Optional modules require explicit Host installation and grant no ambient authority.
+
 ## Test topology
 
 - `host-core/src/test/.../contract/`: the engine-facing host contract and stable errors.
 - `host-core/src/test/.../engine/`: runtime-thread scheduling primitives such as native timers.
 - `host-core/src/test/.../lifecycle/`: generation, termination, wakeup and disposal races.
+- `capability-host/src/test/.../contract/`: strict filesystem open flags, rights and native file-handle contracts. Real Android JSON/NativePort wiring remains instrumentation evidence.
+- `e2e/tools/__tests__/*.test.mjs`: Host bootstrap dispatch glue, run through the adapter-local Vitest configuration. Controlled Kernel seams do not count as real Javet/device execution.
+- `runtime-host/tools/__tests__/*.test.mjs`: production bootstrap assets/composition and asynchronous storage cancellation/settlement. The default Android unit command includes this separate VM-module owner suite.
+- Guest-conformance helpers must be checked against the actual shared resource facade (for Process, `guest-child-process-events.eventTarget`), not only a richer Node EventEmitter mock. Optional local listener removal must never prevent Promise settlement; logical deactivation is not physical Host-resource reclamation.
 - `v8-host/src/test/.../engine/`: V8/Javet construction and architecture mapping; Inspector-specific tests stay in `engine/inspector/`.
+- `v8-host/src/main/cpp/android_engine_gate.cpp`: pinned Javet/V8 per-compilation string/Wasm callback bridge. It only transports a synchronous decision to the Host-owned `RuntimeEngineGate`; Policy, UI, and product grants stay outside this native layer. Every restart must receive a fresh Gate identity and uninstall the old callbacks before closing V8.
 - `v8-host/src/test/.../lifecycle/`: native-host generation identity and restart/close behavior.
 - `network-host/src/test/.../contract/`: versioned NativePort schema, authority/resource binding and provider-visible results.
 - `network-host/src/test/.../transport/`: pinned DNS/socket/TLS/HTTP framing and byte transport.

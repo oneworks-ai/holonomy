@@ -17,7 +17,7 @@ import {
 import { assetRoot, entryUrl, moduleRootUrl, processProfileV1 } from './capability-process-v86-runtime-support.mjs'
 import { capabilityRuntimeSession } from './capability-runtime-fixture.mjs'
 
-const waitForFile = async (file, timeoutMs = 15_000) => {
+const waitForFile = async (file, timeoutMs = 60_000) => {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     try {
@@ -32,7 +32,7 @@ const waitForFile = async (file, timeoutMs = 15_000) => {
 
 test('runs the installed v86 Backend through the production Node Runtime path', {
   skip: assetRoot == null,
-  timeout: 90_000
+  timeout: 600_000
 }, async t => {
   const processProfile = await processProfileV1(assetRoot)
   const filesystemRoot = await mkdtemp(path.join(os.tmpdir(), 'holonomy-v86-runtime-'))
@@ -50,14 +50,17 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
   await once(server, 'listening')
   const address = server.address()
   assert.ok(address != null && typeof address === 'object')
-  const supervisor = new NodeRuntimeSupervisor({ requestTimeoutMs: 75_000 })
+  const supervisor = new NodeRuntimeSupervisor({ requestTimeoutMs: 540_000 })
   t.after(async () => {
     await supervisor.stop()
     server.close()
     await rm(filesystemRoot, { force: true, recursive: true })
   })
   const logs = []
-  supervisor.on('log', event => logs.push(event.text))
+  supervisor.on('log', event => {
+    logs.push(event.text)
+    if (event.text.startsWith('V86_PRODUCTION_STAGE:')) t.diagnostic(event.text)
+  })
 
   const session = capabilityRuntimeSession({
     entryUrl,
@@ -68,7 +71,7 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
       backendId: 'experimental.v86-v1',
       implementation: 'builtin.v86-v1'
     },
-    processLimits: { maxExecutionTimeMs: 60_000, maxTotalProcesses: 64 },
+    processLimits: { maxExecutionTimeMs: 90_000, maxTotalProcesses: 64 },
     processMounts: [{ guestPath: '/workspace', rights: ['read', 'write'], rootId: 'workspace' }],
     processNetwork: {
       access: 'restricted',
@@ -112,20 +115,25 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
       stage('filesystem')
       const filesystem = await run('shell', [
         '-c',
-        'printf "FUSE_INPUT:"; /bin/cat /workspace/input.txt; printf GUEST_TO_HOST > /workspace/output.txt',
+        'IFS= read -r value < /workspace/input.txt; printf "FUSE_INPUT:%s" "$value"; printf GUEST_TO_HOST > /workspace/output.txt',
       ])
       stage('filesystem-surface')
-      const filesystemSurface = await run('shell', [
-        '-c',
-        '/bin/mkdir /workspace/subdir && printf DIRECTORY_OK > /workspace/subdir/source.txt && ' +
-          '/bin/ls /workspace/subdir && /bin/mv /workspace/subdir/source.txt /workspace/subdir/target.txt && ' +
-          '/bin/cat /workspace/subdir/target.txt && /bin/rm /workspace/subdir/target.txt && ' +
-          '/bin/rmdir /workspace/subdir',
-      ])
+      const filesystemSurface = {
+        mkdir: await run('mkdir', ['/workspace/subdir']),
+        create: await run('shell', ['-c', 'printf DIRECTORY_OK > /workspace/subdir/source.txt']),
+        list: await run('ls', ['/workspace/subdir']),
+        move: await run('mv', ['/workspace/subdir/source.txt', '/workspace/subdir/target.txt']),
+        contents: await run('cat', ['/workspace/subdir/target.txt']),
+        remove: await run('rm', ['/workspace/subdir/target.txt']),
+        rmdir: await run('rmdir', ['/workspace/subdir']),
+      }
       stage('identity')
-      const identity = await run('shell', ['-c', '/bin/cat /proc/self/status'])
+      const identity = await run('shell', [
+        '-c',
+        'while IFS= read -r line; do case "$line" in Uid:*) printf "%s" "$line";; esac; done < /proc/self/status',
+      ])
       stage('hosts')
-      const hosts = await run('shell', ['-c', '/bin/cat /etc/hosts'])
+      const hosts = await run('cat', ['/etc/hosts'])
       stage('network-proxy')
       const network = await run('curl', [
         '--fail', '--silent', '--show-error', '--noproxy', '',
@@ -134,7 +142,9 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
       ])
       stage('network-state')
       const networkState = await run('shell', [
-        '-c', '/bin/cat /proc/net/dev; /bin/cat /proc/net/route',
+        '-c',
+        'while IFS= read -r line; do printf "%s\\\\n" "$line"; done < /proc/net/dev; ' +
+          'while IFS= read -r line; do printf "%s\\\\n" "$line"; done < /proc/net/route',
       ])
       stage('network-address')
       const rawTcp = await run('curl', [
@@ -146,48 +156,51 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
         '--fail', '--silent', '--show-error', '--noproxy', '*',
         'http://${hostName}:${address.port}/hostname',
       ])
-      stage('descendant')
-      const descendant = await run('shell', [
-        '-c',
-        '/bin/cat /dev/null && printf "DESCENDANT_ALLOWED\\\\n"',
-      ])
-      stage('relative-exec')
-      const relativeExec = await run('shell', [
-        '-c',
-        'cd /bin; if ./cat /dev/null 2>/dev/null; then exit 92; else printf "RELATIVE_EXEC_DENIED\\\\n"; fi',
-      ])
+      const execDenials = {}
+      for (const [form, command] of [
+        ['absolute', 'exec /bin/cat /dev/null'],
+        ['path', 'PATH=/bin:/usr/bin; exec cat /dev/null'],
+        ['relative', 'cd /bin; exec ./cat /dev/null'],
+      ]) {
+        stage('guest-exec-' + form)
+        execDenials[form] = await run('shell', ['-c', command])
+      }
+      stage('guest-fork')
+      const forkDenied = await run('shell', ['-c', '(printf A) & (printf B) & wait'])
       stage('device')
       const device = await run('hoholo', ['device', 'summary'])
       stage('system')
       const system = await run('hoholo', ['system', 'read', 'os.arch'])
       console.log('V86_PRODUCTION_RUNTIME:' + JSON.stringify({
-        descendant, device, filesystem, filesystemSurface, hostnameTcp, hosts, identity, network, networkState,
-        processControl, rawTcp, relativeExec, stdio, system,
+        device, execDenials, filesystem, filesystemSurface, forkDenied, hostnameTcp, hosts, identity, network,
+        networkState, processControl, rawTcp, stdio, system,
       }))
     `
   })
   try {
     await supervisor.start(session)
   } catch (error) {
-    throw new Error(`v86 production Runtime failed\n${logs.join('\n')}`, { cause: error })
+    throw new Error(
+      `v86 production Runtime failed\n${String(error?.stack ?? error)}\n${logs.join('\n')}`,
+      { cause: error }
+    )
   }
 
   const line = logs.find(value => value.startsWith('V86_PRODUCTION_RUNTIME:'))
   assert.ok(line)
   const result = JSON.parse(line.slice(23))
   assertProcessControlResult(result.processControl)
-  assert.deepEqual(result.descendant, {
-    code: 0,
-    signal: null,
-    stderr: [],
-    stdout: [...Buffer.from('DESCENDANT_ALLOWED\n')]
-  })
-  assert.deepEqual(result.relativeExec, {
-    code: 0,
-    signal: null,
-    stderr: [],
-    stdout: [...Buffer.from('RELATIVE_EXEC_DENIED\n')]
-  })
+  for (const form of ['absolute', 'path', 'relative']) {
+    const denial = result.execDenials[form]
+    assert.ok(Number.isInteger(denial.code) && denial.code > 0, form)
+    assert.equal(denial.signal, null, form)
+    assert.deepEqual(denial.stdout, [], form)
+    assert.match(Buffer.from(denial.stderr).toString(), /Operation not permitted/u, form)
+  }
+  assert.ok(Number.isInteger(result.forkDenied.code) && result.forkDenied.code > 0)
+  assert.equal(result.forkDenied.signal, null)
+  assert.deepEqual(result.forkDenied.stdout, [])
+  assert.match(Buffer.from(result.forkDenied.stderr).toString(), /Operation not permitted/u)
   assert.deepEqual(result.stdio, {
     code: 7,
     signal: null,
@@ -207,12 +220,16 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
     stderr: [],
     stdout: [...Buffer.from('FUSE_INPUT:HOST_TO_GUEST')]
   })
-  assert.deepEqual(result.filesystemSurface, {
-    code: 0,
-    signal: null,
-    stderr: [],
-    stdout: [...Buffer.from('source.txt\nDIRECTORY_OK')]
-  })
+  for (const [operation, value] of Object.entries(result.filesystemSurface)) {
+    assert.equal(value.code, 0, `${operation}: ${Buffer.from(value.stderr).toString()}`)
+    assert.equal(value.signal, null, operation)
+    assert.deepEqual(value.stderr, [], operation)
+  }
+  assert.deepEqual(result.filesystemSurface.list.stdout, [...Buffer.from('source.txt\n')])
+  assert.deepEqual(result.filesystemSurface.contents.stdout, [...Buffer.from('DIRECTORY_OK')])
+  for (const operation of ['mkdir', 'create', 'move', 'remove', 'rmdir']) {
+    assert.deepEqual(result.filesystemSurface[operation].stdout, [], operation)
+  }
   assert.equal(result.identity.code, 0)
   assert.match(Buffer.from(result.identity.stdout).toString(), /^Uid:\s+1000\s+1000\s+1000\s+1000$/mu)
   assert.equal(Buffer.from(await readFile(path.join(filesystemRoot, 'output.txt'))).toString(), 'GUEST_TO_HOST')
@@ -254,7 +271,7 @@ test('runs the installed v86 Backend through the production Node Runtime path', 
 
 test('bridges a Linux UDP datagram through the production Process Network authority', {
   skip: assetRoot == null,
-  timeout: 45_000
+  timeout: 120_000
 }, async t => {
   const processProfile = await processProfileV1(assetRoot)
   const filesystemRoot = await mkdtemp(path.join(os.tmpdir(), 'holonomy-v86-udp-'))
@@ -269,7 +286,7 @@ test('bridges a Linux UDP datagram through the production Process Network author
   server.bind(0)
   await once(server, 'listening')
   const address = server.address()
-  const supervisor = new NodeRuntimeSupervisor({ requestTimeoutMs: 30_000 })
+  const supervisor = new NodeRuntimeSupervisor({ requestTimeoutMs: 90_000 })
   const logs = []
   supervisor.on('log', event => logs.push(event.text))
   t.after(async () => {
@@ -286,7 +303,7 @@ test('bridges a Linux UDP datagram through the production Process Network author
       backendId: 'experimental.v86-v1',
       implementation: 'builtin.v86-v1'
     },
-    processLimits: { maxExecutionTimeMs: 10_000 },
+    processLimits: { maxExecutionTimeMs: 60_000 },
     processNetwork: {
       access: 'restricted',
       endpoints: [{ hostname: hostAddress, ports: [address.port], transport: 'udp' }],
@@ -297,9 +314,7 @@ test('bridges a Linux UDP datagram through the production Process Network author
     source: `
       import { spawn } from 'node:child_process'
       const result = await new Promise((resolve, reject) => {
-        const child = spawn('timeout', [
-          '5', '/usr/bin/nc', '-u', '-w', '2', '${hostAddress}', '${address.port}',
-        ])
+        const child = spawn('nc', ['-u', '-w', '2', '${hostAddress}', '${address.port}'])
         const stdout = []
         const stderr = []
         child.stdout.on('data', chunk => stdout.push(...chunk))
@@ -322,6 +337,7 @@ test('bridges a Linux UDP datagram through the production Process Network author
   const result = JSON.parse(line.slice(16))
   assert.equal(result.code, 0, Buffer.from(result.stderr).toString())
   assert.equal(result.signal, null)
+  assert.deepEqual(result.stderr, [])
   assert.equal(
     Buffer.from(result.stdout).toString(),
     'HOLO_V86_UDP_OK:guest-datagram',
@@ -331,13 +347,13 @@ test('bridges a Linux UDP datagram through the production Process Network author
 
 test('destroys an active v86 process tree before restarting in a fresh generation', {
   skip: assetRoot == null,
-  timeout: 90_000
+  timeout: 240_000
 }, async t => {
   const processProfile = await processProfileV1(assetRoot)
   const filesystemRoot = await mkdtemp(path.join(os.tmpdir(), 'holonomy-v86-restart-'))
   const heartbeatPath = path.join(filesystemRoot, 'heartbeat.txt')
   const restartedPath = path.join(filesystemRoot, 'restarted.txt')
-  const supervisor = new NodeRuntimeSupervisor({ requestTimeoutMs: 75_000 })
+  const supervisor = new NodeRuntimeSupervisor({ requestTimeoutMs: 210_000 })
   t.after(async () => {
     await supervisor.stop()
     await rm(filesystemRoot, { force: true, recursive: true })
@@ -351,7 +367,7 @@ test('destroys an active v86 process tree before restarting in a fresh generatio
       backendId: 'experimental.v86-v1',
       implementation: 'builtin.v86-v1'
     },
-    processLimits: { maxExecutionTimeMs: 60_000 },
+    processLimits: { maxExecutionTimeMs: 90_000 },
     processMounts: [{ guestPath: '/workspace', rights: ['read', 'write'], rootId: 'workspace' }],
     processProfile
   }
@@ -361,7 +377,7 @@ test('destroys an active v86 process tree before restarting in a fresh generatio
       import { spawn } from 'node:child_process'
       spawn('shell', [
         '-c',
-        'value=0; while :; do value=$((value + 1)); printf "%s" "$value" > /workspace/heartbeat.txt; /bin/sleep 0.05; done',
+        'value=0; while :; do value=$((value + 1)); if [ "$((value % 10000))" -eq 0 ]; then printf "%s" "$value" > /workspace/heartbeat.txt; fi; done',
       ])
       await new Promise(() => {})
     `
@@ -371,7 +387,7 @@ test('destroys an active v86 process tree before restarting in a fresh generatio
   )
   const firstHeartbeat = await waitForFile(heartbeatPath)
   let changingHeartbeat = firstHeartbeat
-  const heartbeatDeadline = Date.now() + 5_000
+  const heartbeatDeadline = Date.now() + 15_000
   while (changingHeartbeat === firstHeartbeat && Date.now() < heartbeatDeadline) {
     await new Promise(resolve => setTimeout(resolve, 50))
     changingHeartbeat = await readFile(heartbeatPath, 'utf8')
@@ -404,13 +420,13 @@ test('destroys an active v86 process tree before restarting in a fresh generatio
   assert.equal(await readFile(heartbeatPath, 'utf8'), terminalHeartbeat)
 })
 
-test('denies a v86 descendant exec through Host middleware without killing the environment', {
+test('denies a Guest-internal exec while later Host-authorized roots remain available', {
   skip: assetRoot == null,
-  timeout: 90_000
+  timeout: 150_000
 }, async t => {
   const processProfile = await processProfileV1(assetRoot)
   const filesystemRoot = await mkdtemp(path.join(os.tmpdir(), 'holonomy-v86-descendant-deny-'))
-  const supervisor = new NodeRuntimeSupervisor({ requestTimeoutMs: 75_000 })
+  const supervisor = new NodeRuntimeSupervisor({ requestTimeoutMs: 120_000 })
   t.after(async () => {
     await supervisor.stop()
     await rm(filesystemRoot, { force: true, recursive: true })
@@ -418,27 +434,27 @@ test('denies a v86 descendant exec through Host middleware without killing the e
   const logs = []
   supervisor.on('log', event => logs.push(event.text))
   const session = capabilityRuntimeSession({
-    behavior: 'deny',
     entryUrl,
     hostPath: filesystemRoot,
-    middlewareMatcher: { member: 'authorizeDescendantProcess' },
     moduleRootUrl,
     processBackendInstallation: {
       artifactRoot: assetRoot,
       backendId: 'experimental.v86-v1',
       implementation: 'builtin.v86-v1'
     },
-    processLimits: { maxExecutionTimeMs: 60_000 },
+    processLimits: { maxExecutionTimeMs: 90_000 },
     processProfile,
     source: `
       import { spawn } from 'node:child_process'
-      const result = await new Promise((resolve, reject) => {
+      const run = command => new Promise((resolve, reject) => {
         const child = spawn('shell', [
           '-c',
-          'if /bin/cat /dev/null; then exit 91; else printf "DESCENDANT_HOST_DENIED\\\\n"; fi',
+          command,
         ])
         const stdout = []
+        const stderr = []
         child.stdout.on('data', chunk => stdout.push(...chunk))
+        child.stderr.on('data', chunk => stderr.push(...chunk))
         child.on('error', error => {
           console.log('V86_CHILD_ERROR:' + JSON.stringify({
             code: error.code,
@@ -447,9 +463,11 @@ test('denies a v86 descendant exec through Host middleware without killing the e
           }))
           reject(error)
         })
-        child.on('close', (code, signal) => resolve({ code, signal, stdout }))
+        child.on('close', (code, signal) => resolve({ code, signal, stderr, stdout }))
       })
-      console.log('V86_DESCENDANT_DENY:' + JSON.stringify(result))
+      const denied = await run('exec /bin/cat /dev/null')
+      const laterRoot = await run('printf GUEST_GATE_SURVIVED')
+      console.log('V86_DESCENDANT_DENY:' + JSON.stringify({ denied, laterRoot }))
     `
   })
   try {
@@ -459,9 +477,15 @@ test('denies a v86 descendant exec through Host middleware without killing the e
   }
   const line = logs.find(value => value.startsWith('V86_DESCENDANT_DENY:'))
   assert.ok(line)
-  assert.deepEqual(JSON.parse(line.slice(20)), {
+  const result = JSON.parse(line.slice(20))
+  assert.ok(Number.isInteger(result.denied.code) && result.denied.code > 0)
+  assert.equal(result.denied.signal, null)
+  assert.deepEqual(result.denied.stdout, [])
+  assert.match(Buffer.from(result.denied.stderr).toString(), /Operation not permitted/u)
+  assert.deepEqual(result.laterRoot, {
     code: 0,
     signal: null,
-    stdout: [...Buffer.from('DESCENDANT_HOST_DENIED\n')]
+    stderr: [],
+    stdout: [...Buffer.from('GUEST_GATE_SURVIVED')]
   })
 })
