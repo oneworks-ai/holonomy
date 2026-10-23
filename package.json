@@ -180,7 +180,7 @@
     "test": "pnpm run test:topology && vitest run --config vitest.config.ts",
     "test:cli": "pnpm run test:topology && vitest run --config vitest.config.ts __tests__/cli",
     "test:adapter:android:device": "pnpm run android:device-test",
-    "test:adapter:desktop:unit": "vitest run --config adapters/desktop/vitest.config.mjs",
+    "test:adapter:desktop:unit": "node tools/build-native-runtime.mjs && vitest run --config adapters/desktop/vitest.config.mjs",
     "test:adapter:android:unit": "vitest run --config adapters/android/vitest.config.mjs && NODE_OPTIONS=--experimental-vm-modules vitest run --config adapters/android/runtime-host/vitest.config.mjs && node --input-type=module --eval \"import { androidBuildEnvironment, androidRoot, findAdb, run } from './tools/android-devtools-adb.mjs'; const adb = findAdb(); run('./gradlew', ['--offline', 'testAdapterUnit'], { cwd: androidRoot, env: androidBuildEnvironment(adb), inherit: true })\"",
     "test:adapter:node": "pnpm run build && pnpm run build:m4:node-hook && pnpm run build:node:filesystem-hook && node --experimental-vm-modules --test adapters/node/test/*.test.mjs",
     "test:js": "pnpm run test:topology && vitest run --config vitest.config.ts __tests__/js-api",

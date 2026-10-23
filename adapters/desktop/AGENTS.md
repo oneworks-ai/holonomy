@@ -51,4 +51,4 @@ Module reads use opened directory descriptors and retain immutable bytes per gen
 
 Verify with `node tools/build-native-runtime.mjs`, `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings` and shared JS regressions when touching package contracts. Binary tests belong beside the CLI; public behavior assertions remain in JS conformance.
 
-Host-side JS Provider boundary tests live in `v8-host/tests/`, run by `pnpm test:adapter:desktop:unit`. They may inspect native transport bindings; platform-neutral `__tests__/js-api` suites may not import Desktop Providers. `pnpm test:native` also runs this layer and native packaging tests after the executable tests.
+Host-side JS Provider boundary tests live in `v8-host/tests/`, run by `pnpm test:adapter:desktop:unit`. This entry generates its embedded JS assets first and must also work without a pre-existing `v8-host/generated/` directory. They may inspect native transport bindings; platform-neutral `__tests__/js-api` suites may not import Desktop Providers. `pnpm test:native` also runs this layer and native packaging tests after the executable tests.
